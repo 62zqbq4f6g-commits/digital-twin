@@ -190,7 +190,7 @@
     {
       "id": "DT-007",
       "title": "Classifier module",
-      "status": "backlog",
+      "status": "done",
       "estimated_minutes": 30,
       "description": "4-category classification using keywords from CLAUDE.md section 5.",
       "acceptance_criteria": [
