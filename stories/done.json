@@ -34,7 +34,12 @@
       "id": "DT-007",
       "title": "Classifier module",
       "completed_at": "2025-01-10T20:17:00+08:00"
+    },
+    {
+      "id": "DT-008",
+      "title": "Extractor module",
+      "completed_at": "2025-01-10T20:20:00+08:00"
     }
   ],
-  "total": 7
+  "total": 8
 }
