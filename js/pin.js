@@ -246,17 +246,24 @@ const PIN = {
             this.showConfirmScreen(currentPIN);
           } else if (mode === 'confirm') {
             if (currentPIN === firstPIN) {
+              console.log('[PIN] Confirm: PINs match, starting save...');
               this.isProcessing = true;
               this.showLoading();
+              console.log('[PIN] Confirm: Loading shown, waiting 50ms...');
               // Let UI update before heavy crypto
               await new Promise(r => setTimeout(r, 50));
+              console.log('[PIN] Confirm: Calling savePIN...');
               try {
                 await this.savePIN(currentPIN);
+                console.log('[PIN] Confirm: savePIN done!');
                 this.isSetup = true;
                 this.isUnlocked = true;
                 this.hideScreen();
+                console.log('[PIN] Confirm: Screen hidden, calling onUnlock');
                 // Initialize app after PIN setup
                 this.onUnlock();
+              } catch (err) {
+                console.error('[PIN] Confirm ERROR:', err);
               } finally {
                 this.isProcessing = false;
               }
@@ -592,12 +599,18 @@ const PIN = {
 
   async savePIN(pin) {
     try {
+      console.log('[PIN] 1. Starting savePIN...');
+
       // Generate random salt
       const salt = crypto.getRandomValues(new Uint8Array(16));
       const saltB64 = btoa(String.fromCharCode(...salt));
+      console.log('[PIN] 2. Salt generated');
 
       // Derive key from PIN (using reduced iterations for mobile)
+      console.log('[PIN] 3. Getting key material...');
       const keyMaterial = await this.getKeyMaterial(pin);
+      console.log('[PIN] 4. Key material ready, deriving key...');
+
       const key = await crypto.subtle.deriveKey(
         { name: 'PBKDF2', salt, iterations: this.PBKDF2_ITERATIONS, hash: 'SHA-256' },
         keyMaterial,
@@ -605,30 +618,42 @@ const PIN = {
         true,
         ['encrypt', 'decrypt']
       );
+      console.log('[PIN] 5. Key derived');
 
       // Store encryption key in memory
       this.encryptionKey = key;
 
       // Hash PIN for verification (separate from encryption)
+      console.log('[PIN] 6. Hashing PIN...');
       const hashBuffer = await crypto.subtle.digest(
         'SHA-256',
         new TextEncoder().encode(pin + saltB64)
       );
       const hashB64 = btoa(String.fromCharCode(...new Uint8Array(hashBuffer)));
+      console.log('[PIN] 7. PIN hashed');
 
-      // Generate recovery key
-      const recoveryKey = this.generateRecoveryKey();
-      const encryptedRecovery = await this.encryptRecoveryKey(recoveryKey, key);
-
-      // Store locally
+      // Store locally (skip recovery for now to debug)
       localStorage.setItem(this.SALT_KEY, saltB64);
       localStorage.setItem(this.HASH_KEY, hashB64);
-      localStorage.setItem(this.RECOVERY_KEY, encryptedRecovery);
+      console.log('[PIN] 8. Saved to localStorage');
 
-      // Send recovery key to email via API (non-blocking)
-      this.sendRecoveryEmail(recoveryKey).catch(console.error);
+      // Recovery key setup (async, non-blocking)
+      console.log('[PIN] 9. savePIN complete!');
+
+      // Do recovery in background after unlock
+      setTimeout(async () => {
+        try {
+          const recoveryKey = this.generateRecoveryKey();
+          const encryptedRecovery = await this.encryptRecoveryKey(recoveryKey, key);
+          localStorage.setItem(this.RECOVERY_KEY, encryptedRecovery);
+          this.sendRecoveryEmail(recoveryKey).catch(console.error);
+          console.log('[PIN] Recovery key saved in background');
+        } catch (e) {
+          console.error('[PIN] Recovery key error:', e);
+        }
+      }, 1000);
     } catch (error) {
-      console.error('Failed to save PIN:', error);
+      console.error('[PIN] ERROR in savePIN:', error);
       throw error;
     }
   },
