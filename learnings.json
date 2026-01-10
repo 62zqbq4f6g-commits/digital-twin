@@ -1,0 +1,9 @@
+{
+  "learnings": [
+    {
+      "id": "LEARN-000",
+      "story_id": "INIT",
+      "lesson": "Always read learnings.json at the start of every session"
+    }
+  ]
+}

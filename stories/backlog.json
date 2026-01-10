@@ -1,0 +1,170 @@
+{
+  "stories": [
+    {
+      "id": "DT-001",
+      "title": "Verify project structure",
+      "status": "backlog",
+      "description": "Confirm all directories and foundation files exist.",
+      "acceptance_criteria": [
+        "CLAUDE.md exists",
+        "config/settings.json exists",
+        "data/inbox/ directory exists",
+        "data/archive/ directory exists",
+        "src/__init__.py exists",
+        "stories/backlog.json exists",
+        "stories/done.json exists",
+        "learnings.json exists"
+      ],
+      "verification": "ls CLAUDE.md config/settings.json learnings.json && ls data/ && ls stories/ && ls src/",
+      "files_to_create": []
+    },
+    {
+      "id": "DT-002",
+      "title": "Create database schema",
+      "status": "backlog",
+      "description": "Initialize data/notes.json with proper schema.",
+      "acceptance_criteria": [
+        "data/notes.json exists",
+        "Contains valid JSON",
+        "Has _schema_version field",
+        "Has empty notes array",
+        "Is pretty-printed"
+      ],
+      "verification": "cat data/notes.json | python3 -m json.tool",
+      "files_to_create": ["data/notes.json"]
+    },
+    {
+      "id": "DT-003",
+      "title": "Create classification prompt",
+      "status": "backlog",
+      "description": "Write few-shot examples for Personal vs Work classification.",
+      "acceptance_criteria": [
+        "prompts/classification.md exists",
+        "Has system instruction",
+        "Has 3+ Personal examples",
+        "Has 3+ Work examples",
+        "Has 1 ambiguous example",
+        "Specifies JSON output format"
+      ],
+      "verification": "cat prompts/classification.md | head -60",
+      "files_to_create": ["prompts/classification.md"]
+    },
+    {
+      "id": "DT-004",
+      "title": "Build classifier module",
+      "status": "backlog",
+      "description": "Python function to classify text as Personal or Work.",
+      "acceptance_criteria": [
+        "src/classifier.py exists",
+        "Has classify(text) function",
+        "Returns dict with system, confidence, reasoning",
+        "Detects personal keywords",
+        "Detects work keywords",
+        "Defaults to personal when ambiguous",
+        "Runnable: python src/classifier.py 'test'"
+      ],
+      "verification": "python src/classifier.py 'call mom this weekend' && python src/classifier.py 'velolume investor meeting'",
+      "files_to_create": ["src/classifier.py"]
+    },
+    {
+      "id": "DT-005",
+      "title": "Build extractor module",
+      "status": "backlog",
+      "description": "Extract title, topics, action items, sentiment from text.",
+      "acceptance_criteria": [
+        "src/extractor.py exists",
+        "Has extract(text) function",
+        "Returns title, topics, action_items, sentiment, people",
+        "Finds action items from need to/should/must phrases",
+        "Detects sentiment",
+        "Runnable standalone"
+      ],
+      "verification": "python src/extractor.py 'I need to call James. Feeling stressed.'",
+      "files_to_create": ["src/extractor.py"]
+    },
+    {
+      "id": "DT-006",
+      "title": "Build storage module",
+      "status": "backlog",
+      "description": "Read/write notes to JSON database.",
+      "acceptance_criteria": [
+        "src/storage.py exists",
+        "Has save_note(note) returning ID",
+        "Has get_all_notes() returning list",
+        "Has get_notes_by_system(system)",
+        "Appends notes, not overwrites",
+        "Generates unique IDs",
+        "Adds created_at timestamp"
+      ],
+      "verification": "python -c \"import sys; sys.path.insert(0,'.'); from src.storage import save_note, get_all_notes; save_note({'test':1}); print(get_all_notes())\"",
+      "files_to_create": ["src/storage.py"]
+    },
+    {
+      "id": "DT-007",
+      "title": "Build file watcher",
+      "status": "backlog",
+      "description": "Monitor inbox folder for new files.",
+      "acceptance_criteria": [
+        "src/watcher.py exists",
+        "Has Watcher class with start/stop",
+        "Watches data/inbox/",
+        "Detects .txt and .md files",
+        "Ignores hidden files",
+        "Has callback on new file",
+        "Has 2-second debounce"
+      ],
+      "verification": "timeout 3 python src/watcher.py --test || echo 'Watcher test done'",
+      "files_to_create": ["src/watcher.py"]
+    },
+    {
+      "id": "DT-008",
+      "title": "Build pipeline",
+      "status": "backlog",
+      "description": "Connect all modules into full processing flow.",
+      "acceptance_criteria": [
+        "src/pipeline.py exists",
+        "Has process_file(path) function",
+        "Flow: read->classify->extract->save->archive",
+        "Moves files to archive after processing",
+        "Has --once flag",
+        "Has --watch flag",
+        "Logs results"
+      ],
+      "verification": "echo 'test note about mom' > data/inbox/test.txt && python src/pipeline.py --once && cat data/notes.json",
+      "files_to_create": ["src/pipeline.py"]
+    },
+    {
+      "id": "DT-009",
+      "title": "Build query interface",
+      "status": "backlog",
+      "description": "CLI to search and display notes.",
+      "acceptance_criteria": [
+        "src/query.py exists",
+        "--all shows all notes",
+        "--personal filters personal",
+        "--work filters work",
+        "--actions shows action items",
+        "Formatted output with emojis"
+      ],
+      "verification": "python src/query.py --all && python src/query.py --actions",
+      "files_to_create": ["src/query.py"]
+    },
+    {
+      "id": "DT-010",
+      "title": "Create web dashboard",
+      "status": "backlog",
+      "description": "HTML page to visualize notes.",
+      "acceptance_criteria": [
+        "web/dashboard.html exists",
+        "Loads notes.json via fetch",
+        "Shows stats",
+        "Lists notes with badges",
+        "Shows action items",
+        "Has filter buttons",
+        "Dark theme"
+      ],
+      "verification": "cat web/dashboard.html | head -30",
+      "files_to_create": ["web/dashboard.html"]
+    }
+  ]
+}

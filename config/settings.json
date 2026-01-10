@@ -1,0 +1,18 @@
+{
+  "project": "Digital Twin Note Agent",
+  "version": "0.1.0",
+  "paths": {
+    "inbox": "data/inbox",
+    "archive": "data/archive",
+    "database": "data/notes.json"
+  },
+  "watcher": {
+    "interval_seconds": 2,
+    "file_patterns": [".txt", ".md"],
+    "ignore_hidden": true
+  },
+  "classification": {
+    "default_system": "personal",
+    "confidence_threshold": 0.6
+  }
+}
