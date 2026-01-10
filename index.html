@@ -29,7 +29,28 @@
     <main class="main">
       <!-- Capture Screen -->
       <section id="screen-capture" class="screen">
-        <p>Capture screen - coming soon</p>
+        <!-- Voice button area (placeholder for DT-006) -->
+        <div class="capture-voice-area">
+          <button id="voice-btn" class="voice-btn" aria-label="Start voice recording">
+            <span class="voice-icon">🎤</span>
+          </button>
+          <p class="voice-hint">Tap to speak</p>
+        </div>
+
+        <!-- Text input area -->
+        <div class="capture-input-area">
+          <div class="text-input-container">
+            <textarea
+              id="text-input"
+              class="text-input"
+              placeholder="What's on your mind?"
+              rows="1"
+            ></textarea>
+            <button id="submit-btn" class="submit-btn" aria-label="Submit note">
+              <span class="submit-icon">→</span>
+            </button>
+          </div>
+        </div>
       </section>
 
       <!-- Notes Screen -->

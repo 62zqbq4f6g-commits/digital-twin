@@ -19,7 +19,12 @@
       "id": "DT-004",
       "title": "App shell UI",
       "completed_at": "2025-01-10T20:08:00+08:00"
+    },
+    {
+      "id": "DT-005",
+      "title": "Text input component",
+      "completed_at": "2025-01-10T20:11:00+08:00"
     }
   ],
-  "total": 4
+  "total": 5
 }

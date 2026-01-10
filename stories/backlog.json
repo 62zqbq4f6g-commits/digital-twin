@@ -130,7 +130,7 @@
     {
       "id": "DT-005",
       "title": "Text input component",
-      "status": "backlog",
+      "status": "done",
       "estimated_minutes": 30,
       "description": "Create text input area on Capture screen with submit.",
       "acceptance_criteria": [
