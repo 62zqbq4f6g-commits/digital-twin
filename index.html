@@ -95,6 +95,18 @@
             <span class="settings-btn-desc">Download backup as JSON file</span>
           </button>
         </div>
+
+        <div class="settings-section">
+          <h2 class="settings-heading">Danger Zone</h2>
+          <button id="clear-data-btn" class="settings-btn settings-btn-danger">
+            <span>Clear All Data</span>
+            <span class="settings-btn-desc">Delete all notes permanently</span>
+          </button>
+        </div>
+
+        <div class="settings-section settings-version">
+          <p class="settings-version-text">Digital Twin v<span id="app-version">1.0.0</span></p>
+        </div>
       </section>
 
       <!-- Note Detail Screen (overlay) -->
@@ -140,6 +152,18 @@
         <div class="dialog-actions">
           <button id="delete-cancel" class="dialog-btn">Cancel</button>
           <button id="delete-confirm" class="dialog-btn dialog-btn-danger">Delete</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Clear All Data Dialog -->
+    <div id="clear-data-dialog" class="dialog-overlay hidden">
+      <div class="dialog">
+        <h3 class="dialog-title">Clear All Data?</h3>
+        <p class="dialog-message">This will permanently delete all your notes. This action cannot be undone.</p>
+        <div class="dialog-actions">
+          <button id="clear-data-cancel" class="dialog-btn">Cancel</button>
+          <button id="clear-data-confirm" class="dialog-btn dialog-btn-danger">Clear All</button>
         </div>
       </div>
     </div>

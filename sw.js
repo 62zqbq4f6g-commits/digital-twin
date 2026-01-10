@@ -1,10 +1,19 @@
 // Digital Twin Service Worker
-const CACHE_NAME = 'digital-twin-v1';
+const APP_VERSION = '1.0.0';
+const CACHE_NAME = `digital-twin-v${APP_VERSION}`;
+
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
   '/manifest.json',
   '/css/styles.css',
+  '/js/db.js',
+  '/js/classifier.js',
+  '/js/extractor.js',
+  '/js/refiner.js',
+  '/js/app.js',
+  '/js/ui.js',
+  '/js/voice.js',
   '/assets/icon-192.png',
   '/assets/icon-512.png'
 ];
@@ -68,7 +77,18 @@ self.addEventListener('fetch', (event) => {
                 cache.put(event.request, responseToCache);
               });
             return response;
+          })
+          .catch(() => {
+            // If both cache and network fail, return offline fallback
+            return caches.match('/index.html');
           });
       })
   );
+});
+
+// Message handler for version requests
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'GET_VERSION') {
+    event.ports[0].postMessage({ version: APP_VERSION });
+  }
 });

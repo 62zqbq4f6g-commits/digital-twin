@@ -673,9 +673,57 @@ const UI = {
    * Set up settings screen event handlers
    */
   setupSettings() {
+    // Export All button
     const exportAllBtn = document.getElementById('export-all-btn');
     if (exportAllBtn) {
       exportAllBtn.addEventListener('click', () => this.exportAllNotes());
+    }
+
+    // Clear Data button
+    const clearDataBtn = document.getElementById('clear-data-btn');
+    if (clearDataBtn) {
+      clearDataBtn.addEventListener('click', () => this.showClearDataDialog());
+    }
+
+    // Clear Data dialog buttons
+    const clearCancelBtn = document.getElementById('clear-data-cancel');
+    const clearConfirmBtn = document.getElementById('clear-data-confirm');
+
+    if (clearCancelBtn) {
+      clearCancelBtn.addEventListener('click', () => this.hideClearDataDialog());
+    }
+
+    if (clearConfirmBtn) {
+      clearConfirmBtn.addEventListener('click', () => this.confirmClearAllData());
+    }
+  },
+
+  /**
+   * Show clear data confirmation dialog
+   */
+  showClearDataDialog() {
+    document.getElementById('clear-data-dialog').classList.remove('hidden');
+  },
+
+  /**
+   * Hide clear data confirmation dialog
+   */
+  hideClearDataDialog() {
+    document.getElementById('clear-data-dialog').classList.add('hidden');
+  },
+
+  /**
+   * Confirm and clear all data
+   */
+  async confirmClearAllData() {
+    try {
+      await DB.clearAllNotes();
+      this.hideClearDataDialog();
+      this.allNotes = [];
+      this.showToast('All data cleared');
+    } catch (error) {
+      console.error('Failed to clear data:', error);
+      this.showToast('Failed to clear data');
     }
   },
 

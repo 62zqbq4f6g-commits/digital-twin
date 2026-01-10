@@ -964,3 +964,22 @@ body {
   color: var(--color-gray-600);
   margin-top: var(--space-xs);
 }
+
+.settings-btn-danger {
+  border-color: var(--color-black);
+}
+
+.settings-btn-danger span:first-child {
+  color: var(--color-black);
+}
+
+.settings-version {
+  margin-top: var(--space-2xl);
+  text-align: center;
+}
+
+.settings-version-text {
+  margin: 0;
+  font-size: var(--text-caption);
+  color: var(--color-gray-400);
+}

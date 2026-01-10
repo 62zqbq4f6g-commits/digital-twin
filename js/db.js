@@ -211,6 +211,28 @@ function exportAllNotes() {
   });
 }
 
+/**
+ * Clear all notes from the database
+ * @returns {Promise<void>}
+ */
+function clearAllNotes() {
+  return new Promise((resolve, reject) => {
+    initDB().then((database) => {
+      const transaction = database.transaction([STORE_NAME], 'readwrite');
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.clear();
+
+      request.onsuccess = () => {
+        resolve();
+      };
+
+      request.onerror = () => {
+        reject(new Error('Failed to clear notes'));
+      };
+    }).catch(reject);
+  });
+}
+
 // Export functions for use in other modules
 window.DB = {
   initDB,
@@ -220,5 +242,6 @@ window.DB = {
   getNoteById,
   deleteNote,
   exportAllNotes,
+  clearAllNotes,
   generateId
 };

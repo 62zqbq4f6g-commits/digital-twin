@@ -407,7 +407,7 @@
     {
       "id": "DT-014",
       "title": "PWA offline and install",
-      "status": "backlog",
+      "status": "done",
       "estimated_minutes": 30,
       "description": "Complete service worker and PWA features.",
       "acceptance_criteria": [
