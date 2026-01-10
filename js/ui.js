@@ -753,6 +753,37 @@ const UI = {
       console.error('Failed to export:', error);
       this.showToast('Failed to export');
     }
+  },
+
+  /**
+   * Show processing overlay with spinner
+   * @param {string} message - Message to display
+   */
+  showProcessing(message = 'Processing...') {
+    let overlay = document.getElementById('processing-overlay');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'processing-overlay';
+      overlay.className = 'processing-overlay';
+      overlay.innerHTML = `
+        <div class="processing-spinner"></div>
+        <p class="processing-text">${message}</p>
+      `;
+      document.body.appendChild(overlay);
+    } else {
+      overlay.querySelector('.processing-text').textContent = message;
+      overlay.classList.remove('hidden');
+    }
+  },
+
+  /**
+   * Hide processing overlay
+   */
+  hideProcessing() {
+    const overlay = document.getElementById('processing-overlay');
+    if (overlay) {
+      overlay.classList.add('hidden');
+    }
   }
 };
 

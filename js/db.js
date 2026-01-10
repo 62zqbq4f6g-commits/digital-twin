@@ -233,6 +233,40 @@ function clearAllNotes() {
   });
 }
 
+/**
+ * Get notes by date range (for weekly digest)
+ * @param {string} startDate - Start date (YYYY-MM-DD)
+ * @param {string} endDate - End date (YYYY-MM-DD)
+ * @returns {Promise<Array>} Array of notes in date range
+ */
+function getNotesByDateRange(startDate, endDate) {
+  return new Promise((resolve, reject) => {
+    initDB().then((database) => {
+      const transaction = database.transaction([STORE_NAME], 'readonly');
+      const store = transaction.objectStore(STORE_NAME);
+      const index = store.index('by_date');
+
+      const range = IDBKeyRange.bound(startDate, endDate);
+      const request = index.getAll(range);
+
+      request.onsuccess = () => {
+        const notes = request.result || [];
+        // Sort by created_at descending
+        notes.sort((a, b) => {
+          const dateA = a.timestamps?.created_at || '';
+          const dateB = b.timestamps?.created_at || '';
+          return dateB.localeCompare(dateA);
+        });
+        resolve(notes);
+      };
+
+      request.onerror = () => {
+        reject(new Error('Failed to get notes by date range'));
+      };
+    }).catch(reject);
+  });
+}
+
 // Export functions for use in other modules
 window.DB = {
   initDB,
@@ -243,5 +277,6 @@ window.DB = {
   deleteNote,
   exportAllNotes,
   clearAllNotes,
+  getNotesByDateRange,
   generateId
 };

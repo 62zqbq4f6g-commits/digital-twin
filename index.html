@@ -29,29 +29,60 @@
     <main class="main">
       <!-- Capture Screen -->
       <section id="screen-capture" class="screen">
-        <!-- Voice button area -->
-        <div class="capture-voice-area">
-          <button id="voice-btn" class="voice-btn" aria-label="Start voice recording">
-            <span class="voice-icon">🎤</span>
-          </button>
-          <p class="voice-hint">Tap to speak</p>
-          <p id="transcript-display" class="transcript-display"></p>
-        </div>
+        <!-- Capture Section (default view) -->
+        <div id="capture-section">
+          <!-- Voice button area -->
+          <div class="capture-voice-area">
+            <button id="voice-btn" class="voice-btn" aria-label="Start voice recording">
+              <span class="voice-icon">🎤</span>
+            </button>
+            <p class="voice-hint">Tap to speak</p>
+            <p id="transcript-display" class="transcript-display"></p>
+          </div>
 
-        <!-- Text input area -->
-        <div class="capture-input-area">
-          <div class="text-input-container">
-            <textarea
-              id="text-input"
-              class="text-input"
-              placeholder="What's on your mind?"
-              rows="1"
-            ></textarea>
-            <button id="submit-btn" class="submit-btn" aria-label="Submit note">
-              <span class="submit-icon">→</span>
+          <!-- Text input area -->
+          <div class="capture-input-area">
+            <div class="text-input-container">
+              <textarea
+                id="text-input"
+                class="text-input"
+                placeholder="What's on your mind?"
+                rows="1"
+              ></textarea>
+              <button id="submit-btn" class="submit-btn" aria-label="Submit note">
+                <span class="submit-icon">→</span>
+              </button>
+            </div>
+
+            <!-- Image Input (hidden file input) -->
+            <input type="file" id="image-input" accept="image/*" capture="environment" class="hidden">
+
+            <!-- Add Image Button -->
+            <button id="image-btn" class="image-add-btn">
+              <span class="image-icon">📷</span>
+              <span>Add Image</span>
             </button>
           </div>
         </div>
+
+        <!-- Image Section (shown after image selected) -->
+        <section id="image-section" class="hidden">
+          <div class="image-preview-container">
+            <img id="image-preview" alt="Preview">
+            <button id="remove-image" class="remove-image-btn" aria-label="Remove image">✕</button>
+          </div>
+
+          <textarea
+            id="image-context"
+            class="image-context-input"
+            placeholder="Add context (optional)..."
+            rows="2"
+          ></textarea>
+
+          <button id="process-image-btn" class="btn-primary btn-full">
+            Process Image
+          </button>
+        </section>
       </section>
 
       <!-- Notes Screen -->
@@ -89,6 +120,13 @@
       <!-- Settings Screen -->
       <section id="screen-settings" class="screen hidden">
         <div class="settings-section">
+          <h2 class="settings-heading">Insights</h2>
+          <button id="digest-btn" class="digest-trigger-btn" onclick="Digest.generate()">
+            <span>Weekly Digest</span>
+          </button>
+        </div>
+
+        <div class="settings-section">
           <h2 class="settings-heading">Data</h2>
           <button id="export-all-btn" class="settings-btn">
             <span>Export All Notes</span>
@@ -105,7 +143,7 @@
         </div>
 
         <div class="settings-section settings-version">
-          <p class="settings-version-text">Digital Twin v<span id="app-version">1.0.0</span></p>
+          <p class="settings-version-text">Digital Twin v<span id="app-version">2.0.0</span></p>
         </div>
       </section>
 
@@ -168,6 +206,16 @@
       </div>
     </div>
 
+    <!-- Digest Modal -->
+    <div id="digest-modal" class="modal hidden">
+      <div class="modal-content">
+        <button class="modal-close" onclick="Digest.closeDigest()">✕</button>
+        <div id="digest-content">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </div>
+
     <!-- Bottom Navigation -->
     <nav class="nav">
       <button class="nav-tab active" data-screen="capture">
@@ -193,6 +241,8 @@
   <script src="js/app.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/voice.js"></script>
+  <script src="js/camera.js"></script>
+  <script src="js/digest.js"></script>
   <script>
     // Register Service Worker
     if ('serviceWorker' in navigator) {
@@ -212,6 +262,7 @@
       await App.init();
       UI.init();
       Voice.init();
+      Camera.init();
     });
   </script>
 </body>

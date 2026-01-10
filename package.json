@@ -1,0 +1,14 @@
+{
+  "name": "digital-twin",
+  "version": "1.0.0",
+  "description": "AI-powered note-taking PWA",
+  "private": true,
+  "scripts": {
+    "dev": "python3 -m http.server 8000",
+    "build": "echo 'Static site, no build needed'",
+    "start": "python -m http.server 8000"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
