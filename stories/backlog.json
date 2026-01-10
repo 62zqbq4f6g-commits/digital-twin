@@ -288,7 +288,7 @@
     {
       "id": "DT-010",
       "title": "Note processing pipeline",
-      "status": "backlog",
+      "status": "done",
       "estimated_minutes": 30,
       "description": "Connect input → classifier → extractor → refiner → storage.",
       "acceptance_criteria": [

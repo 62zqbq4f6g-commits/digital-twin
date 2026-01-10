@@ -107,43 +107,13 @@ const UI = {
   },
 
   /**
-   * Placeholder processNote function (will be replaced in DT-010)
+   * Process note through App pipeline
    * @param {string} text - Raw text input
    * @param {string} inputType - 'text' or 'voice'
    */
   async processNote(text, inputType) {
-    // Placeholder - just save raw note to DB for now
-    const note = {
-      input: {
-        type: inputType,
-        raw_text: text
-      },
-      timestamps: {
-        created_at: new Date().toISOString(),
-        input_date: new Date().toISOString().slice(0, 10),
-        input_time: new Date().toTimeString().slice(0, 5),
-        input_timezone: 'Asia/Singapore',
-        day_of_week: new Date().toLocaleDateString('en-US', { weekday: 'long' })
-      },
-      classification: {
-        category: 'personal',
-        confidence: 0.5,
-        reasoning: 'Placeholder classification'
-      },
-      extracted: {
-        title: text.slice(0, 50),
-        topics: [],
-        action_items: [],
-        sentiment: 'neutral',
-        people: []
-      },
-      refined: {
-        summary: text,
-        formatted_output: text
-      }
-    };
-
-    return await DB.saveNote(note);
+    // Use App.processNote for full pipeline processing
+    return await App.processNote(text, inputType);
   },
 
   /**

@@ -44,7 +44,12 @@
       "id": "DT-009",
       "title": "Refiner module",
       "completed_at": "2025-01-10T20:23:00+08:00"
+    },
+    {
+      "id": "DT-010",
+      "title": "Note processing pipeline",
+      "completed_at": "2025-01-10T20:26:00+08:00"
     }
   ],
-  "total": 9
+  "total": 10
 }
