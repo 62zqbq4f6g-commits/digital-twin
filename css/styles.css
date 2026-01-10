@@ -1493,6 +1493,40 @@ body {
   visibility: hidden;
 }
 
+/* Loading spinner - iOS Safari fix */
+.pin-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-xl);
+}
+
+.pin-loading span {
+  font-family: var(--font-serif);
+  font-size: var(--text-caption);
+  color: var(--color-gray-400);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.pin-spinner {
+  width: 40px;
+  height: 40px;
+  border: 2px solid var(--color-gray-100);
+  border-top-color: var(--color-black);
+  border-radius: 50%;
+  animation: pin-spin 0.8s linear infinite;
+}
+
+@keyframes pin-spin {
+  to { transform: rotate(360deg); }
+}
+
+.pin-loading.hidden {
+  display: none;
+}
+
 /* Numpad - Clean, minimal */
 .pin-numpad {
   display: grid;

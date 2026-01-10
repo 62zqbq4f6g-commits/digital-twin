@@ -11,6 +11,7 @@ const PIN = {
   isSetup: false,
   isUnlocked: false,
   encryptionKey: null,
+  isProcessing: false, // Prevent double-taps on iOS
 
   /**
    * Initialize PIN module
@@ -183,7 +184,25 @@ const PIN = {
         <button class="pin-key" data-key="0">0</button>
         <button class="pin-key pin-key-delete" data-key="delete">⌫</button>
       </div>
+      <div class="pin-loading hidden" id="pin-loading">
+        <div class="pin-spinner"></div>
+        <span>Securing...</span>
+      </div>
     `;
+  },
+
+  showLoading() {
+    const loading = document.getElementById('pin-loading');
+    const numpad = document.querySelector('.pin-numpad');
+    if (loading) loading.classList.remove('hidden');
+    if (numpad) numpad.classList.add('hidden');
+  },
+
+  hideLoading() {
+    const loading = document.getElementById('pin-loading');
+    const numpad = document.querySelector('.pin-numpad');
+    if (loading) loading.classList.add('hidden');
+    if (numpad) numpad.classList.remove('hidden');
   },
 
   // ==================
@@ -197,7 +216,12 @@ const PIN = {
 
     // Number pad
     document.querySelectorAll('.pin-key').forEach(key => {
-      key.addEventListener('click', async () => {
+      key.addEventListener('click', async (e) => {
+        e.preventDefault();
+
+        // Prevent double-taps during processing
+        if (this.isProcessing) return;
+
         const value = key.dataset.key;
 
         if (value === 'delete') {
@@ -221,33 +245,50 @@ const PIN = {
             this.showConfirmScreen(currentPIN);
           } else if (mode === 'confirm') {
             if (currentPIN === firstPIN) {
-              await this.savePIN(currentPIN);
-              this.isSetup = true;
-              this.isUnlocked = true;
-              this.hideScreen();
-              // Initialize app after PIN setup
-              this.onUnlock();
+              this.isProcessing = true;
+              this.showLoading();
+              // Let UI update before heavy crypto
+              await new Promise(r => setTimeout(r, 50));
+              try {
+                await this.savePIN(currentPIN);
+                this.isSetup = true;
+                this.isUnlocked = true;
+                this.hideScreen();
+                // Initialize app after PIN setup
+                this.onUnlock();
+              } finally {
+                this.isProcessing = false;
+              }
             } else {
               this.showError('PINs do not match');
               currentPIN = '';
               dots.forEach(d => d.classList.remove('filled'));
             }
           } else if (mode === 'unlock') {
-            const valid = await this.verifyPIN(currentPIN);
-            if (valid) {
-              this.isUnlocked = true;
-              this.hideScreen();
-              // Initialize app after unlock
-              this.onUnlock();
-            } else {
-              this.showError('Incorrect PIN');
-              currentPIN = '';
-              dots.forEach(d => d.classList.remove('filled'));
-              // Shake animation
-              document.getElementById('pin-dots').classList.add('shake');
-              setTimeout(() => {
-                document.getElementById('pin-dots').classList.remove('shake');
-              }, 500);
+            this.isProcessing = true;
+            this.showLoading();
+            // Let UI update before heavy crypto
+            await new Promise(r => setTimeout(r, 50));
+            try {
+              const valid = await this.verifyPIN(currentPIN);
+              if (valid) {
+                this.isUnlocked = true;
+                this.hideScreen();
+                // Initialize app after unlock
+                this.onUnlock();
+              } else {
+                this.hideLoading();
+                this.showError('Incorrect PIN');
+                currentPIN = '';
+                dots.forEach(d => d.classList.remove('filled'));
+                // Shake animation
+                document.getElementById('pin-dots').classList.add('shake');
+                setTimeout(() => {
+                  document.getElementById('pin-dots').classList.remove('shake');
+                }, 500);
+              }
+            } finally {
+              this.isProcessing = false;
             }
           }
         }
@@ -334,7 +375,10 @@ const PIN = {
     const error = document.getElementById('pin-error');
 
     document.querySelectorAll('.pin-key').forEach(key => {
-      key.addEventListener('click', async () => {
+      key.addEventListener('click', async (e) => {
+        e.preventDefault();
+        if (this.isProcessing) return;
+
         const value = key.dataset.key;
 
         if (value === 'delete') {
@@ -349,18 +393,26 @@ const PIN = {
         });
 
         if (currentPIN.length === 6) {
-          const valid = await this.verifyPIN(currentPIN);
-          if (valid) {
-            // Show new PIN setup
-            this.showNewPINScreen();
-          } else {
-            this.showError('Incorrect PIN');
-            currentPIN = '';
-            dots.forEach(d => d.classList.remove('filled'));
-            document.getElementById('pin-dots').classList.add('shake');
-            setTimeout(() => {
-              document.getElementById('pin-dots').classList.remove('shake');
-            }, 500);
+          this.isProcessing = true;
+          this.showLoading();
+          await new Promise(r => setTimeout(r, 50));
+          try {
+            const valid = await this.verifyPIN(currentPIN);
+            if (valid) {
+              // Show new PIN setup
+              this.showNewPINScreen();
+            } else {
+              this.hideLoading();
+              this.showError('Incorrect PIN');
+              currentPIN = '';
+              dots.forEach(d => d.classList.remove('filled'));
+              document.getElementById('pin-dots').classList.add('shake');
+              setTimeout(() => {
+                document.getElementById('pin-dots').classList.remove('shake');
+              }, 500);
+            }
+          } finally {
+            this.isProcessing = false;
           }
         }
       });
@@ -414,7 +466,10 @@ const PIN = {
     const dots = document.querySelectorAll('.pin-dot');
 
     document.querySelectorAll('.pin-key').forEach(key => {
-      key.addEventListener('click', () => {
+      key.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (this.isProcessing) return;
+
         const value = key.dataset.key;
 
         if (value === 'delete') {
@@ -483,7 +538,10 @@ const PIN = {
     const error = document.getElementById('pin-error');
 
     document.querySelectorAll('.pin-key').forEach(key => {
-      key.addEventListener('click', async () => {
+      key.addEventListener('click', async (e) => {
+        e.preventDefault();
+        if (this.isProcessing) return;
+
         const value = key.dataset.key;
 
         if (value === 'delete') {
@@ -499,11 +557,18 @@ const PIN = {
 
         if (currentPIN.length === 6) {
           if (currentPIN === newPIN) {
-            await this.savePIN(currentPIN);
-            this.changePINMode = false;
-            this.hideScreen();
-            if (typeof UI !== 'undefined' && UI.showToast) {
-              UI.showToast('PIN changed successfully');
+            this.isProcessing = true;
+            this.showLoading();
+            await new Promise(r => setTimeout(r, 50));
+            try {
+              await this.savePIN(currentPIN);
+              this.changePINMode = false;
+              this.hideScreen();
+              if (typeof UI !== 'undefined' && UI.showToast) {
+                UI.showToast('PIN changed successfully');
+              }
+            } finally {
+              this.isProcessing = false;
             }
           } else {
             this.showError('PINs do not match');
