@@ -1,34 +1,32 @@
 {
+  "_meta": {"project": "Digital Twin Note Agent", "total_stories": 11},
   "stories": [
     {
       "id": "DT-001",
       "title": "Verify project structure",
       "status": "backlog",
-      "description": "Confirm all directories and foundation files exist.",
       "acceptance_criteria": [
         "CLAUDE.md exists",
-        "config/settings.json exists",
+        "docs/PRD.md exists",
+        "config/settings.json exists and is valid JSON",
         "data/inbox/ directory exists",
         "data/archive/ directory exists",
         "src/__init__.py exists",
-        "stories/backlog.json exists",
-        "stories/done.json exists",
+        "stories/backlog.json exists with all stories",
         "learnings.json exists"
       ],
-      "verification": "ls CLAUDE.md config/settings.json learnings.json && ls data/ && ls stories/ && ls src/",
+      "verification": "ls CLAUDE.md docs/PRD.md config/settings.json && ls data/ && ls src/",
       "files_to_create": []
     },
     {
       "id": "DT-002",
       "title": "Create database schema",
       "status": "backlog",
-      "description": "Initialize data/notes.json with proper schema.",
       "acceptance_criteria": [
         "data/notes.json exists",
-        "Contains valid JSON",
         "Has _schema_version field",
         "Has empty notes array",
-        "Is pretty-printed"
+        "Is valid JSON"
       ],
       "verification": "cat data/notes.json | python3 -m json.tool",
       "files_to_create": ["data/notes.json"]
@@ -37,129 +35,126 @@
       "id": "DT-003",
       "title": "Create classification prompt",
       "status": "backlog",
-      "description": "Write few-shot examples for Personal vs Work classification.",
       "acceptance_criteria": [
         "prompts/classification.md exists",
-        "Has system instruction",
-        "Has 3+ Personal examples",
-        "Has 3+ Work examples",
-        "Has 1 ambiguous example",
+        "Has Personal keywords section",
+        "Has Work keywords section",
+        "Has 3+ examples each",
         "Specifies JSON output format"
       ],
-      "verification": "cat prompts/classification.md | head -60",
+      "verification": "cat prompts/classification.md",
       "files_to_create": ["prompts/classification.md"]
     },
     {
       "id": "DT-004",
       "title": "Build classifier module",
       "status": "backlog",
-      "description": "Python function to classify text as Personal or Work.",
       "acceptance_criteria": [
         "src/classifier.py exists",
         "Has classify(text) function",
-        "Returns dict with system, confidence, reasoning",
-        "Detects personal keywords",
-        "Detects work keywords",
-        "Defaults to personal when ambiguous",
-        "Runnable: python src/classifier.py 'test'"
+        "Returns {system, confidence, reasoning}",
+        "Handles empty input",
+        "Can run: python src/classifier.py 'test'"
       ],
-      "verification": "python src/classifier.py 'call mom this weekend' && python src/classifier.py 'velolume investor meeting'",
+      "verification": "python src/classifier.py 'call mom' && python src/classifier.py 'investor meeting'",
       "files_to_create": ["src/classifier.py"]
     },
     {
       "id": "DT-005",
       "title": "Build extractor module",
       "status": "backlog",
-      "description": "Extract title, topics, action items, sentiment from text.",
       "acceptance_criteria": [
         "src/extractor.py exists",
         "Has extract(text) function",
-        "Returns title, topics, action_items, sentiment, people",
-        "Finds action items from need to/should/must phrases",
-        "Detects sentiment",
-        "Runnable standalone"
+        "Returns {title, topics, action_items, sentiment, people}",
+        "Detects 'need to', 'should', 'must' as action items",
+        "Can run standalone"
       ],
-      "verification": "python src/extractor.py 'I need to call James. Feeling stressed.'",
+      "verification": "python src/extractor.py 'I need to call James about the project'",
       "files_to_create": ["src/extractor.py"]
     },
     {
       "id": "DT-006",
       "title": "Build storage module",
       "status": "backlog",
-      "description": "Read/write notes to JSON database.",
       "acceptance_criteria": [
         "src/storage.py exists",
         "Has save_note(note) returning ID",
-        "Has get_all_notes() returning list",
+        "Has get_all_notes()",
         "Has get_notes_by_system(system)",
-        "Appends notes, not overwrites",
-        "Generates unique IDs",
-        "Adds created_at timestamp"
+        "Appends not overwrites"
       ],
-      "verification": "python -c \"import sys; sys.path.insert(0,'.'); from src.storage import save_note, get_all_notes; save_note({'test':1}); print(get_all_notes())\"",
+      "verification": "python -c \"import sys; sys.path.insert(0,'.'); from src.storage import save_note; print(save_note({'test':1}))\"",
       "files_to_create": ["src/storage.py"]
     },
     {
       "id": "DT-007",
       "title": "Build file watcher",
       "status": "backlog",
-      "description": "Monitor inbox folder for new files.",
       "acceptance_criteria": [
         "src/watcher.py exists",
-        "Has Watcher class with start/stop",
-        "Watches data/inbox/",
-        "Detects .txt and .md files",
+        "Has Watcher class",
+        "Detects .txt and .md files in inbox",
         "Ignores hidden files",
-        "Has callback on new file",
-        "Has 2-second debounce"
+        "Has debounce"
       ],
-      "verification": "timeout 3 python src/watcher.py --test || echo 'Watcher test done'",
+      "verification": "timeout 3 python src/watcher.py --test || echo 'done'",
       "files_to_create": ["src/watcher.py"]
     },
     {
       "id": "DT-008",
-      "title": "Build pipeline",
+      "title": "Build refiner module",
       "status": "backlog",
-      "description": "Connect all modules into full processing flow.",
       "acceptance_criteria": [
-        "src/pipeline.py exists",
-        "Has process_file(path) function",
-        "Flow: read->classify->extract->save->archive",
-        "Moves files to archive after processing",
-        "Has --once flag",
-        "Has --watch flag",
-        "Logs results"
+        "src/refiner.py exists",
+        "Has refine(raw_text, classification, extracted) function",
+        "Returns {summary, formatted_output}",
+        "Work notes get meeting-minutes style formatting",
+        "Personal notes get simple clean formatting",
+        "Output is professional and shareable",
+        "Can run standalone"
       ],
-      "verification": "echo 'test note about mom' > data/inbox/test.txt && python src/pipeline.py --once && cat data/notes.json",
-      "files_to_create": ["src/pipeline.py"]
+      "verification": "python src/refiner.py 'meeting went well they want to partner next steps send proposal'",
+      "files_to_create": ["src/refiner.py"]
     },
     {
       "id": "DT-009",
+      "title": "Build pipeline",
+      "status": "backlog",
+      "acceptance_criteria": [
+        "src/pipeline.py exists",
+        "Flow: read->classify->extract->refine->save->archive",
+        "Has --once and --watch flags",
+        "Moves files to archive",
+        "Prints results"
+      ],
+      "verification": "echo 'test meeting with investor' > data/inbox/test.txt && python src/pipeline.py --once && cat data/notes.json",
+      "files_to_create": ["src/pipeline.py"]
+    },
+    {
+      "id": "DT-010",
       "title": "Build query interface",
       "status": "backlog",
-      "description": "CLI to search and display notes.",
       "acceptance_criteria": [
         "src/query.py exists",
         "--all shows all notes",
         "--personal filters personal",
         "--work filters work",
         "--actions shows action items",
-        "Formatted output with emojis"
+        "Shows refined output"
       ],
-      "verification": "python src/query.py --all && python src/query.py --actions",
+      "verification": "python src/query.py --all",
       "files_to_create": ["src/query.py"]
     },
     {
-      "id": "DT-010",
+      "id": "DT-011",
       "title": "Create web dashboard",
       "status": "backlog",
-      "description": "HTML page to visualize notes.",
       "acceptance_criteria": [
         "web/dashboard.html exists",
-        "Loads notes.json via fetch",
+        "Loads notes.json",
         "Shows stats",
-        "Lists notes with badges",
-        "Shows action items",
+        "Lists notes with refined output",
         "Has filter buttons",
         "Dark theme"
       ],

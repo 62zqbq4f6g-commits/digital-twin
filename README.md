@@ -1,9 +1,15 @@
 # Digital Twin Note Agent
 
-Voice-to-structured-data note-taking assistant.
+> Speak naturally. Get professional structured notes.
 
-## Usage (once built)
+## Quick Start
+```bash
+python src/pipeline.py --once    # Process inbox
+python src/query.py --all        # View notes
+python -m http.server 8000       # Dashboard
+```
 
-python src/pipeline.py --once
-python src/query.py --all
-python -m http.server 8000
+## Features
+- Auto-classify Personal vs Work
+- Extract action items, topics, people
+- **Refine into professional format** for team sharing

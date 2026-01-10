@@ -1,9 +1,9 @@
 {
+  "_description": "READ THIS AT START OF EVERY SESSION",
   "learnings": [
-    {
-      "id": "LEARN-000",
-      "story_id": "INIT",
-      "lesson": "Always read learnings.json at the start of every session"
-    }
+    {"id": "LEARN-000", "lesson": "Always read learnings.json first"},
+    {"id": "LEARN-001", "lesson": "Complete stories in order"},
+    {"id": "LEARN-002", "lesson": "Run verification before marking complete"},
+    {"id": "LEARN-003", "lesson": "Refined output must be professional and shareable"}
   ]
 }

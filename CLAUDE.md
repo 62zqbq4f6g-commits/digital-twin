@@ -1,66 +1,117 @@
 # CLAUDE.md — Digital Twin Note Agent
 
-## Every Session: Do These Steps FIRST
+## ⚠️ CRITICAL: Start Every Session With These Steps
 
 1. cat learnings.json
-2. cat stories/backlog.json (find first story with status "backlog")
-3. Implement that story
-4. Run verification command
-5. Update story status to "done" in backlog.json
-6. Add to stories/done.json
-7. Git commit
-8. Output: <promise>STORY_COMPLETE</promise>
+2. cat stories/backlog.json
+3. Find first story with status "backlog"
+4. Implement that story (ALL acceptance_criteria must pass)
+5. Run the verification command
+6. Update story status to "done" in backlog.json
+7. Add story to stories/done.json
+8. git add -A && git commit -m "Complete [STORY_ID]: [title]"
+9. Output: <promise>STORY_COMPLETE</promise>
 
-## Project Overview
+---
+
+## Project Identity
 
 **Name:** Digital Twin Note Agent
-**Purpose:** Convert Wispr voice transcriptions into organized, searchable notes
+**Owner:** Rox
+**Version:** 0.1.0
+**Purpose:** Convert Wispr voice transcriptions into professional, structured notes
 
-### How It Works (Once Built)
+---
 
-1. User speaks → Wispr creates .txt file
-2. User drops file in data/inbox/
-3. Agent classifies: Personal or Work
-4. Agent extracts: title, topics, action items, sentiment
-5. Agent saves to data/notes.json
-6. User queries via CLI or web dashboard
+## What We're Building
+
+An automated voice-to-structured-data note-taking assistant that:
+1. **Captures:** Wispr transcription files dropped into data/inbox/
+2. **Classifies:** Personal or Work
+3. **Extracts:** Title, topics, action items, sentiment, people
+4. **Refines:** Converts raw voice transcription into professional structured output
+5. **Stores:** JSON database for querying
+6. **Outputs:** Professional format suitable for sharing with teams
+
+### The Goal
+> "Speak naturally, get professional structured notes — zero manual work."
+
+---
+
+## Key Feature: Professional Refinement
+
+The agent doesn't just classify — it REFINES raw voice transcriptions into:
+- Professional meeting minutes
+- Structured updates for teams
+- Clean action item lists
+- Properly formatted summaries
+
+Example transformation:
+- INPUT: "so yeah the meeting went well they're interested in working with us talked about partnership structure and uh next steps are they'll send proposal"
+- OUTPUT: Professional structured meeting summary with sections, action items, and clear formatting
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|------------|
+| Voice Input | Wispr (external) |
+| Processing | Python 3.10+ |
+| Classification | Keyword matching |
+| Refinement | Template-based structuring |
+| Storage | JSON file |
+| Preview | HTML dashboard |
+
+---
 
 ## Directory Structure
 
 digital-twin/
-├── CLAUDE.md
-├── config/settings.json
-├── data/inbox/          ← Wispr files here
-├── data/archive/        ← Processed files
-├── data/notes.json      ← Database
-├── src/classifier.py    ← Personal vs Work
-├── src/extractor.py     ← Metadata extraction
-├── src/storage.py       ← Database operations
-├── src/watcher.py       ← File monitor
-├── src/pipeline.py      ← Full flow
-├── src/query.py         ← CLI queries
-├── prompts/classification.md
-├── web/dashboard.html
-├── stories/backlog.json
-├── stories/done.json
-└── learnings.json
+├── CLAUDE.md              ← This file
+├── docs/PRD.md            ← Requirements
+├── config/settings.json   ← Configuration
+├── data/inbox/            ← Wispr files here
+├── data/archive/          ← Processed files
+├── data/notes.json        ← Database
+├── src/
+│   ├── classifier.py      ← Personal vs Work
+│   ├── extractor.py       ← Metadata extraction
+│   ├── refiner.py         ← Professional formatting
+│   ├── storage.py         ← Database operations
+│   ├── watcher.py         ← File monitor
+│   ├── pipeline.py        ← Full flow
+│   └── query.py           ← CLI queries
+├── prompts/
+│   └── classification.md  ← Classification examples
+├── web/dashboard.html     ← Browser preview
+├── stories/backlog.json   ← User stories
+└── learnings.json         ← Persistent memory
 
-## Classification Keywords
+---
 
-Personal: family, health, gym, friend, hobby, home, feeling, weekend, vacation, personal, self, mom, dad, exercise, relax, meditation, sleep, birthday, dinner
-Work: velolume, meeting, client, investor, revenue, deadline, project, team, strategy, product, business, api, integration, partnership, mcp, n8n, creator, pitch
+## Classification Rules
 
-Rule: If confidence < 0.6, default to "personal"
+### Personal Keywords
+family, health, gym, friend, hobby, home, feeling, weekend, vacation, mom, dad, exercise, relax, meditation, sleep, birthday, dinner, movie, relationship, kids, wife, husband, pet
+
+### Work Keywords
+velolume, meeting, client, investor, revenue, deadline, project, team, strategy, product, business, api, integration, partnership, mcp, n8n, creator, pitch, deck, roadmap, sprint, launch, startup, funding, sales, marketing, hire, trust, spv, governance, proposal
+
+### Default: If confidence < 0.6, classify as "personal"
+
+---
 
 ## Commands (After Built)
 
-python src/pipeline.py --watch
-python src/pipeline.py --once
-python src/query.py --all
-python src/query.py --personal
-python src/query.py --work
-python src/query.py --actions
-python -m http.server 8000
+python src/pipeline.py --watch    # Monitor inbox
+python src/pipeline.py --once     # Process once
+python src/query.py --all         # All notes
+python src/query.py --work        # Work notes
+python src/query.py --actions     # Action items
+python -m http.server 8000        # Dashboard
+
+---
 
 ## Story Workflow
 
