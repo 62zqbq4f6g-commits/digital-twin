@@ -1,15 +1,46 @@
-# Digital Twin Note Agent
+# Digital Twin
 
-> Speak naturally. Get professional structured notes.
+> Capture your thoughts. Beautifully organized. Effortlessly.
 
-## Quick Start
-```bash
-python src/pipeline.py --once    # Process inbox
-python src/query.py --all        # View notes
-python -m http.server 8000       # Dashboard
-```
+A minimalist PWA for capturing voice and text notes with AI-powered organization.
 
 ## Features
-- Auto-classify Personal vs Work
-- Extract action items, topics, people
-- **Refine into professional format** for team sharing
+
+- 🎤 Voice input (Web Speech API)
+- ⌨️ Text input  
+- 📁 4 categories: Personal, Work, Health, Ideas
+- ✨ Professional formatting
+- 📋 Copy to clipboard
+- 💾 100% offline capable
+- 📱 Mobile-first PWA
+
+## Design
+
+Black & white minimalist aesthetic inspired by Soho NYC design agencies.
+
+## Quick Start
+
+```bash
+# Start local server
+python -m http.server 8000
+
+# Open
+open http://localhost:8000
+```
+
+## Deploy
+
+```bash
+vercel --prod
+```
+
+## Tech Stack
+
+- Vanilla HTML/CSS/JS (no frameworks)
+- Web Speech API
+- IndexedDB
+- Service Worker
+
+---
+
+*Part of the Digital Twin ecosystem*

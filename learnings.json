@@ -1,11 +1,69 @@
 {
-  "_description": "READ THIS AT START OF EVERY SESSION",
+  "_description": "PERSISTENT LEARNING LOG — Read this at START of every session",
+  "_instructions": "Add learnings when: verification fails, edge cases found, patterns discovered",
   "learnings": [
-    {"id": "LEARN-000", "lesson": "Always read learnings.json first"},
-    {"id": "LEARN-001", "lesson": "Complete stories in order — they build on each other"},
-    {"id": "LEARN-002", "lesson": "Run verification before marking complete"},
-    {"id": "LEARN-003", "lesson": "This is a PWA — Vanilla JS, IndexedDB, no backend"},
-    {"id": "LEARN-004", "lesson": "4 categories: Personal (🏠), Work (💼), Health (💪), Ideas (💡)"},
-    {"id": "LEARN-005", "lesson": "Design is Soho NYC minimal — black/white, typography-first"}
+    {
+      "id": "LEARN-000",
+      "timestamp": "2025-01-10T00:00:00Z",
+      "story_id": "INIT",
+      "category": "pattern",
+      "what_happened": "Project initialized",
+      "lesson": "Always read learnings.json first — will repeat mistakes otherwise",
+      "resolution": "N/A"
+    },
+    {
+      "id": "LEARN-001",
+      "timestamp": "2025-01-10T00:00:01Z",
+      "story_id": "INIT",
+      "category": "pattern",
+      "what_happened": "Stories have dependencies",
+      "lesson": "Complete stories in order (DT-001, DT-002, etc.)",
+      "resolution": "N/A"
+    },
+    {
+      "id": "LEARN-002",
+      "timestamp": "2025-01-10T00:00:02Z",
+      "story_id": "INIT",
+      "category": "design",
+      "what_happened": "Design system is strict",
+      "lesson": "Black and white ONLY — no other colors. Use CSS variables from CLAUDE.md",
+      "resolution": "N/A"
+    },
+    {
+      "id": "LEARN-003",
+      "timestamp": "2025-01-10T00:00:03Z",
+      "story_id": "INIT",
+      "category": "pattern",
+      "what_happened": "Mobile-first is critical",
+      "lesson": "Always test at 375px viewport width — this is a mobile PWA",
+      "resolution": "N/A"
+    },
+    {
+      "id": "LEARN-004",
+      "timestamp": "2025-01-10T00:00:04Z",
+      "story_id": "INIT",
+      "category": "data",
+      "what_happened": "Timestamps have specific format",
+      "lesson": "Always include: date, time, timezone (Asia/Singapore), day of week",
+      "resolution": "N/A"
+    },
+    {
+      "id": "LEARN-005",
+      "timestamp": "2025-01-10T00:00:05Z",
+      "story_id": "INIT",
+      "category": "feature",
+      "what_happened": "Refinement is the key feature",
+      "lesson": "Output must be professional and shareable without editing — follow templates exactly",
+      "resolution": "N/A"
+    },
+    {
+      "id": "LEARN-006",
+      "timestamp": "2025-01-10T00:00:06Z",
+      "story_id": "INIT",
+      "category": "data",
+      "what_happened": "Schema includes machine_readable",
+      "lesson": "Include entities and relationships for future AI agent use",
+      "resolution": "N/A"
+    }
   ]
 }

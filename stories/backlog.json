@@ -2,244 +2,435 @@
   "_meta": {
     "project": "Digital Twin PWA",
     "total_stories": 14,
-    "architecture": "Progressive Web App"
+    "estimated_total_time": "8 hours",
+    "design": "Minimalist black/white Soho NYC aesthetic",
+    "important": "Read CLAUDE.md for all specs, templates, and code examples"
   },
   "stories": [
     {
       "id": "DT-001",
       "title": "PWA foundation",
       "status": "backlog",
-      "description": "Create base PWA structure with manifest and icons.",
+      "estimated_minutes": 30,
+      "description": "Create basic PWA structure with HTML, manifest, and service worker shell.",
       "acceptance_criteria": [
-        "index.html exists with proper HTML5 structure",
-        "manifest.json exists with name, icons, theme_color",
-        "assets/icon-192.png exists (can be placeholder)",
-        "assets/icon-512.png exists (can be placeholder)",
-        "index.html links to manifest.json",
-        "index.html has viewport meta tag for mobile"
+        "index.html exists with proper HTML5 doctype and structure",
+        "manifest.json exists with name='Digital Twin', short_name='DT'",
+        "manifest.json has theme_color=#000000, background_color=#FFFFFF",
+        "manifest.json references icon-192.png and icon-512.png",
+        "sw.js exists with basic install and fetch event handlers",
+        "index.html links to manifest.json via <link rel='manifest'>",
+        "index.html registers service worker in script tag",
+        "index.html has viewport meta tag for mobile",
+        "Page loads without console errors"
       ],
-      "verification": "ls index.html manifest.json && ls assets/",
-      "files_to_create": ["index.html", "manifest.json", "assets/icon-192.png", "assets/icon-512.png"]
+      "not_done_if": [
+        "Missing manifest.json link",
+        "Service worker not registered",
+        "Console errors on load",
+        "Missing viewport meta tag"
+      ],
+      "verification": "cat index.html && cat manifest.json && cat sw.js && echo 'Open in browser, check no console errors'",
+      "files_to_create": ["index.html", "manifest.json", "sw.js"],
+      "dependencies": []
     },
     {
       "id": "DT-002",
-      "title": "Design system",
+      "title": "Design system CSS",
       "status": "backlog",
-      "description": "Create CSS with design tokens and base styles.",
+      "estimated_minutes": 30,
+      "description": "Implement complete CSS design system from CLAUDE.md. Black/white only.",
       "acceptance_criteria": [
         "css/styles.css exists",
-        "Has CSS custom properties (design tokens)",
-        "Has color palette (black, white, grays)",
-        "Has typography scale",
-        "Has spacing scale",
-        "Has base reset/normalize",
-        "index.html links to styles.css"
+        "All CSS variables from CLAUDE.md section 4 are defined in :root",
+        "Colors: --color-black, --color-white, --color-gray-50/100/200/400/600",
+        "Typography: --font-sans, --font-mono, --text-title/heading/body/caption/micro",
+        "Spacing: --space-xs through --space-3xl",
+        "Borders: --radius-sm/md/lg/xl/full, --border-thin/medium",
+        "Transitions: --transition-fast/normal/slow",
+        "Base styles for body (font-family, background, color, margin:0)",
+        "Box-sizing border-box on all elements",
+        "index.html links to css/styles.css",
+        "NO colors used other than black, white, grays"
       ],
-      "verification": "cat css/styles.css | head -50",
-      "files_to_create": ["css/styles.css"]
+      "not_done_if": [
+        "Missing any CSS variable from CLAUDE.md",
+        "Uses colors other than black/white/gray",
+        "Not linked in index.html",
+        "Missing base body styles"
+      ],
+      "verification": "cat css/styles.css | head -80 && grep -c 'color-' css/styles.css",
+      "files_to_create": ["css/styles.css"],
+      "dependencies": ["DT-001"]
     },
     {
       "id": "DT-003",
-      "title": "Database layer",
+      "title": "IndexedDB database layer",
       "status": "backlog",
-      "description": "IndexedDB wrapper for note storage.",
+      "estimated_minutes": 30,
+      "description": "Create IndexedDB wrapper following schema from CLAUDE.md section 6.",
       "acceptance_criteria": [
         "js/db.js exists",
-        "Has initDB() function",
-        "Has saveNote(note) function",
-        "Has getAllNotes() function",
+        "Creates database named 'digital-twin' version 1",
+        "Creates object store 'notes' with keyPath 'id'",
+        "Creates indexes: by_date, by_category, by_created",
+        "Has initDB() function returning Promise",
+        "Has saveNote(note) function that auto-generates ID if missing",
+        "Has getAllNotes() function returning array sorted by created_at desc",
         "Has getNotesByCategory(category) function",
+        "Has getNoteById(id) function returning single note or null",
         "Has deleteNote(id) function",
-        "Uses IndexedDB API",
-        "Can test in browser console"
+        "Has exportAllNotes() function returning JSON string",
+        "ID format: dt_YYYYMMDD_HHMMSS_xxx (use generateId function from CLAUDE.md)",
+        "Automatically adds timestamps.created_at if missing"
       ],
-      "verification": "cat js/db.js",
-      "files_to_create": ["js/db.js"]
+      "not_done_if": [
+        "Wrong database name",
+        "Missing any CRUD function",
+        "ID format doesn't match spec",
+        "Missing indexes",
+        "saveNote doesn't return the saved note with ID"
+      ],
+      "verification": "cat js/db.js && grep -c 'function' js/db.js",
+      "files_to_create": ["js/db.js"],
+      "dependencies": ["DT-001"]
     },
     {
       "id": "DT-004",
-      "title": "App shell",
+      "title": "App shell UI",
       "status": "backlog",
-      "description": "Create 3-screen app structure with navigation.",
+      "estimated_minutes": 45,
+      "description": "Create main HTML structure with navigation and three screens.",
       "acceptance_criteria": [
-        "index.html has 3 screens: capture, notes, settings",
-        "Has bottom navigation bar",
-        "js/ui.js exists with screen switching logic",
-        "js/app.js exists as main entry point",
-        "Navigation highlights active screen",
-        "Only one screen visible at a time"
+        "index.html has three screen sections: capture, notes, settings",
+        "Each screen is a <section> with id='screen-capture', 'screen-notes', 'screen-settings'",
+        "Only one screen visible at a time (others have class 'hidden')",
+        "Bottom navigation bar fixed at bottom with 3 tabs",
+        "Nav tabs: Capture (default/active), Notes, Settings",
+        "Header shows 'Digital Twin' title",
+        "js/ui.js exists with navigation switching logic",
+        "Clicking nav tab shows corresponding screen, hides others",
+        "Active nav tab has visual indicator (underline or bold)",
+        "All text is black on white background",
+        "Uses design system CSS variables",
+        "Screens are min-height: 100vh minus nav height",
+        "Mobile responsive (works at 375px width)"
       ],
-      "verification": "cat index.html | grep -c 'screen' && cat js/ui.js | head -30",
-      "files_to_create": ["js/ui.js", "js/app.js"]
+      "not_done_if": [
+        "Multiple screens visible at once",
+        "Navigation doesn't work",
+        "Uses colors other than black/white/gray",
+        "Not mobile responsive",
+        "Missing any screen section"
+      ],
+      "verification": "cat index.html | grep -c 'screen-' && cat js/ui.js",
+      "files_to_create": ["js/ui.js"],
+      "dependencies": ["DT-002"]
     },
     {
       "id": "DT-005",
-      "title": "Text input",
+      "title": "Text input component",
       "status": "backlog",
-      "description": "Text area for capturing thoughts.",
+      "estimated_minutes": 30,
+      "description": "Create text input area on Capture screen with submit.",
       "acceptance_criteria": [
-        "Capture screen has text input area",
-        "Placeholder text: What's on your mind?",
-        "Auto-expands as user types",
-        "Submit button or Enter key submits",
-        "Clears after successful submission",
-        "Shows brief success feedback"
+        "Textarea on Capture screen below voice button area",
+        "Placeholder text: 'What's on your mind?'",
+        "Auto-expanding height (grows with content)",
+        "Submit button to the right (arrow icon or 'Send')",
+        "Submit on button click",
+        "Submit on Enter key (desktop) - Shift+Enter for newline",
+        "Clears input after successful submit",
+        "Disabled state while processing (grayed out)",
+        "Black border, white background, follows design system",
+        "Minimum height 48px",
+        "onSubmit calls a placeholder processNote function",
+        "Shows temporary 'Note saved!' feedback after submit"
       ],
-      "verification": "cat index.html | grep -A5 'textarea'",
-      "files_to_create": []
+      "not_done_if": [
+        "Submit doesn't work",
+        "Doesn't clear after submit",
+        "No visual feedback on submit",
+        "Enter key doesn't submit"
+      ],
+      "verification": "Test in browser: type text, submit, verify clears and shows feedback",
+      "files_to_create": [],
+      "dependencies": ["DT-004"]
     },
     {
       "id": "DT-006",
-      "title": "Voice input",
+      "title": "Voice input with Web Speech API",
       "status": "backlog",
-      "description": "Web Speech API integration for voice capture.",
+      "estimated_minutes": 45,
+      "description": "Implement voice recording using Web Speech API with visual feedback.",
       "acceptance_criteria": [
         "js/voice.js exists",
-        "Has startRecording() function",
-        "Has stopRecording() function",
-        "Uses Web Speech API (webkitSpeechRecognition)",
-        "Shows recording state visually",
-        "Populates text area with transcription",
-        "Handles microphone permission gracefully",
-        "Falls back gracefully if not supported"
+        "Large microphone button centered on Capture screen (80x80px circle)",
+        "Visual states from CLAUDE.md section 9.1: idle (outline), recording (filled+pulse), processing (dashed+spin)",
+        "Requests microphone permission on first tap",
+        "Starts SpeechRecognition on tap",
+        "Shows real-time transcription below button as user speaks",
+        "Stops on second tap",
+        "Auto-stops after 10 seconds of silence",
+        "Transcription appears in text input area when done",
+        "Graceful fallback: shows message if browser doesn't support Web Speech API",
+        "Uses continuous=true and interimResults=true",
+        "Has startRecording() and stopRecording() functions"
       ],
-      "verification": "cat js/voice.js",
-      "files_to_create": ["js/voice.js"]
+      "not_done_if": [
+        "No visual feedback during recording",
+        "Crashes if permission denied",
+        "No fallback message for unsupported browsers",
+        "Transcription doesn't appear in text area"
+      ],
+      "verification": "cat js/voice.js && echo 'Test in Chrome with microphone'",
+      "files_to_create": ["js/voice.js"],
+      "dependencies": ["DT-005"]
     },
     {
       "id": "DT-007",
-      "title": "Classifier",
+      "title": "Classifier module",
       "status": "backlog",
-      "description": "Categorize input as Personal, Work, Health, or Ideas.",
+      "estimated_minutes": 30,
+      "description": "4-category classification using keywords from CLAUDE.md section 5.",
       "acceptance_criteria": [
         "js/classifier.js exists",
         "Has classify(text) function",
-        "Returns {category, confidence, reasoning}",
-        "Detects Personal keywords (family, mom, friend, etc)",
-        "Detects Work keywords (meeting, client, velolume, etc)",
-        "Detects Health keywords (gym, sleep, doctor, etc)",
-        "Detects Ideas keywords (idea, what if, maybe, etc)",
-        "Defaults to 'personal' when ambiguous"
+        "Returns object: {category, confidence, reasoning}",
+        "Categories: 'personal', 'work', 'health', 'ideas' (lowercase)",
+        "Uses EXACT keyword lists from CLAUDE.md section 5.2",
+        "Counts keyword matches per category",
+        "Returns category with highest match count",
+        "Confidence = matches/total_matches (0-1)",
+        "Default to 'personal' with confidence 0.5 if no matches",
+        "Reasoning string explains why (e.g., 'Matched 3 work keywords')",
+        "Handles empty string (returns personal, 0.5)",
+        "Handles null/undefined input without crashing",
+        "Case-insensitive matching"
       ],
-      "verification": "cat js/classifier.js",
-      "files_to_create": ["js/classifier.js"]
+      "not_done_if": [
+        "Wrong keyword lists",
+        "Returns category not in the four allowed",
+        "Crashes on empty input",
+        "Missing reasoning in output",
+        "Case-sensitive matching"
+      ],
+      "verification": "cat js/classifier.js && echo 'Test: classify(\"meeting with investor\") should return work'",
+      "files_to_create": ["js/classifier.js"],
+      "dependencies": ["DT-001"]
     },
     {
       "id": "DT-008",
-      "title": "Extractor",
+      "title": "Extractor module",
       "status": "backlog",
-      "description": "Extract metadata from input text.",
+      "estimated_minutes": 45,
+      "description": "Extract metadata following rules from CLAUDE.md section 8.",
       "acceptance_criteria": [
         "js/extractor.js exists",
         "Has extract(text) function",
-        "Returns {title, topics, action_items, sentiment, people}",
-        "Title: first sentence, max 50 chars",
-        "Action items: detects 'need to', 'should', 'must', 'have to'",
-        "Sentiment: positive/negative/neutral",
-        "People: finds capitalized names"
+        "Returns: {title, topics, action_items, sentiment, people}",
+        "title: First sentence, max 50 chars, filler words removed, fallback 'Untitled Note'",
+        "topics: Array of matched category names (max 5)",
+        "action_items: Extracted using ACTION_TRIGGERS from CLAUDE.md 8.2",
+        "action_items: Filters out FALSE_POSITIVES",
+        "sentiment: 'positive', 'negative', or 'neutral' using words from CLAUDE.md 8.3",
+        "people: Capitalized names, filtered COMMON_WORDS from CLAUDE.md 8.4",
+        "All arrays can be empty (no crash)",
+        "Has cleanText() helper that removes filler words from CLAUDE.md 7.5",
+        "Handles empty input gracefully"
       ],
-      "verification": "cat js/extractor.js",
-      "files_to_create": ["js/extractor.js"]
+      "not_done_if": [
+        "Missing any output field",
+        "Crashes on empty input",
+        "Title exceeds 50 characters",
+        "Includes false positive action items",
+        "Filler words remain in title"
+      ],
+      "verification": "cat js/extractor.js && echo 'Test with sample inputs from CLAUDE.md section 10'",
+      "files_to_create": ["js/extractor.js"],
+      "dependencies": ["DT-001"]
     },
     {
       "id": "DT-009",
-      "title": "Refiner",
+      "title": "Refiner module",
       "status": "backlog",
-      "description": "Convert raw input to professional formatted output.",
+      "estimated_minutes": 45,
+      "description": "Transform raw input into professional output using EXACT templates from CLAUDE.md section 7.",
       "acceptance_criteria": [
         "js/refiner.js exists",
         "Has refine(rawText, classification, extracted) function",
-        "Returns {summary, formatted_output}",
-        "Work notes get meeting-minutes style",
-        "Health notes get wellness check-in style",
-        "Ideas get brainstorm style",
-        "Personal gets simple clean style",
-        "Output includes date, time, category icon"
+        "Returns: {summary, formatted_output}",
+        "summary: 2-3 sentence professional summary, no filler words",
+        "formatted_output: Full markdown document matching templates in CLAUDE.md 7.1-7.4",
+        "Work template: title, date/time/tz/day, summary, key points, action items, people, footer",
+        "Personal template: title, date/time/tz/day, narrative, reminders, footer",
+        "Health template: title, date/time/tz/day, check-in, mood, reminders, footer",
+        "Ideas template: title, date/time/tz/day, concept, potential, next steps, footer",
+        "All templates end with: *Captured by Digital Twin*",
+        "Timestamp format: '[Day], [Month] [Date], [Year]' and '[Time] [Timezone]'",
+        "Uses Asia/Singapore timezone",
+        "Cleans filler words (um, uh, like, so yeah, etc.)",
+        "Action items formatted with ☐ checkbox character",
+        "Output is professional enough to copy-paste and share"
       ],
-      "verification": "cat js/refiner.js",
-      "files_to_create": ["js/refiner.js"]
+      "not_done_if": [
+        "Output contains filler words (um, uh, like)",
+        "Wrong template for category",
+        "Missing date/time/timezone/day",
+        "Missing footer",
+        "Not formatted as clean markdown",
+        "Would require manual editing before sharing"
+      ],
+      "verification": "cat js/refiner.js && echo 'Compare output to examples in CLAUDE.md section 10'",
+      "files_to_create": ["js/refiner.js"],
+      "dependencies": ["DT-007", "DT-008"]
     },
     {
       "id": "DT-010",
-      "title": "Note storage",
+      "title": "Note processing pipeline",
       "status": "backlog",
-      "description": "Wire up processing pipeline and save to IndexedDB.",
+      "estimated_minutes": 30,
+      "description": "Connect input → classifier → extractor → refiner → storage.",
       "acceptance_criteria": [
-        "Text/voice input triggers full pipeline",
-        "Pipeline: classify → extract → refine → save",
-        "Note saved to IndexedDB with full schema",
-        "Generates unique ID (dt_YYYYMMDD_HHMMSS_xxx)",
-        "Stores timestamp with timezone",
-        "Shows success message after save"
+        "js/app.js exists",
+        "Has processNote(rawText, inputType) function",
+        "inputType is 'voice' or 'text'",
+        "Flow: validate → classify → extract → refine → build note object → save",
+        "Note object matches FULL schema from CLAUDE.md section 6.2",
+        "Includes machine_readable section with entities extracted from people",
+        "Returns saved note with ID",
+        "Empty/whitespace input shows error (doesn't save)",
+        "Shows processing state in UI during save",
+        "Shows success feedback after save",
+        "Errors are caught and shown to user (doesn't crash)",
+        "Updates recent notes on capture screen after save"
       ],
-      "verification": "Submit test note and check IndexedDB in browser DevTools",
-      "files_to_create": []
+      "not_done_if": [
+        "Empty input saves a note",
+        "Note object missing required fields",
+        "No UI feedback during/after processing",
+        "Errors crash the app",
+        "Missing machine_readable section"
+      ],
+      "verification": "cat js/app.js && echo 'Test: submit text, check note saved in IndexedDB'",
+      "files_to_create": ["js/app.js"],
+      "dependencies": ["DT-003", "DT-007", "DT-008", "DT-009"]
     },
     {
       "id": "DT-011",
       "title": "Notes list UI",
       "status": "backlog",
-      "description": "Display all notes in list view with filters.",
+      "estimated_minutes": 45,
+      "description": "Display saved notes with filtering following design from CLAUDE.md section 9.",
       "acceptance_criteria": [
-        "Notes screen shows all saved notes",
-        "Each note shows: title, category icon, date, preview",
-        "Filter tabs: All, Work, Personal, Health, Ideas",
-        "Sorted by newest first",
-        "Empty state when no notes",
-        "Tapping note opens detail view"
+        "Notes screen shows all notes from IndexedDB",
+        "Notes grouped by date: TODAY, YESTERDAY, EARLIER (or actual dates)",
+        "Each note card shows: title, category icon+label, time, preview (first 100 chars of summary)",
+        "Note card styled per CLAUDE.md 9.2 (white bg, thin border, padding)",
+        "Filter tabs at top: All, 💼 Work, 🏠 Personal, 💪 Health, 💡 Ideas",
+        "Clicking filter shows only that category (All shows all)",
+        "Active filter has visual indicator (underline or bold)",
+        "Filters work instantly (no page reload)",
+        "Empty state: 'No notes yet. Tap Capture to add your first note.'",
+        "Notes sorted newest first",
+        "Tapping note card opens detail view",
+        "Search box at top filters notes by text in title/summary"
       ],
-      "verification": "Visual check in browser",
-      "files_to_create": []
+      "not_done_if": [
+        "Filters don't work",
+        "No empty state message",
+        "Notes not sorted correctly",
+        "Tapping note doesn't do anything",
+        "Missing category icons"
+      ],
+      "verification": "Test in browser with multiple notes, test all filters",
+      "files_to_create": [],
+      "dependencies": ["DT-010"]
     },
     {
       "id": "DT-012",
       "title": "Note detail UI",
       "status": "backlog",
-      "description": "Full note view with refined output.",
+      "estimated_minutes": 30,
+      "description": "Full note view showing refined output.",
       "acceptance_criteria": [
-        "Detail view shows complete refined output",
-        "Shows category icon and label",
-        "Shows full timestamp",
-        "Shows action items as checklist",
-        "Has back button to list",
-        "Has delete option",
-        "Markdown rendered as HTML"
+        "Note detail view (can be new screen or modal overlay)",
+        "Back button/arrow to return to notes list",
+        "Shows category icon and label at top",
+        "Shows full title (large, bold)",
+        "Shows full timestamp: day, date, time, timezone",
+        "Shows refined.formatted_output rendered as formatted text",
+        "Markdown rendered properly (headings, bullets, checkboxes)",
+        "Copy to Clipboard button",
+        "Export JSON button",
+        "Delete button with confirmation dialog",
+        "All buttons follow design system (black/white)",
+        "Mobile responsive"
       ],
-      "verification": "Visual check in browser",
-      "files_to_create": []
+      "not_done_if": [
+        "Can't get back to list",
+        "Markdown not rendered",
+        "Missing any button",
+        "Delete has no confirmation"
+      ],
+      "verification": "Test: open note, verify all elements, test all buttons",
+      "files_to_create": [],
+      "dependencies": ["DT-011"]
     },
     {
       "id": "DT-013",
-      "title": "Copy & Export",
+      "title": "Copy and export functionality",
       "status": "backlog",
-      "description": "Copy note to clipboard and export all data.",
+      "estimated_minutes": 20,
+      "description": "Implement clipboard and file export.",
       "acceptance_criteria": [
-        "Note detail has 'Copy to Clipboard' button",
-        "Copies formatted_output as markdown",
-        "Shows 'Copied!' feedback",
-        "Settings has 'Export All Data' button",
-        "Exports all notes as JSON file download",
-        "Filename: digital-twin-backup-YYYYMMDD.json"
+        "Copy button copies refined.formatted_output to clipboard",
+        "Uses navigator.clipboard.writeText()",
+        "Shows toast 'Copied!' for 1.5 seconds after copy",
+        "Toast styled per CLAUDE.md 9.4 (black bg, white text, rounded)",
+        "Export JSON button downloads single note as file",
+        "Download filename: digital-twin-{id}.json",
+        "Export All button in Settings exports entire database",
+        "Export All filename: digital-twin-backup-{date}.json",
+        "Exported JSON is pretty-printed (2-space indent)"
       ],
-      "verification": "Test copy and export functions in browser",
-      "files_to_create": []
+      "not_done_if": [
+        "Copy doesn't work on mobile Safari",
+        "No visual feedback on copy",
+        "Export downloads invalid JSON",
+        "Missing Export All in settings"
+      ],
+      "verification": "Test copy and export on desktop and mobile",
+      "files_to_create": [],
+      "dependencies": ["DT-012"]
     },
     {
       "id": "DT-014",
-      "title": "Offline & PWA",
+      "title": "PWA offline and install",
       "status": "backlog",
-      "description": "Service worker for offline support and installability.",
+      "estimated_minutes": 30,
+      "description": "Complete service worker and PWA features.",
       "acceptance_criteria": [
-        "sw.js exists",
-        "Caches all app assets",
-        "App works offline",
-        "index.html registers service worker",
-        "App is installable (Add to Home Screen)",
-        "Shows install prompt on mobile",
-        "Lighthouse PWA score > 90"
+        "Service worker caches: index.html, styles.css, all js files, manifest, icons",
+        "Cache name includes version number for updates",
+        "Fetch handler serves from cache, falls back to network",
+        "App works fully offline (can capture, save, view notes)",
+        "Install prompt appears on supported browsers",
+        "App is installable to home screen",
+        "Installed app opens in standalone mode (no browser UI)",
+        "Icons display correctly on home screen",
+        "Settings screen shows app version",
+        "Settings has 'Clear all data' button with confirmation"
       ],
-      "verification": "Run Lighthouse PWA audit in Chrome DevTools",
-      "files_to_create": ["sw.js"]
+      "not_done_if": [
+        "App doesn't work offline",
+        "Not installable",
+        "Cache doesn't include all files",
+        "Installed app shows browser UI"
+      ],
+      "verification": "Test: enable airplane mode, reload app, verify everything works",
+      "files_to_create": [],
+      "dependencies": ["DT-013"]
     }
   ]
 }
