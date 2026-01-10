@@ -186,9 +186,40 @@ const UI = {
     // Update current screen
     this.currentScreen = screenName;
 
-    // Load notes when switching to notes screen
+    // Screen-specific logic
     if (screenName === 'notes') {
       this.loadNotes();
+    } else if (screenName === 'capture') {
+      // Reset capture screen to default state (show capture-section, hide image-section)
+      this.resetCaptureScreen();
+    }
+  },
+
+  /**
+   * Reset capture screen to default state
+   */
+  resetCaptureScreen() {
+    const captureSection = document.getElementById('capture-section');
+    const imageSection = document.getElementById('image-section');
+
+    // Show capture section, hide image section
+    captureSection?.classList.remove('hidden');
+    imageSection?.classList.add('hidden');
+
+    // Clear any image state if Camera is available
+    if (typeof Camera !== 'undefined' && Camera.clearImage) {
+      Camera.currentImage = null;
+      // Reset image input
+      const imageInput = document.getElementById('image-input');
+      const contextInput = document.getElementById('image-context');
+      const transcriptDisplay = document.getElementById('image-transcript-display');
+
+      if (imageInput) imageInput.value = '';
+      if (contextInput) contextInput.value = '';
+      if (transcriptDisplay) {
+        transcriptDisplay.textContent = '';
+        transcriptDisplay.classList.remove('visible');
+      }
     }
   },
 

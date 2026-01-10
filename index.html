@@ -72,12 +72,24 @@
             <button id="remove-image" class="remove-image-btn" aria-label="Remove image">✕</button>
           </div>
 
-          <textarea
-            id="image-context"
-            class="image-context-input"
-            placeholder="Add context (optional)..."
-            rows="2"
-          ></textarea>
+          <!-- Context input with voice option -->
+          <div class="image-context-area">
+            <div class="image-context-header">
+              <span class="image-context-label">Add context (optional)</span>
+            </div>
+            <div class="image-context-input-row">
+              <button id="image-voice-btn" class="image-voice-btn" aria-label="Add context via voice">
+                <span>🎤</span>
+              </button>
+              <textarea
+                id="image-context"
+                class="image-context-input"
+                placeholder="Type or tap mic to speak..."
+                rows="2"
+              ></textarea>
+            </div>
+            <p id="image-transcript-display" class="image-transcript-display"></p>
+          </div>
 
           <button id="process-image-btn" class="btn-primary btn-full">
             Process Image
@@ -143,7 +155,7 @@
         </div>
 
         <div class="settings-section settings-version">
-          <p class="settings-version-text">Digital Twin v<span id="app-version">2.0.1</span></p>
+          <p class="settings-version-text">Digital Twin v<span id="app-version">2.0.2</span></p>
         </div>
       </section>
 
