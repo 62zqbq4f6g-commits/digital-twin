@@ -37,7 +37,7 @@
     {
       "id": "DT-002",
       "title": "Design system CSS",
-      "status": "backlog",
+      "status": "done",
       "estimated_minutes": 30,
       "description": "Implement complete CSS design system from CLAUDE.md. Black/white only.",
       "acceptance_criteria": [
