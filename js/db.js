@@ -81,6 +81,14 @@ function saveNote(note) {
       if (!note.timestamps.created_at) {
         note.timestamps.created_at = new Date().toISOString();
       }
+      // Always update timestamps.updated_at for sync tracking
+      note.timestamps.updated_at = new Date().toISOString();
+
+      // Mark as pending sync if not already synced (for cloud sync)
+      if (note._syncStatus !== 'synced') {
+        note._syncStatus = 'pending';
+        note._localChanges = true;
+      }
 
       const request = store.put(note);
 

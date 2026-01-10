@@ -727,6 +727,105 @@ const UI = {
     if (clearConfirmBtn) {
       clearConfirmBtn.addEventListener('click', () => this.confirmClearAllData());
     }
+
+    // Sign In button
+    const signInBtn = document.getElementById('sign-in-btn');
+    if (signInBtn) {
+      signInBtn.addEventListener('click', () => this.showSignInPrompt());
+    }
+
+    // Sign Out button
+    const signOutBtn = document.getElementById('sign-out-btn');
+    if (signOutBtn) {
+      signOutBtn.addEventListener('click', () => this.handleSignOut());
+    }
+
+    // Change PIN button
+    const changePinBtn = document.getElementById('change-pin-btn');
+    if (changePinBtn) {
+      changePinBtn.addEventListener('click', () => this.handleChangePIN());
+    }
+
+    // Update auth UI state
+    this.updateAuthUI();
+  },
+
+  /**
+   * Update auth-related UI elements
+   */
+  updateAuthUI() {
+    const emailEl = document.getElementById('account-email');
+    const signInBtn = document.getElementById('sign-in-btn');
+    const signOutBtn = document.getElementById('sign-out-btn');
+    const authButtons = document.getElementById('auth-buttons');
+
+    if (typeof Sync !== 'undefined' && Sync.isAuthenticated()) {
+      if (emailEl) emailEl.textContent = Sync.getUserEmail();
+      if (signInBtn) signInBtn.classList.add('hidden');
+      if (signOutBtn) signOutBtn.classList.remove('hidden');
+    } else {
+      if (emailEl) emailEl.textContent = 'Not signed in';
+      if (signInBtn) signInBtn.classList.remove('hidden');
+      if (signOutBtn) signOutBtn.classList.add('hidden');
+    }
+  },
+
+  /**
+   * Show sign in prompt
+   */
+  async showSignInPrompt() {
+    const email = prompt('Enter your email:');
+    if (!email) return;
+
+    const password = prompt('Enter your password:');
+    if (!password) return;
+
+    try {
+      // Try to sign in first
+      await Sync.signIn(email, password);
+      this.updateAuthUI();
+      this.showToast('Signed in successfully');
+    } catch (error) {
+      // If sign in fails, try sign up
+      if (error.message.includes('Invalid')) {
+        const signup = confirm('Account not found. Create new account?');
+        if (signup) {
+          try {
+            await Sync.signUp(email, password);
+            this.showToast('Account created! Check email to confirm.');
+          } catch (signupError) {
+            this.showToast('Sign up failed: ' + signupError.message);
+          }
+        }
+      } else {
+        this.showToast('Sign in failed: ' + error.message);
+      }
+    }
+  },
+
+  /**
+   * Handle sign out
+   */
+  async handleSignOut() {
+    const confirmed = confirm('Sign out of cloud sync?');
+    if (confirmed && typeof Sync !== 'undefined') {
+      await Sync.signOut();
+      this.updateAuthUI();
+      this.showToast('Signed out');
+    }
+  },
+
+  /**
+   * Handle change PIN
+   */
+  handleChangePIN() {
+    const confirmed = confirm(
+      'To change your PIN, you will need to verify your current PIN first. Continue?'
+    );
+    if (confirmed && typeof PIN !== 'undefined') {
+      // Show lock screen for verification, then setup
+      PIN.showLockScreen();
+    }
   },
 
   /**

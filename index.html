@@ -321,28 +321,19 @@
 
     // Initialize app with PIN check first
     document.addEventListener('DOMContentLoaded', async () => {
-      // PIN check before anything else
-      await PIN.init();
-
-      // App initialization happens after PIN unlock via PIN.onUnlock()
-      // But we still set up these modules
-      if (PIN.isUnlocked) {
+      // Override PIN.onUnlock to initialize app modules after PIN entry
+      const originalOnUnlock = PIN.onUnlock;
+      PIN.onUnlock = async function() {
         await App.init();
         UI.init();
         Voice.init();
         Camera.init();
-      }
-    });
+        originalOnUnlock.call(this);
+      };
 
-    // Update PIN.onUnlock to initialize app modules
-    const originalOnUnlock = PIN.onUnlock;
-    PIN.onUnlock = async function() {
-      await App.init();
-      UI.init();
-      Voice.init();
-      Camera.init();
-      originalOnUnlock.call(this);
-    };
+      // PIN check before anything else
+      await PIN.init();
+    });
   </script>
 </body>
 </html>
