@@ -819,12 +819,8 @@ const UI = {
    * Handle change PIN
    */
   handleChangePIN() {
-    const confirmed = confirm(
-      'To change your PIN, you will need to verify your current PIN first. Continue?'
-    );
-    if (confirmed && typeof PIN !== 'undefined') {
-      // Show lock screen for verification, then setup
-      PIN.showLockScreen();
+    if (typeof PIN !== 'undefined') {
+      PIN.startChangePIN();
     }
   },
 

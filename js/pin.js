@@ -283,6 +283,243 @@ const PIN = {
     }
   },
 
+  /**
+   * Change PIN flow - verify current PIN first, then set new one
+   */
+  async startChangePIN() {
+    this.changePINMode = true;
+    this.showVerifyScreen();
+  },
+
+  showVerifyScreen() {
+    const screen = document.getElementById('pin-screen');
+    const appContent = document.getElementById('app');
+
+    screen.innerHTML = `
+      <div class="pin-container">
+        <div class="pin-header">
+          <span class="pin-brand">D I G I T A L</span>
+          <span class="pin-brand">T W I N</span>
+        </div>
+
+        <div class="pin-content">
+          <h2 class="pin-title">Verify current PIN</h2>
+          <p class="pin-subtitle">Enter your current PIN to continue</p>
+
+          <div class="pin-dots" id="pin-dots">
+            <span class="pin-dot"></span>
+            <span class="pin-dot"></span>
+            <span class="pin-dot"></span>
+            <span class="pin-dot"></span>
+            <span class="pin-dot"></span>
+            <span class="pin-dot"></span>
+          </div>
+
+          <p class="pin-error hidden" id="pin-error"></p>
+        </div>
+
+        ${this.renderNumpad()}
+
+        <button class="pin-back" id="pin-cancel">Cancel</button>
+      </div>
+    `;
+    screen.classList.remove('hidden');
+    appContent.classList.add('hidden');
+    this.attachVerifyListeners();
+  },
+
+  attachVerifyListeners() {
+    let currentPIN = '';
+    const dots = document.querySelectorAll('.pin-dot');
+    const error = document.getElementById('pin-error');
+
+    document.querySelectorAll('.pin-key').forEach(key => {
+      key.addEventListener('click', async () => {
+        const value = key.dataset.key;
+
+        if (value === 'delete') {
+          currentPIN = currentPIN.slice(0, -1);
+        } else if (value && currentPIN.length < 6) {
+          currentPIN += value;
+          if (navigator.vibrate) navigator.vibrate(10);
+        }
+
+        dots.forEach((dot, i) => {
+          dot.classList.toggle('filled', i < currentPIN.length);
+        });
+
+        if (currentPIN.length === 6) {
+          const valid = await this.verifyPIN(currentPIN);
+          if (valid) {
+            // Show new PIN setup
+            this.showNewPINScreen();
+          } else {
+            this.showError('Incorrect PIN');
+            currentPIN = '';
+            dots.forEach(d => d.classList.remove('filled'));
+            document.getElementById('pin-dots').classList.add('shake');
+            setTimeout(() => {
+              document.getElementById('pin-dots').classList.remove('shake');
+            }, 500);
+          }
+        }
+      });
+    });
+
+    const cancelBtn = document.getElementById('pin-cancel');
+    if (cancelBtn) {
+      cancelBtn.addEventListener('click', () => {
+        this.changePINMode = false;
+        this.hideScreen();
+      });
+    }
+  },
+
+  showNewPINScreen() {
+    const screen = document.getElementById('pin-screen');
+
+    screen.innerHTML = `
+      <div class="pin-container">
+        <div class="pin-header">
+          <span class="pin-brand">D I G I T A L</span>
+          <span class="pin-brand">T W I N</span>
+        </div>
+
+        <div class="pin-content">
+          <h2 class="pin-title">Enter new PIN</h2>
+          <p class="pin-subtitle">Choose a new 6-digit PIN</p>
+
+          <div class="pin-dots" id="pin-dots">
+            <span class="pin-dot"></span>
+            <span class="pin-dot"></span>
+            <span class="pin-dot"></span>
+            <span class="pin-dot"></span>
+            <span class="pin-dot"></span>
+            <span class="pin-dot"></span>
+          </div>
+
+          <p class="pin-error hidden" id="pin-error"></p>
+        </div>
+
+        ${this.renderNumpad()}
+
+        <button class="pin-back" id="pin-cancel">Cancel</button>
+      </div>
+    `;
+    this.attachNewPINListeners();
+  },
+
+  attachNewPINListeners() {
+    let currentPIN = '';
+    const dots = document.querySelectorAll('.pin-dot');
+
+    document.querySelectorAll('.pin-key').forEach(key => {
+      key.addEventListener('click', () => {
+        const value = key.dataset.key;
+
+        if (value === 'delete') {
+          currentPIN = currentPIN.slice(0, -1);
+        } else if (value && currentPIN.length < 6) {
+          currentPIN += value;
+          if (navigator.vibrate) navigator.vibrate(10);
+        }
+
+        dots.forEach((dot, i) => {
+          dot.classList.toggle('filled', i < currentPIN.length);
+        });
+
+        if (currentPIN.length === 6) {
+          this.showConfirmNewPINScreen(currentPIN);
+        }
+      });
+    });
+
+    const cancelBtn = document.getElementById('pin-cancel');
+    if (cancelBtn) {
+      cancelBtn.addEventListener('click', () => {
+        this.changePINMode = false;
+        this.hideScreen();
+      });
+    }
+  },
+
+  showConfirmNewPINScreen(newPIN) {
+    const screen = document.getElementById('pin-screen');
+
+    screen.innerHTML = `
+      <div class="pin-container">
+        <div class="pin-header">
+          <span class="pin-brand">D I G I T A L</span>
+          <span class="pin-brand">T W I N</span>
+        </div>
+
+        <div class="pin-content">
+          <h2 class="pin-title">Confirm new PIN</h2>
+          <p class="pin-subtitle">Enter the same PIN again</p>
+
+          <div class="pin-dots" id="pin-dots">
+            <span class="pin-dot"></span>
+            <span class="pin-dot"></span>
+            <span class="pin-dot"></span>
+            <span class="pin-dot"></span>
+            <span class="pin-dot"></span>
+            <span class="pin-dot"></span>
+          </div>
+
+          <p class="pin-error hidden" id="pin-error"></p>
+        </div>
+
+        ${this.renderNumpad()}
+
+        <button class="pin-back" id="pin-back">Start over</button>
+      </div>
+    `;
+    this.attachConfirmNewPINListeners(newPIN);
+  },
+
+  attachConfirmNewPINListeners(newPIN) {
+    let currentPIN = '';
+    const dots = document.querySelectorAll('.pin-dot');
+    const error = document.getElementById('pin-error');
+
+    document.querySelectorAll('.pin-key').forEach(key => {
+      key.addEventListener('click', async () => {
+        const value = key.dataset.key;
+
+        if (value === 'delete') {
+          currentPIN = currentPIN.slice(0, -1);
+        } else if (value && currentPIN.length < 6) {
+          currentPIN += value;
+          if (navigator.vibrate) navigator.vibrate(10);
+        }
+
+        dots.forEach((dot, i) => {
+          dot.classList.toggle('filled', i < currentPIN.length);
+        });
+
+        if (currentPIN.length === 6) {
+          if (currentPIN === newPIN) {
+            await this.savePIN(currentPIN);
+            this.changePINMode = false;
+            this.hideScreen();
+            if (typeof UI !== 'undefined' && UI.showToast) {
+              UI.showToast('PIN changed successfully');
+            }
+          } else {
+            this.showError('PINs do not match');
+            currentPIN = '';
+            dots.forEach(d => d.classList.remove('filled'));
+          }
+        }
+      });
+    });
+
+    const backBtn = document.getElementById('pin-back');
+    if (backBtn) {
+      backBtn.addEventListener('click', () => this.showNewPINScreen());
+    }
+  },
+
   // ==================
   // CRYPTO FUNCTIONS
   // ==================
