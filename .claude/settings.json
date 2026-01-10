@@ -1,0 +1,5 @@
+{
+  "hooks": {
+    "stop": ".claude/stop-hook.sh"
+  }
+}

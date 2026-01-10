@@ -8,6 +8,7 @@ const PIN = {
   HASH_KEY: 'dt_pin_hash',
   RECOVERY_KEY: 'dt_recovery_key',
   RECOVERY_EMAIL: 'elroycheo@me.com',
+  PBKDF2_ITERATIONS: 10000, // Reduced from 100k for mobile Safari performance
   isSetup: false,
   isUnlocked: false,
   encryptionKey: null,
@@ -590,71 +591,81 @@ const PIN = {
   // ==================
 
   async savePIN(pin) {
-    // Generate random salt
-    const salt = crypto.getRandomValues(new Uint8Array(16));
-    const saltB64 = btoa(String.fromCharCode(...salt));
+    try {
+      // Generate random salt
+      const salt = crypto.getRandomValues(new Uint8Array(16));
+      const saltB64 = btoa(String.fromCharCode(...salt));
 
-    // Derive key from PIN
-    const keyMaterial = await this.getKeyMaterial(pin);
-    const key = await crypto.subtle.deriveKey(
-      { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
-      keyMaterial,
-      { name: 'AES-GCM', length: 256 },
-      true,
-      ['encrypt', 'decrypt']
-    );
-
-    // Store encryption key in memory
-    this.encryptionKey = key;
-
-    // Hash PIN for verification (separate from encryption)
-    const hashBuffer = await crypto.subtle.digest(
-      'SHA-256',
-      new TextEncoder().encode(pin + saltB64)
-    );
-    const hashB64 = btoa(String.fromCharCode(...new Uint8Array(hashBuffer)));
-
-    // Generate recovery key
-    const recoveryKey = this.generateRecoveryKey();
-    const encryptedRecovery = await this.encryptRecoveryKey(recoveryKey, key);
-
-    // Store locally
-    localStorage.setItem(this.SALT_KEY, saltB64);
-    localStorage.setItem(this.HASH_KEY, hashB64);
-    localStorage.setItem(this.RECOVERY_KEY, encryptedRecovery);
-
-    // Send recovery key to email via API
-    await this.sendRecoveryEmail(recoveryKey);
-  },
-
-  async verifyPIN(pin) {
-    const saltB64 = localStorage.getItem(this.SALT_KEY);
-    const storedHash = localStorage.getItem(this.HASH_KEY);
-
-    if (!saltB64 || !storedHash) return false;
-
-    // Hash entered PIN
-    const hashBuffer = await crypto.subtle.digest(
-      'SHA-256',
-      new TextEncoder().encode(pin + saltB64)
-    );
-    const hashB64 = btoa(String.fromCharCode(...new Uint8Array(hashBuffer)));
-
-    if (hashB64 === storedHash) {
-      // Derive encryption key
-      const salt = Uint8Array.from(atob(saltB64), c => c.charCodeAt(0));
+      // Derive key from PIN (using reduced iterations for mobile)
       const keyMaterial = await this.getKeyMaterial(pin);
-      this.encryptionKey = await crypto.subtle.deriveKey(
-        { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+      const key = await crypto.subtle.deriveKey(
+        { name: 'PBKDF2', salt, iterations: this.PBKDF2_ITERATIONS, hash: 'SHA-256' },
         keyMaterial,
         { name: 'AES-GCM', length: 256 },
         true,
         ['encrypt', 'decrypt']
       );
-      return true;
-    }
 
-    return false;
+      // Store encryption key in memory
+      this.encryptionKey = key;
+
+      // Hash PIN for verification (separate from encryption)
+      const hashBuffer = await crypto.subtle.digest(
+        'SHA-256',
+        new TextEncoder().encode(pin + saltB64)
+      );
+      const hashB64 = btoa(String.fromCharCode(...new Uint8Array(hashBuffer)));
+
+      // Generate recovery key
+      const recoveryKey = this.generateRecoveryKey();
+      const encryptedRecovery = await this.encryptRecoveryKey(recoveryKey, key);
+
+      // Store locally
+      localStorage.setItem(this.SALT_KEY, saltB64);
+      localStorage.setItem(this.HASH_KEY, hashB64);
+      localStorage.setItem(this.RECOVERY_KEY, encryptedRecovery);
+
+      // Send recovery key to email via API (non-blocking)
+      this.sendRecoveryEmail(recoveryKey).catch(console.error);
+    } catch (error) {
+      console.error('Failed to save PIN:', error);
+      throw error;
+    }
+  },
+
+  async verifyPIN(pin) {
+    try {
+      const saltB64 = localStorage.getItem(this.SALT_KEY);
+      const storedHash = localStorage.getItem(this.HASH_KEY);
+
+      if (!saltB64 || !storedHash) return false;
+
+      // Hash entered PIN
+      const hashBuffer = await crypto.subtle.digest(
+        'SHA-256',
+        new TextEncoder().encode(pin + saltB64)
+      );
+      const hashB64 = btoa(String.fromCharCode(...new Uint8Array(hashBuffer)));
+
+      if (hashB64 === storedHash) {
+        // Derive encryption key (using reduced iterations for mobile)
+        const salt = Uint8Array.from(atob(saltB64), c => c.charCodeAt(0));
+        const keyMaterial = await this.getKeyMaterial(pin);
+        this.encryptionKey = await crypto.subtle.deriveKey(
+          { name: 'PBKDF2', salt, iterations: this.PBKDF2_ITERATIONS, hash: 'SHA-256' },
+          keyMaterial,
+          { name: 'AES-GCM', length: 256 },
+          true,
+          ['encrypt', 'decrypt']
+        );
+        return true;
+      }
+
+      return false;
+    } catch (error) {
+      console.error('Failed to verify PIN:', error);
+      return false;
+    }
   },
 
   async getKeyMaterial(pin) {

@@ -1,9 +1,8 @@
----
-active: true
-iteration: 489
-max_iterations: 0
-completion_promise: null
-started_at: "2026-01-10T15:07:57Z"
----
+# Ralph Loop Configuration
 
-SPEC: /Users/airoxthebox/Downloads/RALPH-PHASE2B-SPEC.md PROJECT: /Users/airoxthebox/Projects/digital-twin Build: App PIN, E2E Encryption, Cloud Sync Design: Vogue magazine minimalist
+Stop when:
+1. All files in spec Build Order exist
+2. All syntax checks pass
+3. .ralph-complete file created
+
+When complete, run: touch .ralph-complete
