@@ -1,123 +1,196 @@
-/**
- * Digital Twin - Refiner Module
- * Transform raw input into professional output using EXACT templates from CLAUDE.md section 7
- */
+// js/refiner.js — Calls Claude API via Vercel serverless function
+// This replaces the regex-based refiner with AI-powered refinement
 
-// Category icons
-const CATEGORY_ICONS = {
-  personal: '🏠',
-  work: '💼',
-  health: '💪',
-  ideas: '💡'
-};
-
-// Category labels
-const CATEGORY_LABELS = {
-  personal: 'Personal',
-  work: 'Work',
-  health: 'Health',
-  ideas: 'Idea'
+const REFINER_CONFIG = {
+  // For local development, use localhost
+  // For production, this will be your Vercel URL
+  apiEndpoint: 'http://localhost:3001/api/refine',
+  timezone: 'Asia/Singapore'
 };
 
 /**
- * Format timestamp for display
- * @param {Date} date - Date object
- * @returns {{dateStr: string, timeStr: string, dayStr: string}}
+ * Refine raw input using Claude AI
+ * @param {string} rawText - The raw input text
+ * @param {object} classification - Classification result (used as fallback)
+ * @param {object} extracted - Extraction result (used as fallback)
+ * @param {string} inputType - 'voice' or 'text'
+ * @returns {Promise<object>} - Refined note data
  */
-function formatTimestamp(date = new Date()) {
-  const options = { timeZone: 'Asia/Singapore' };
+async function refine(rawText, classification, extracted, inputType = 'text') {
+  try {
+    // Call the API
+    const response = await fetch(REFINER_CONFIG.apiEndpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        rawText,
+        inputType
+      })
+    });
 
-  // Day of week
-  const dayStr = date.toLocaleDateString('en-US', { ...options, weekday: 'long' });
+    if (!response.ok) {
+      console.error('Refiner API error:', response.status);
+      // Fall back to local refinement
+      return refineLocal(rawText, classification, extracted);
+    }
 
-  // Month name
-  const month = date.toLocaleDateString('en-US', { ...options, month: 'long' });
+    const aiResult = await response.json();
 
-  // Day number
-  const day = date.toLocaleDateString('en-US', { ...options, day: 'numeric' });
+    // Build the formatted output using AI results
+    const formattedOutput = buildFormattedOutput(aiResult, rawText);
 
-  // Year
-  const year = date.toLocaleDateString('en-US', { ...options, year: 'numeric' });
+    return {
+      // AI-generated fields
+      category: aiResult.category || classification.category,
+      confidence: aiResult.confidence || classification.confidence,
+      title: aiResult.title || extracted.title,
+      summary: aiResult.summary,
+      key_points: aiResult.key_points || [],
+      action_items: aiResult.action_items || [],
+      people: aiResult.people || [],
+      sentiment: aiResult.sentiment || 'neutral',
+      topics: aiResult.topics || [],
+      formatted_output: formattedOutput
+    };
 
-  // Time (12-hour format)
-  const time = date.toLocaleTimeString('en-US', {
-    ...options,
+  } catch (error) {
+    console.error('Refiner error:', error);
+    // Fall back to local refinement
+    return refineLocal(rawText, classification, extracted);
+  }
+}
+
+/**
+ * Build the formatted markdown output
+ */
+function buildFormattedOutput(aiResult, rawText) {
+  const now = new Date();
+  const options = { 
+    timeZone: REFINER_CONFIG.timezone,
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  };
+  const timeOptions = {
+    timeZone: REFINER_CONFIG.timezone,
     hour: 'numeric',
     minute: '2-digit',
     hour12: true
-  });
-
-  return {
-    dateStr: `${dayStr}, ${month} ${day}, ${year}`,
-    timeStr: `${time} SGT`,
-    dayStr
   };
-}
 
-/**
- * Generate professional summary from raw text
- * @param {string} rawText - Raw input text
- * @param {string} category - Category of note
- * @returns {string} 2-3 sentence professional summary
- */
-function generateSummary(rawText, category) {
-  if (!rawText) return '';
+  const dateStr = now.toLocaleDateString('en-US', options);
+  const timeStr = now.toLocaleTimeString('en-US', timeOptions) + ' SGT';
 
-  // Clean filler words using Extractor if available
-  let cleaned = rawText;
-  if (Extractor && Extractor.cleanText) {
-    cleaned = Extractor.cleanText(rawText);
+  const categoryIcons = {
+    personal: '🏠 Personal',
+    work: '💼 Work',
+    health: '💪 Health',
+    ideas: '💡 Idea'
+  };
+
+  const categoryLabel = categoryIcons[aiResult.category] || '💼 Work';
+
+  let output = `# ${aiResult.title}
+
+**${dateStr}**  
+**${timeStr}**  
+**${categoryLabel}**
+
+---
+
+## Summary
+
+${aiResult.summary}
+
+---
+`;
+
+  // Add Key Points if present
+  if (aiResult.key_points && aiResult.key_points.length > 0) {
+    output += `
+## Key Points
+
+${aiResult.key_points.map(point => `• ${point}`).join('\n')}
+
+---
+`;
   }
 
-  // Split into sentences
-  const sentences = cleaned.split(/[.!?]+/).filter(s => s.trim().length > 0);
+  // Add Action Items if present
+  if (aiResult.action_items && aiResult.action_items.length > 0) {
+    output += `
+## Action Items
 
-  // Take first 2-3 sentences
-  const summaryParts = sentences.slice(0, 3).map(s => s.trim());
+${aiResult.action_items.map(item => `☐ ${item}`).join('\n')}
 
-  // Join and ensure proper ending
-  let summary = summaryParts.join('. ');
-  if (summary && !summary.match(/[.!?]$/)) {
-    summary += '.';
+---
+`;
   }
 
-  return summary;
+  // Add People if present
+  if (aiResult.people && aiResult.people.length > 0) {
+    output += `
+## People Mentioned
+
+${aiResult.people.map(person => `• ${person}`).join('\n')}
+
+---
+`;
+  }
+
+  output += `
+*Captured by Digital Twin*`;
+
+  return output;
 }
 
 /**
- * Format action items with checkbox
- * @param {string[]} actions - Array of action items
- * @returns {string} Formatted action items with ☐
+ * Local fallback refinement (when API is unavailable)
+ * This is a simplified version that cleans up the text
  */
-function formatActionItems(actions) {
-  if (!actions || actions.length === 0) return '';
-  return actions.map(a => `☐ ${a}`).join('\n');
-}
+function refineLocal(rawText, classification, extracted) {
+  const now = new Date();
+  const options = { 
+    timeZone: REFINER_CONFIG.timezone,
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  };
+  const timeOptions = {
+    timeZone: REFINER_CONFIG.timezone,
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  };
 
-/**
- * Format people list
- * @param {string[]} people - Array of names
- * @returns {string} Formatted people list
- */
-function formatPeople(people) {
-  if (!people || people.length === 0) return '';
-  return people.map(p => `• ${p}`).join('\n');
-}
+  const dateStr = now.toLocaleDateString('en-US', options);
+  const timeStr = now.toLocaleTimeString('en-US', timeOptions) + ' SGT';
 
-/**
- * Work template (CLAUDE.md 7.1)
- */
-function workTemplate(title, timestamp, summary, extracted) {
-  const { dateStr, timeStr } = timestamp;
-  const keyPoints = extracted.action_items?.slice(0, 4) || [];
-  const actionItems = extracted.action_items || [];
-  const people = extracted.people || [];
+  const categoryIcons = {
+    personal: '🏠 Personal',
+    work: '💼 Work',
+    health: '💪 Health',
+    ideas: '💡 Idea'
+  };
 
-  let output = `# ${title}
+  const categoryLabel = categoryIcons[classification.category] || '💼 Work';
 
-**${dateStr}**
-**${timeStr}**
-**💼 Work**
+  // Clean the raw text
+  const cleanedText = cleanText(rawText);
+
+  // Create a simple summary (first 2 sentences)
+  const sentences = cleanedText.split(/[.!?]+/).filter(s => s.trim().length > 10);
+  const summary = sentences.slice(0, 2).join('. ').trim() + '.';
+
+  const formattedOutput = `# ${extracted.title}
+
+**${dateStr}**  
+**${timeStr}**  
+**${categoryLabel}**
 
 ---
 
@@ -127,230 +200,58 @@ ${summary}
 
 ---
 
-## Key Points
-
-${keyPoints.length > 0 ? keyPoints.map(p => `• ${p}`).join('\n') : '• No key points extracted'}
-
----
-
 ## Action Items
 
-${actionItems.length > 0 ? formatActionItems(actionItems) : '☐ No action items'}
-
----`;
-
-  if (people.length > 0) {
-    output += `
-
-## People Mentioned
-
-${formatPeople(people)}
-
----`;
-  }
-
-  output += `
-
-*Captured by Digital Twin*`;
-
-  return output;
-}
-
-/**
- * Personal template (CLAUDE.md 7.2)
- */
-function personalTemplate(title, timestamp, summary, extracted) {
-  const { dateStr, timeStr } = timestamp;
-  const reminders = extracted.action_items || [];
-
-  let output = `# ${title}
-
-**${dateStr}**
-**${timeStr}**
-**🏠 Personal**
+${extracted.action_items.slice(0, 5).map(item => `☐ ${item}`).join('\n') || '• No action items detected'}
 
 ---
 
-${summary}
-
----`;
-
-  if (reminders.length > 0) {
-    output += `
-
-## Reminders
-
-${formatActionItems(reminders)}
-
----`;
-  }
-
-  output += `
-
-*Captured by Digital Twin*`;
-
-  return output;
-}
-
-/**
- * Health template (CLAUDE.md 7.3)
- */
-function healthTemplate(title, timestamp, summary, extracted) {
-  const { dateStr, timeStr } = timestamp;
-  const sentiment = extracted.sentiment || 'neutral';
-  const sentimentLabel = sentiment.charAt(0).toUpperCase() + sentiment.slice(1);
-  const reminders = extracted.action_items || [];
-
-  let output = `# ${title}
-
-**${dateStr}**
-**${timeStr}**
-**💪 Health**
-
----
-
-## Check-in
-
-${summary}
-
----
-
-## Mood
-
-${sentimentLabel}
-
----`;
-
-  if (reminders.length > 0) {
-    output += `
-
-## Reminders
-
-${formatActionItems(reminders)}
-
----`;
-  }
-
-  output += `
-
-*Captured by Digital Twin*`;
-
-  return output;
-}
-
-/**
- * Ideas template (CLAUDE.md 7.4)
- */
-function ideasTemplate(title, timestamp, summary, extracted) {
-  const { dateStr, timeStr } = timestamp;
-  const nextSteps = extracted.action_items || [];
-
-  // Split summary into concept and potential
-  const sentences = summary.split(/[.!?]+/).filter(s => s.trim().length > 0);
-  const concept = sentences.slice(0, 2).join('. ') + (sentences.length > 0 ? '.' : '');
-  const potential = sentences.slice(2).join('. ') + (sentences.length > 2 ? '.' : '');
-
-  let output = `# ${title}
-
-**${dateStr}**
-**${timeStr}**
-**💡 Idea**
-
----
-
-## Concept
-
-${concept || summary}
-
----`;
-
-  if (potential) {
-    output += `
-
-## Potential
-
-${potential}
-
----`;
-  }
-
-  if (nextSteps.length > 0) {
-    output += `
-
-## Next Steps
-
-${formatActionItems(nextSteps)}
-
----`;
-  } else {
-    output += `
-
-## Next Steps
-
-☐ Explore this idea further
-
----`;
-  }
-
-  output += `
-
-*Captured by Digital Twin*`;
-
-  return output;
-}
-
-/**
- * Refine raw text into professional output
- * @param {string} rawText - Raw input text
- * @param {{category: string, confidence: number, reasoning: string}} classification - Classification result
- * @param {{title: string, topics: string[], action_items: string[], sentiment: string, people: string[]}} extracted - Extracted metadata
- * @returns {{summary: string, formatted_output: string}}
- */
-function refine(rawText, classification, extracted) {
-  // Handle empty input
-  if (!rawText || typeof rawText !== 'string' || rawText.trim() === '') {
-    return {
-      summary: '',
-      formatted_output: ''
-    };
-  }
-
-  const category = classification?.category || 'personal';
-  const title = extracted?.title || 'Untitled Note';
-  const timestamp = formatTimestamp(new Date());
-  const summary = generateSummary(rawText, category);
-
-  let formatted_output;
-
-  switch (category) {
-    case 'work':
-      formatted_output = workTemplate(title, timestamp, summary, extracted);
-      break;
-    case 'health':
-      formatted_output = healthTemplate(title, timestamp, summary, extracted);
-      break;
-    case 'ideas':
-      formatted_output = ideasTemplate(title, timestamp, summary, extracted);
-      break;
-    case 'personal':
-    default:
-      formatted_output = personalTemplate(title, timestamp, summary, extracted);
-      break;
-  }
+*Captured by Digital Twin (offline mode)*`;
 
   return {
-    summary,
-    formatted_output
+    category: classification.category,
+    confidence: classification.confidence,
+    title: extracted.title,
+    summary: summary,
+    key_points: [],
+    action_items: extracted.action_items.slice(0, 5),
+    people: [],
+    sentiment: extracted.sentiment,
+    topics: extracted.topics,
+    formatted_output: formattedOutput
   };
 }
 
-// Export for global access
+/**
+ * Clean filler words from text
+ */
+function cleanText(text) {
+  const fillerWords = [
+    'um', 'uh', 'like', 'you know', 'so yeah', 'basically',
+    'actually', 'literally', 'kind of', 'sort of', 'i mean',
+    'right', 'okay so', 'well'
+  ];
+
+  let cleaned = text;
+  fillerWords.forEach(filler => {
+    const regex = new RegExp(`\\b${filler}\\b`, 'gi');
+    cleaned = cleaned.replace(regex, '');
+  });
+
+  // Remove extra spaces
+  cleaned = cleaned.replace(/\s+/g, ' ').trim();
+
+  return cleaned;
+}
+
+// Export for use in app.js
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { refine, refineLocal, cleanText };
+}
+
+// Export for browser global access
 window.Refiner = {
   refine,
-  formatTimestamp,
-  generateSummary,
-  formatActionItems,
-  formatPeople,
-  CATEGORY_ICONS,
-  CATEGORY_LABELS
+  refineLocal,
+  cleanText
 };

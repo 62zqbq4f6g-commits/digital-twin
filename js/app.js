@@ -29,8 +29,8 @@ const App = {
       // 3. EXTRACT - Get metadata
       const extracted = Extractor.extract(text);
 
-      // 4. REFINE - Generate professional output
-      const refined = Refiner.refine(text, classification, extracted);
+      // 4. REFINE - Generate professional output (async - calls AI API)
+      const refined = await Refiner.refine(text, classification, extracted, inputType);
 
       // 5. BUILD NOTE OBJECT - Full schema from CLAUDE.md 6.2
       const note = this.buildNoteObject(text, inputType, classification, extracted, refined);
@@ -97,8 +97,23 @@ const App = {
       input.duration_seconds = Math.ceil(rawText.split(' ').length * 0.5);
     }
 
+    // Use AI-refined data when available, fallback to local extraction
+    const finalClassification = {
+      category: refined.category || classification.category,
+      confidence: refined.confidence || classification.confidence,
+      reasoning: classification.reasoning || `AI classified as ${refined.category}`
+    };
+
+    const finalExtracted = {
+      title: refined.title || extracted.title,
+      topics: refined.topics || extracted.topics,
+      action_items: refined.action_items || extracted.action_items,
+      sentiment: refined.sentiment || extracted.sentiment,
+      people: refined.people || extracted.people
+    };
+
     // Build machine_readable section
-    const machine_readable = this.buildMachineReadable(extracted, classification);
+    const machine_readable = this.buildMachineReadable(finalExtracted, finalClassification);
 
     // Complete note object matching CLAUDE.md 6.2 schema
     return {
@@ -106,21 +121,12 @@ const App = {
       version: '1.0',
       timestamps,
       input,
-      classification: {
-        category: classification.category,
-        confidence: classification.confidence,
-        reasoning: classification.reasoning
-      },
-      extracted: {
-        title: extracted.title,
-        topics: extracted.topics,
-        action_items: extracted.action_items,
-        sentiment: extracted.sentiment,
-        people: extracted.people
-      },
+      classification: finalClassification,
+      extracted: finalExtracted,
       refined: {
         summary: refined.summary,
-        formatted_output: refined.formatted_output
+        formatted_output: refined.formatted_output,
+        key_points: refined.key_points || []
       },
       machine_readable
     };
