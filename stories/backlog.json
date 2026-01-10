@@ -10,7 +10,7 @@
     {
       "id": "DT-001",
       "title": "PWA foundation",
-      "status": "backlog",
+      "status": "done",
       "estimated_minutes": 30,
       "description": "Create basic PWA structure with HTML, manifest, and service worker shell.",
       "acceptance_criteria": [

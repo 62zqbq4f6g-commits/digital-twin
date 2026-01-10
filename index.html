@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#000000">
+  <meta name="description" content="Digital Twin - AI-powered second brain for voice and text notes">
+
+  <title>Digital Twin</title>
+
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="manifest.json">
+
+  <!-- Icons -->
+  <link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png">
+  <link rel="apple-touch-icon" href="assets/icon-192.png">
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Header -->
+    <header class="header">
+      <h1 class="header-title">Digital Twin</h1>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main">
+      <!-- Capture Screen -->
+      <section id="screen-capture" class="screen">
+        <p>Capture screen - coming soon</p>
+      </section>
+
+      <!-- Notes Screen -->
+      <section id="screen-notes" class="screen hidden">
+        <p>Notes screen - coming soon</p>
+      </section>
+
+      <!-- Settings Screen -->
+      <section id="screen-settings" class="screen hidden">
+        <p>Settings screen - coming soon</p>
+      </section>
+    </main>
+
+    <!-- Bottom Navigation -->
+    <nav class="nav">
+      <button class="nav-tab active" data-screen="capture">
+        <span class="nav-icon">●</span>
+        <span class="nav-label">Capture</span>
+      </button>
+      <button class="nav-tab" data-screen="notes">
+        <span class="nav-icon">☰</span>
+        <span class="nav-label">Notes</span>
+      </button>
+      <button class="nav-tab" data-screen="settings">
+        <span class="nav-icon">⚙</span>
+        <span class="nav-label">Settings</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- Scripts -->
+  <script>
+    // Register Service Worker
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js')
+          .then(registration => {
+            console.log('ServiceWorker registered:', registration.scope);
+          })
+          .catch(error => {
+            console.log('ServiceWorker registration failed:', error);
+          });
+      });
+    }
+  </script>
+</body>
+</html>
