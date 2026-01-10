@@ -98,7 +98,7 @@
     {
       "id": "DT-004",
       "title": "App shell UI",
-      "status": "backlog",
+      "status": "done",
       "estimated_minutes": 45,
       "description": "Create main HTML structure with navigation and three screens.",
       "acceptance_criteria": [

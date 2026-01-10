@@ -61,6 +61,8 @@
   </div>
 
   <!-- Scripts -->
+  <script src="js/db.js"></script>
+  <script src="js/ui.js"></script>
   <script>
     // Register Service Worker
     if ('serviceWorker' in navigator) {
@@ -74,6 +76,11 @@
           });
       });
     }
+
+    // Initialize app
+    document.addEventListener('DOMContentLoaded', () => {
+      UI.init();
+    });
   </script>
 </body>
 </html>
