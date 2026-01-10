@@ -350,7 +350,7 @@
     {
       "id": "DT-012",
       "title": "Note detail UI",
-      "status": "backlog",
+      "status": "done",
       "estimated_minutes": 30,
       "description": "Full note view showing refined output.",
       "acceptance_criteria": [

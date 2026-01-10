@@ -90,7 +90,53 @@
       <section id="screen-settings" class="screen hidden">
         <p>Settings screen - coming soon</p>
       </section>
+
+      <!-- Note Detail Screen (overlay) -->
+      <section id="screen-note-detail" class="screen note-detail-screen hidden">
+        <!-- Header with back button -->
+        <div class="note-detail-header">
+          <button id="note-detail-back" class="note-detail-back" aria-label="Back to notes">
+            <span>←</span>
+          </button>
+          <div class="note-detail-category">
+            <span id="note-detail-icon"></span>
+            <span id="note-detail-category-label"></span>
+          </div>
+        </div>
+
+        <!-- Note content -->
+        <div class="note-detail-content">
+          <h2 id="note-detail-title" class="note-detail-title"></h2>
+          <p id="note-detail-timestamp" class="note-detail-timestamp"></p>
+          <div id="note-detail-body" class="note-detail-body"></div>
+        </div>
+
+        <!-- Action buttons -->
+        <div class="note-detail-actions">
+          <button id="note-detail-copy" class="note-detail-btn">
+            <span>Copy</span>
+          </button>
+          <button id="note-detail-export" class="note-detail-btn">
+            <span>Export JSON</span>
+          </button>
+          <button id="note-detail-delete" class="note-detail-btn note-detail-btn-danger">
+            <span>Delete</span>
+          </button>
+        </div>
+      </section>
     </main>
+
+    <!-- Delete Confirmation Dialog -->
+    <div id="delete-dialog" class="dialog-overlay hidden">
+      <div class="dialog">
+        <h3 class="dialog-title">Delete Note?</h3>
+        <p class="dialog-message">This action cannot be undone.</p>
+        <div class="dialog-actions">
+          <button id="delete-cancel" class="dialog-btn">Cancel</button>
+          <button id="delete-confirm" class="dialog-btn dialog-btn-danger">Delete</button>
+        </div>
+      </div>
+    </div>
 
     <!-- Bottom Navigation -->
     <nav class="nav">

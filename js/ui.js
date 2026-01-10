@@ -23,6 +23,9 @@ const UI = {
     ideas: '💡'
   },
 
+  // Currently displayed note
+  currentNote: null,
+
   /**
    * Initialize UI - set up event listeners
    */
@@ -31,6 +34,7 @@ const UI = {
     this.setupTextInput();
     this.setupNotesFilters();
     this.setupNotesSearch();
+    this.setupNoteDetail();
     this.showScreen('capture');
   },
 
@@ -427,14 +431,241 @@ const UI = {
   },
 
   /**
+   * Set up note detail event handlers
+   */
+  setupNoteDetail() {
+    // Back button
+    const backBtn = document.getElementById('note-detail-back');
+    if (backBtn) {
+      backBtn.addEventListener('click', () => this.closeNoteDetail());
+    }
+
+    // Copy button
+    const copyBtn = document.getElementById('note-detail-copy');
+    if (copyBtn) {
+      copyBtn.addEventListener('click', () => this.copyNoteToClipboard());
+    }
+
+    // Export button
+    const exportBtn = document.getElementById('note-detail-export');
+    if (exportBtn) {
+      exportBtn.addEventListener('click', () => this.exportNoteAsJson());
+    }
+
+    // Delete button
+    const deleteBtn = document.getElementById('note-detail-delete');
+    if (deleteBtn) {
+      deleteBtn.addEventListener('click', () => this.showDeleteDialog());
+    }
+
+    // Delete dialog buttons
+    const cancelBtn = document.getElementById('delete-cancel');
+    const confirmBtn = document.getElementById('delete-confirm');
+
+    if (cancelBtn) {
+      cancelBtn.addEventListener('click', () => this.hideDeleteDialog());
+    }
+
+    if (confirmBtn) {
+      confirmBtn.addEventListener('click', () => this.confirmDeleteNote());
+    }
+  },
+
+  /**
    * Open note detail view
    * @param {string} noteId - Note ID
    */
-  openNoteDetail(noteId) {
-    // This will be implemented in DT-012
-    console.log('Opening note detail:', noteId);
-    // For now, store the selected note ID for DT-012
-    this.selectedNoteId = noteId;
+  async openNoteDetail(noteId) {
+    try {
+      // Get note from database
+      const note = await DB.getNoteById(noteId);
+      if (!note) {
+        this.showToast('Note not found');
+        return;
+      }
+
+      this.currentNote = note;
+
+      // Populate detail view
+      const category = note.classification?.category || 'personal';
+      const icon = this.categoryIcons[category] || '📝';
+
+      document.getElementById('note-detail-icon').textContent = icon;
+      document.getElementById('note-detail-category-label').textContent = category;
+      document.getElementById('note-detail-title').textContent = note.extracted?.title || 'Untitled Note';
+
+      // Format timestamp
+      const timestamp = this.formatDetailTimestamp(note.timestamps);
+      document.getElementById('note-detail-timestamp').textContent = timestamp;
+
+      // Render formatted output as HTML
+      const formattedOutput = note.refined?.formatted_output || '';
+      document.getElementById('note-detail-body').innerHTML = this.renderMarkdown(formattedOutput);
+
+      // Show detail screen
+      document.getElementById('screen-note-detail').classList.remove('hidden');
+
+    } catch (error) {
+      console.error('Failed to open note detail:', error);
+      this.showToast('Failed to open note');
+    }
+  },
+
+  /**
+   * Close note detail view
+   */
+  closeNoteDetail() {
+    document.getElementById('screen-note-detail').classList.add('hidden');
+    this.currentNote = null;
+  },
+
+  /**
+   * Format timestamp for detail view
+   * @param {Object} timestamps - Timestamps object
+   * @returns {string} Formatted timestamp
+   */
+  formatDetailTimestamp(timestamps) {
+    if (!timestamps) return '';
+
+    const parts = [];
+
+    // Day of week
+    if (timestamps.day_of_week) {
+      parts.push(timestamps.day_of_week);
+    }
+
+    // Date
+    if (timestamps.input_date) {
+      const date = new Date(timestamps.input_date);
+      parts.push(date.toLocaleDateString('en-US', {
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric'
+      }));
+    }
+
+    // Time and timezone
+    if (timestamps.input_time) {
+      const tz = timestamps.input_timezone || 'SGT';
+      parts.push(`${timestamps.input_time} ${tz.replace('Asia/', '')}`);
+    }
+
+    return parts.join(' • ');
+  },
+
+  /**
+   * Simple markdown to HTML renderer
+   * @param {string} markdown - Markdown text
+   * @returns {string} HTML string
+   */
+  renderMarkdown(markdown) {
+    if (!markdown) return '';
+
+    let html = this.escapeHtml(markdown);
+
+    // Headings (must come before other patterns)
+    html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+    html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+    html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+
+    // Bold and italic
+    html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+
+    // Horizontal rules
+    html = html.replace(/^---$/gm, '<hr>');
+
+    // Checkboxes (☐ and ☑)
+    html = html.replace(/^☐ (.+)$/gm, '<li>☐ $1</li>');
+    html = html.replace(/^☑ (.+)$/gm, '<li>☑ $1</li>');
+
+    // Bullet points
+    html = html.replace(/^• (.+)$/gm, '<li>$1</li>');
+    html = html.replace(/^- (.+)$/gm, '<li>$1</li>');
+
+    // Wrap consecutive <li> in <ul>
+    html = html.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
+
+    // Paragraphs (lines with content not already in tags)
+    html = html.replace(/^(?!<[huplo]|<li|<hr)(.+)$/gm, '<p>$1</p>');
+
+    // Clean up empty paragraphs
+    html = html.replace(/<p>\s*<\/p>/g, '');
+
+    // Fix newlines
+    html = html.replace(/\n/g, '');
+
+    return html;
+  },
+
+  /**
+   * Copy note to clipboard
+   */
+  async copyNoteToClipboard() {
+    if (!this.currentNote) return;
+
+    const text = this.currentNote.refined?.formatted_output || '';
+
+    try {
+      await navigator.clipboard.writeText(text);
+      this.showToast('Copied!');
+    } catch (error) {
+      console.error('Failed to copy:', error);
+      this.showToast('Failed to copy');
+    }
+  },
+
+  /**
+   * Export note as JSON file
+   */
+  exportNoteAsJson() {
+    if (!this.currentNote) return;
+
+    const json = JSON.stringify(this.currentNote, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `digital-twin-${this.currentNote.id}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    this.showToast('Exported!');
+  },
+
+  /**
+   * Show delete confirmation dialog
+   */
+  showDeleteDialog() {
+    document.getElementById('delete-dialog').classList.remove('hidden');
+  },
+
+  /**
+   * Hide delete confirmation dialog
+   */
+  hideDeleteDialog() {
+    document.getElementById('delete-dialog').classList.add('hidden');
+  },
+
+  /**
+   * Confirm and delete the note
+   */
+  async confirmDeleteNote() {
+    if (!this.currentNote) return;
+
+    try {
+      await DB.deleteNote(this.currentNote.id);
+      this.hideDeleteDialog();
+      this.closeNoteDetail();
+      this.loadNotes();
+      this.showToast('Note deleted');
+    } catch (error) {
+      console.error('Failed to delete note:', error);
+      this.showToast('Failed to delete');
+    }
   }
 };
 
