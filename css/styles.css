@@ -329,6 +329,57 @@ body {
   color: var(--color-gray-600);
 }
 
+/* Voice button states - from CLAUDE.md section 9.1 */
+
+/* Recording state - filled + pulse */
+.voice-btn.recording {
+  background-color: var(--color-black);
+  animation: pulse 1.5s infinite;
+}
+
+.voice-btn.recording .voice-icon {
+  filter: invert(1); /* Make icon white on black */
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+/* Processing state - dashed + spin */
+.voice-btn.processing {
+  border-style: dashed;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Disabled state */
+.voice-btn.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Transcript display */
+.transcript-display {
+  margin-top: var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  font-size: var(--text-body);
+  color: var(--color-black);
+  text-align: center;
+  max-width: 100%;
+  word-wrap: break-word;
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.transcript-display.visible {
+  opacity: 1;
+}
+
 /* ==========================================================================
    Text Input Component
    ========================================================================== */

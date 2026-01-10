@@ -29,12 +29,13 @@
     <main class="main">
       <!-- Capture Screen -->
       <section id="screen-capture" class="screen">
-        <!-- Voice button area (placeholder for DT-006) -->
+        <!-- Voice button area -->
         <div class="capture-voice-area">
           <button id="voice-btn" class="voice-btn" aria-label="Start voice recording">
             <span class="voice-icon">🎤</span>
           </button>
           <p class="voice-hint">Tap to speak</p>
+          <p id="transcript-display" class="transcript-display"></p>
         </div>
 
         <!-- Text input area -->
@@ -84,6 +85,7 @@
   <!-- Scripts -->
   <script src="js/db.js"></script>
   <script src="js/ui.js"></script>
+  <script src="js/voice.js"></script>
   <script>
     // Register Service Worker
     if ('serviceWorker' in navigator) {
@@ -101,6 +103,7 @@
     // Initialize app
     document.addEventListener('DOMContentLoaded', () => {
       UI.init();
+      Voice.init();
     });
   </script>
 </body>

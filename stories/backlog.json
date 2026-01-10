@@ -160,7 +160,7 @@
     {
       "id": "DT-006",
       "title": "Voice input with Web Speech API",
-      "status": "backlog",
+      "status": "done",
       "estimated_minutes": 45,
       "description": "Implement voice recording using Web Speech API with visual feedback.",
       "acceptance_criteria": [

@@ -24,7 +24,12 @@
       "id": "DT-005",
       "title": "Text input component",
       "completed_at": "2025-01-10T20:11:00+08:00"
+    },
+    {
+      "id": "DT-006",
+      "title": "Voice input with Web Speech API",
+      "completed_at": "2025-01-10T20:14:00+08:00"
     }
   ],
-  "total": 5
+  "total": 6
 }
