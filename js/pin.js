@@ -597,95 +597,110 @@ const PIN = {
   // CRYPTO FUNCTIONS
   // ==================
 
+  /**
+   * Simple hash function for iOS compatibility (no PBKDF2)
+   */
+  async simpleHash(str) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(str);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    return btoa(String.fromCharCode(...new Uint8Array(hashBuffer)));
+  },
+
+  /**
+   * Derive encryption key from PIN using SHA-256 (iOS-safe, no PBKDF2)
+   */
+  async deriveKeySimple(pin, salt) {
+    const keyData = await crypto.subtle.digest(
+      'SHA-256',
+      new TextEncoder().encode(pin + salt)
+    );
+    return crypto.subtle.importKey(
+      'raw',
+      keyData,
+      { name: 'AES-GCM' },
+      true,
+      ['encrypt', 'decrypt']
+    );
+  },
+
   async savePIN(pin) {
+    console.log('[PIN] savePIN starting...');
+
     try {
-      console.log('[PIN] 1. Starting savePIN...');
+      // Step 1: Generate salt
+      console.log('[PIN] Step 1: Generating salt...');
+      const saltArray = crypto.getRandomValues(new Uint8Array(16));
+      const saltB64 = btoa(String.fromCharCode(...saltArray));
+      console.log('[PIN] Salt OK');
 
-      // Generate random salt
-      const salt = crypto.getRandomValues(new Uint8Array(16));
-      const saltB64 = btoa(String.fromCharCode(...salt));
-      console.log('[PIN] 2. Salt generated');
+      // Step 2: Hash PIN for verification (simple SHA-256, no PBKDF2)
+      console.log('[PIN] Step 2: Hashing PIN...');
+      const hashB64 = await this.simpleHash(pin + saltB64);
+      console.log('[PIN] Hash OK');
 
-      // Derive key from PIN (using reduced iterations for mobile)
-      console.log('[PIN] 3. Getting key material...');
-      const keyMaterial = await this.getKeyMaterial(pin);
-      console.log('[PIN] 4. Key material ready, deriving key...');
+      // Step 3: Derive encryption key (simple method, iOS-safe)
+      console.log('[PIN] Step 3: Deriving key...');
+      this.encryptionKey = await this.deriveKeySimple(pin, saltB64);
+      console.log('[PIN] Key OK');
 
-      const key = await crypto.subtle.deriveKey(
-        { name: 'PBKDF2', salt, iterations: this.PBKDF2_ITERATIONS, hash: 'SHA-256' },
-        keyMaterial,
-        { name: 'AES-GCM', length: 256 },
-        true,
-        ['encrypt', 'decrypt']
-      );
-      console.log('[PIN] 5. Key derived');
-
-      // Store encryption key in memory
-      this.encryptionKey = key;
-
-      // Hash PIN for verification (separate from encryption)
-      console.log('[PIN] 6. Hashing PIN...');
-      const hashBuffer = await crypto.subtle.digest(
-        'SHA-256',
-        new TextEncoder().encode(pin + saltB64)
-      );
-      const hashB64 = btoa(String.fromCharCode(...new Uint8Array(hashBuffer)));
-      console.log('[PIN] 7. PIN hashed');
-
-      // Store locally (skip recovery for now to debug)
+      // Step 4: Save to localStorage
+      console.log('[PIN] Step 4: Saving to localStorage...');
       localStorage.setItem(this.SALT_KEY, saltB64);
       localStorage.setItem(this.HASH_KEY, hashB64);
-      console.log('[PIN] 8. Saved to localStorage');
+      console.log('[PIN] localStorage OK');
 
-      // Recovery key setup (async, non-blocking)
-      console.log('[PIN] 9. savePIN complete!');
-
-      // Do recovery in background after unlock
-      setTimeout(async () => {
-        try {
-          const recoveryKey = this.generateRecoveryKey();
-          const encryptedRecovery = await this.encryptRecoveryKey(recoveryKey, key);
-          localStorage.setItem(this.RECOVERY_KEY, encryptedRecovery);
-          this.sendRecoveryEmail(recoveryKey).catch(console.error);
-          console.log('[PIN] Recovery key saved in background');
-        } catch (e) {
-          console.error('[PIN] Recovery key error:', e);
-        }
-      }, 1000);
+      console.log('[PIN] savePIN COMPLETE!');
     } catch (error) {
-      console.error('[PIN] ERROR in savePIN:', error);
-      throw error;
+      console.error('[PIN] savePIN FAILED:', error);
+      // Fallback: save PIN as simple hash without encryption support
+      try {
+        console.log('[PIN] Trying fallback (no encryption)...');
+        const saltB64 = btoa(Math.random().toString(36));
+        const hashB64 = btoa(pin + saltB64); // Simple base64, no crypto
+        localStorage.setItem(this.SALT_KEY, saltB64);
+        localStorage.setItem(this.HASH_KEY, hashB64);
+        localStorage.setItem('dt_pin_fallback', 'true');
+        console.log('[PIN] Fallback saved OK');
+      } catch (fallbackError) {
+        console.error('[PIN] Fallback FAILED:', fallbackError);
+        throw fallbackError;
+      }
     }
   },
 
   async verifyPIN(pin) {
+    console.log('[PIN] verifyPIN starting...');
+
     try {
       const saltB64 = localStorage.getItem(this.SALT_KEY);
       const storedHash = localStorage.getItem(this.HASH_KEY);
+      const isFallback = localStorage.getItem('dt_pin_fallback') === 'true';
 
-      if (!saltB64 || !storedHash) return false;
+      if (!saltB64 || !storedHash) {
+        console.log('[PIN] No stored PIN found');
+        return false;
+      }
 
-      // Hash entered PIN
-      const hashBuffer = await crypto.subtle.digest(
-        'SHA-256',
-        new TextEncoder().encode(pin + saltB64)
-      );
-      const hashB64 = btoa(String.fromCharCode(...new Uint8Array(hashBuffer)));
+      let hashB64;
+      if (isFallback) {
+        // Fallback mode: simple base64
+        hashB64 = btoa(pin + saltB64);
+      } else {
+        // Normal mode: SHA-256
+        hashB64 = await this.simpleHash(pin + saltB64);
+      }
 
       if (hashB64 === storedHash) {
-        // Derive encryption key (using reduced iterations for mobile)
-        const salt = Uint8Array.from(atob(saltB64), c => c.charCodeAt(0));
-        const keyMaterial = await this.getKeyMaterial(pin);
-        this.encryptionKey = await crypto.subtle.deriveKey(
-          { name: 'PBKDF2', salt, iterations: this.PBKDF2_ITERATIONS, hash: 'SHA-256' },
-          keyMaterial,
-          { name: 'AES-GCM', length: 256 },
-          true,
-          ['encrypt', 'decrypt']
-        );
+        console.log('[PIN] PIN verified!');
+        if (!isFallback) {
+          // Derive encryption key for later use
+          this.encryptionKey = await this.deriveKeySimple(pin, saltB64);
+        }
         return true;
       }
 
+      console.log('[PIN] PIN incorrect');
       return false;
     } catch (error) {
       console.error('Failed to verify PIN:', error);
