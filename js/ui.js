@@ -10,12 +10,27 @@ const UI = {
   // Processing state
   isProcessing: false,
 
+  // Notes list state
+  allNotes: [],
+  currentFilter: 'all',
+  currentSearch: '',
+
+  // Category icons
+  categoryIcons: {
+    personal: '🏠',
+    work: '💼',
+    health: '💪',
+    ideas: '💡'
+  },
+
   /**
    * Initialize UI - set up event listeners
    */
   init() {
     this.setupNavigation();
     this.setupTextInput();
+    this.setupNotesFilters();
+    this.setupNotesSearch();
     this.showScreen('capture');
   },
 
@@ -165,6 +180,11 @@ const UI = {
 
     // Update current screen
     this.currentScreen = screenName;
+
+    // Load notes when switching to notes screen
+    if (screenName === 'notes') {
+      this.loadNotes();
+    }
   },
 
   /**
@@ -197,6 +217,224 @@ const UI = {
         toast.remove();
       }, 150);
     }, duration);
+  },
+
+  /**
+   * Set up filter tab click handlers
+   */
+  setupNotesFilters() {
+    const filterTabs = document.querySelectorAll('.filter-tab');
+
+    filterTabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        // Update active state
+        filterTabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+
+        // Update filter and render
+        this.currentFilter = tab.dataset.category;
+        this.renderNotes();
+      });
+    });
+  },
+
+  /**
+   * Set up search input handler
+   */
+  setupNotesSearch() {
+    const searchInput = document.getElementById('notes-search-input');
+    if (!searchInput) return;
+
+    searchInput.addEventListener('input', (e) => {
+      this.currentSearch = e.target.value.toLowerCase().trim();
+      this.renderNotes();
+    });
+  },
+
+  /**
+   * Load notes from database
+   */
+  async loadNotes() {
+    try {
+      this.allNotes = await DB.getAllNotes();
+      this.renderNotes();
+    } catch (error) {
+      console.error('Failed to load notes:', error);
+      this.allNotes = [];
+      this.renderNotes();
+    }
+  },
+
+  /**
+   * Filter notes by category and search
+   * @returns {Array} Filtered notes
+   */
+  getFilteredNotes() {
+    let notes = [...this.allNotes];
+
+    // Filter by category
+    if (this.currentFilter !== 'all') {
+      notes = notes.filter(note =>
+        note.classification && note.classification.category === this.currentFilter
+      );
+    }
+
+    // Filter by search
+    if (this.currentSearch) {
+      notes = notes.filter(note => {
+        const title = (note.extracted?.title || '').toLowerCase();
+        const summary = (note.refined?.summary || '').toLowerCase();
+        return title.includes(this.currentSearch) || summary.includes(this.currentSearch);
+      });
+    }
+
+    return notes;
+  },
+
+  /**
+   * Get date group label for a note
+   * @param {string} dateStr - ISO date string
+   * @returns {string} Group label (TODAY, YESTERDAY, or formatted date)
+   */
+  getDateGroup(dateStr) {
+    const noteDate = new Date(dateStr);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    // Reset times to compare dates only
+    const noteDateOnly = new Date(noteDate.getFullYear(), noteDate.getMonth(), noteDate.getDate());
+    const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const yesterdayOnly = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate());
+
+    if (noteDateOnly.getTime() === todayOnly.getTime()) {
+      return 'TODAY';
+    } else if (noteDateOnly.getTime() === yesterdayOnly.getTime()) {
+      return 'YESTERDAY';
+    } else {
+      return noteDate.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: noteDate.getFullYear() !== today.getFullYear() ? 'numeric' : undefined
+      }).toUpperCase();
+    }
+  },
+
+  /**
+   * Group notes by date
+   * @param {Array} notes - Notes to group
+   * @returns {Object} Notes grouped by date label
+   */
+  groupNotesByDate(notes) {
+    const groups = {};
+
+    notes.forEach(note => {
+      const dateStr = note.timestamps?.created_at || new Date().toISOString();
+      const group = this.getDateGroup(dateStr);
+
+      if (!groups[group]) {
+        groups[group] = [];
+      }
+      groups[group].push(note);
+    });
+
+    return groups;
+  },
+
+  /**
+   * Render notes list
+   */
+  renderNotes() {
+    const notesList = document.getElementById('notes-list');
+    const emptyState = document.getElementById('notes-empty');
+
+    if (!notesList || !emptyState) return;
+
+    const filteredNotes = this.getFilteredNotes();
+
+    // Show/hide empty state
+    if (filteredNotes.length === 0) {
+      notesList.innerHTML = '';
+      notesList.classList.add('hidden');
+      emptyState.classList.remove('hidden');
+      return;
+    }
+
+    emptyState.classList.add('hidden');
+    notesList.classList.remove('hidden');
+
+    // Group notes by date
+    const groups = this.groupNotesByDate(filteredNotes);
+
+    // Build HTML
+    let html = '';
+    for (const [groupLabel, groupNotes] of Object.entries(groups)) {
+      html += `
+        <div class="notes-date-group">
+          <h3 class="notes-date-header">${groupLabel}</h3>
+          ${groupNotes.map(note => this.renderNoteCard(note)).join('')}
+        </div>
+      `;
+    }
+
+    notesList.innerHTML = html;
+
+    // Add click handlers to note cards
+    notesList.querySelectorAll('.note-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const noteId = card.dataset.noteId;
+        this.openNoteDetail(noteId);
+      });
+    });
+  },
+
+  /**
+   * Render a single note card
+   * @param {Object} note - Note object
+   * @returns {string} HTML string
+   */
+  renderNoteCard(note) {
+    const category = note.classification?.category || 'personal';
+    const icon = this.categoryIcons[category] || '📝';
+    const title = note.extracted?.title || 'Untitled Note';
+    const time = note.timestamps?.input_time || '';
+    const preview = (note.refined?.summary || '').substring(0, 100);
+
+    return `
+      <div class="note-card" data-note-id="${note.id}">
+        <div class="category-badge">
+          <span>${icon}</span>
+          <span>${category}</span>
+        </div>
+        <div class="note-card-header">
+          <h4 class="note-card-title">${this.escapeHtml(title)}</h4>
+          <span class="note-card-time">${time}</span>
+        </div>
+        <p class="note-card-preview">${this.escapeHtml(preview)}</p>
+      </div>
+    `;
+  },
+
+  /**
+   * Escape HTML special characters
+   * @param {string} text - Text to escape
+   * @returns {string} Escaped text
+   */
+  escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  },
+
+  /**
+   * Open note detail view
+   * @param {string} noteId - Note ID
+   */
+  openNoteDetail(noteId) {
+    // This will be implemented in DT-012
+    console.log('Opening note detail:', noteId);
+    // For now, store the selected note ID for DT-012
+    this.selectedNoteId = noteId;
   }
 };
 

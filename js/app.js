@@ -186,9 +186,10 @@ const App = {
    * Update recent notes display on capture screen
    */
   async updateRecentNotes() {
-    // This will be implemented in DT-011
-    // For now, just log that we would update
-    console.log('Recent notes would be updated here');
+    // Refresh notes list if on notes screen
+    if (UI.currentScreen === 'notes') {
+      UI.loadNotes();
+    }
   },
 
   /**

@@ -56,7 +56,34 @@
 
       <!-- Notes Screen -->
       <section id="screen-notes" class="screen hidden">
-        <p>Notes screen - coming soon</p>
+        <!-- Search Box -->
+        <div class="notes-search">
+          <input
+            type="text"
+            id="notes-search-input"
+            class="notes-search-input"
+            placeholder="Search notes..."
+          >
+        </div>
+
+        <!-- Filter Tabs -->
+        <div class="notes-filters">
+          <button class="filter-tab active" data-category="all">All</button>
+          <button class="filter-tab" data-category="work">💼 Work</button>
+          <button class="filter-tab" data-category="personal">🏠 Personal</button>
+          <button class="filter-tab" data-category="health">💪 Health</button>
+          <button class="filter-tab" data-category="ideas">💡 Ideas</button>
+        </div>
+
+        <!-- Notes List -->
+        <div id="notes-list" class="notes-list">
+          <!-- Notes will be dynamically inserted here -->
+        </div>
+
+        <!-- Empty State -->
+        <div id="notes-empty" class="notes-empty hidden">
+          <p class="notes-empty-text">No notes yet. Tap Capture to add your first note.</p>
+        </div>
       </section>
 
       <!-- Settings Screen -->
