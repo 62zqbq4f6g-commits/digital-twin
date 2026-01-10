@@ -652,9 +652,13 @@ const PIN = {
             action: 'forgot'
           })
         });
-        alert('Recovery email sent to ' + this.RECOVERY_EMAIL);
+        if (typeof UI !== 'undefined' && UI.showToast) {
+          UI.showToast('Recovery email sent');
+        }
       } catch (error) {
-        alert('Failed to send recovery email. Try again later.');
+        if (typeof UI !== 'undefined' && UI.showToast) {
+          UI.showToast('Failed to send email');
+        }
       }
     }
   },
