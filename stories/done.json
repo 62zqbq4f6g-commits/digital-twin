@@ -9,7 +9,12 @@
       "id": "DT-002",
       "title": "Design system CSS",
       "completed_at": "2025-01-10T20:03:00+08:00"
+    },
+    {
+      "id": "DT-003",
+      "title": "IndexedDB database layer",
+      "completed_at": "2025-01-10T20:05:00+08:00"
     }
   ],
-  "total": 2
+  "total": 3
 }

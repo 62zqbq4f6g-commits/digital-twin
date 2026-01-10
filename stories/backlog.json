@@ -66,7 +66,7 @@
     {
       "id": "DT-003",
       "title": "IndexedDB database layer",
-      "status": "backlog",
+      "status": "done",
       "estimated_minutes": 30,
       "description": "Create IndexedDB wrapper following schema from CLAUDE.md section 6.",
       "acceptance_criteria": [
