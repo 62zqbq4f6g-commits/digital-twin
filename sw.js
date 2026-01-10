@@ -1,5 +1,5 @@
 // Digital Twin Service Worker
-const APP_VERSION = '2.0.3';
+const APP_VERSION = '2.1.0';
 const CACHE_NAME = `digital-twin-v${APP_VERSION}`;
 
 const ASSETS_TO_CACHE = [
@@ -16,6 +16,8 @@ const ASSETS_TO_CACHE = [
   '/js/voice.js',
   '/js/camera.js',
   '/js/digest.js',
+  '/js/pin.js',
+  '/js/sync.js',
   '/assets/icon-192.png',
   '/assets/icon-512.png'
 ];

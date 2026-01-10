@@ -15,10 +15,19 @@
   <link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png">
   <link rel="apple-touch-icon" href="assets/icon-192.png">
 
+  <!-- Google Fonts - Vogue Aesthetic -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+
   <!-- Styles -->
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
+  <!-- PIN Lock Screen (shown before app) -->
+  <div id="pin-screen" class="hidden"></div>
+
+  <!-- Main App Container -->
   <div id="app">
     <!-- Header -->
     <header class="header">
@@ -131,6 +140,32 @@
 
       <!-- Settings Screen -->
       <section id="screen-settings" class="screen hidden">
+        <!-- Account Section -->
+        <div class="settings-section">
+          <h2 class="settings-heading">Account</h2>
+          <div class="settings-account-card" id="account-card">
+            <div class="account-info">
+              <span class="account-email" id="account-email">Not signed in</span>
+              <span class="sync-status" id="sync-status">○ Offline</span>
+            </div>
+            <button class="account-sync-btn" id="sync-now-btn" onclick="Sync.syncNow()">↻</button>
+          </div>
+          <div class="settings-auth-buttons" id="auth-buttons">
+            <button class="settings-btn settings-btn-outline" id="sign-in-btn">
+              <span>Sign In</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Security Section -->
+        <div class="settings-section">
+          <h2 class="settings-heading">Security</h2>
+          <button id="change-pin-btn" class="settings-btn">
+            <span>Change PIN</span>
+            <span class="settings-btn-desc">Update your 6-digit PIN</span>
+          </button>
+        </div>
+
         <div class="settings-section">
           <h2 class="settings-heading">Insights</h2>
           <button id="digest-btn" class="digest-trigger-btn" onclick="Digest.generate()">
@@ -152,10 +187,14 @@
             <span>Clear All Data</span>
             <span class="settings-btn-desc">Delete all notes permanently</span>
           </button>
+          <button id="sign-out-btn" class="settings-btn settings-btn-danger hidden">
+            <span>Sign Out</span>
+            <span class="settings-btn-desc">Sign out of cloud sync</span>
+          </button>
         </div>
 
         <div class="settings-section settings-version">
-          <p class="settings-version-text">Digital Twin v<span id="app-version">2.0.3</span></p>
+          <p class="settings-version-text">Digital Twin v<span id="app-version">2.1.0</span></p>
         </div>
       </section>
 
@@ -245,6 +284,9 @@
     </nav>
   </div>
 
+  <!-- Supabase Client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
   <!-- Scripts -->
   <script src="js/db.js"></script>
   <script src="js/classifier.js"></script>
@@ -255,7 +297,15 @@
   <script src="js/voice.js"></script>
   <script src="js/camera.js"></script>
   <script src="js/digest.js"></script>
+  <script src="js/pin.js"></script>
+  <script src="js/sync.js"></script>
   <script>
+    // Environment variables (injected by Vercel in production)
+    window.ENV = {
+      SUPABASE_URL: 'https://placeholder.supabase.co',
+      SUPABASE_ANON_KEY: 'placeholder-key'
+    };
+
     // Register Service Worker
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
@@ -269,13 +319,30 @@
       });
     }
 
-    // Initialize app
+    // Initialize app with PIN check first
     document.addEventListener('DOMContentLoaded', async () => {
+      // PIN check before anything else
+      await PIN.init();
+
+      // App initialization happens after PIN unlock via PIN.onUnlock()
+      // But we still set up these modules
+      if (PIN.isUnlocked) {
+        await App.init();
+        UI.init();
+        Voice.init();
+        Camera.init();
+      }
+    });
+
+    // Update PIN.onUnlock to initialize app modules
+    const originalOnUnlock = PIN.onUnlock;
+    PIN.onUnlock = async function() {
       await App.init();
       UI.init();
       Voice.init();
       Camera.init();
-    });
+      originalOnUnlock.call(this);
+    };
   </script>
 </body>
 </html>

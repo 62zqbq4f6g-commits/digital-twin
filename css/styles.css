@@ -27,27 +27,36 @@
      Typography
      ------------------------------------------------------------------------- */
 
-  /* Font Stack */
-  --font-sans: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+  /* Font Stack - Vogue Aesthetic */
+  --font-serif: 'Playfair Display', Georgia, serif;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: 'SF Mono', 'JetBrains Mono', 'Consolas', monospace;
 
-  /* Type Scale */
+  /* Type Scale - Editorial */
+  --text-display: 2.5rem;
   --text-title: 2rem;
+  --text-headline: 1.75rem;
+  --text-subhead: 1.125rem;
   --text-heading: 1.25rem;
   --text-body: 1rem;
   --text-caption: 0.8125rem;
   --text-micro: 0.6875rem;
 
   /* Font Weights */
+  --weight-light: 300;
   --weight-normal: 400;
   --weight-medium: 500;
   --weight-semibold: 600;
   --weight-bold: 700;
 
-  /* Letter Spacing */
+  /* Letter Spacing - Elegant */
   --tracking-tight: -0.02em;
   --tracking-normal: 0;
-  --tracking-wide: 0.02em;
+  --tracking-wide: 0.05em;
+  --tracking-ultra: 0.15em;
+
+  /* Additional gray for Vogue aesthetic */
+  --color-gray-500: #6B6B6B;
 
   /* -------------------------------------------------------------------------
      Spacing
@@ -1366,4 +1375,278 @@ body {
   font-size: var(--text-body);
   color: var(--color-gray-600);
   margin: var(--space-sm) 0 0 0;
+}
+
+/* ==========================================================================
+   PIN Screen - Vogue Minimalist
+   ========================================================================== */
+
+#pin-screen {
+  position: fixed;
+  inset: 0;
+  background: var(--color-white);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#pin-screen.hidden {
+  display: none;
+}
+
+.pin-container {
+  width: 100%;
+  max-width: 340px;
+  padding: var(--space-xl);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+  min-height: 100dvh;
+  justify-content: center;
+  position: relative;
+}
+
+/* Brand Header - Editorial */
+.pin-header {
+  text-align: center;
+  margin-bottom: var(--space-2xl);
+}
+
+.pin-brand {
+  display: block;
+  font-family: var(--font-serif);
+  font-size: var(--text-headline);
+  font-weight: 400;
+  letter-spacing: var(--tracking-ultra);
+  color: var(--color-black);
+  line-height: 1.4;
+}
+
+/* Content */
+.pin-content {
+  text-align: center;
+  margin-bottom: var(--space-xl);
+}
+
+.pin-title {
+  font-family: var(--font-serif);
+  font-size: var(--text-subhead);
+  font-weight: 400;
+  margin: 0 0 var(--space-sm) 0;
+  color: var(--color-black);
+}
+
+.pin-subtitle {
+  font-family: var(--font-sans);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-light);
+  color: var(--color-gray-500);
+  letter-spacing: var(--tracking-wide);
+  margin: 0;
+}
+
+/* PIN Dots */
+.pin-dots {
+  display: flex;
+  gap: var(--space-md);
+  justify-content: center;
+  margin: var(--space-xl) 0;
+}
+
+.pin-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: var(--radius-full);
+  border: 1.5px solid var(--color-black);
+  background: transparent;
+  transition: all 0.15s ease;
+}
+
+.pin-dot.filled {
+  background: var(--color-black);
+  transform: scale(1.1);
+}
+
+/* Shake animation for wrong PIN */
+.pin-dots.shake {
+  animation: pin-shake 0.5s ease;
+}
+
+@keyframes pin-shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-8px); }
+  40%, 80% { transform: translateX(8px); }
+}
+
+/* Error message */
+.pin-error {
+  font-family: var(--font-sans);
+  font-size: var(--text-caption);
+  color: #c00;
+  margin-top: var(--space-md);
+  height: 20px;
+}
+
+.pin-error.hidden {
+  visibility: hidden;
+}
+
+/* Numpad - Clean, minimal */
+.pin-numpad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-sm);
+  width: 100%;
+  max-width: 260px;
+}
+
+.pin-key {
+  aspect-ratio: 1;
+  border: none;
+  background: transparent;
+  font-family: var(--font-sans);
+  font-size: var(--text-headline);
+  font-weight: var(--weight-light);
+  color: var(--color-black);
+  cursor: pointer;
+  border-radius: var(--radius-full);
+  transition: background 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pin-key:hover {
+  background: var(--color-gray-50);
+}
+
+.pin-key:active {
+  background: var(--color-gray-100);
+  transform: scale(0.95);
+}
+
+.pin-key-empty {
+  pointer-events: none;
+}
+
+.pin-key-delete {
+  font-size: var(--text-subhead);
+}
+
+/* Forgot / Back buttons - Subtle */
+.pin-forgot,
+.pin-back {
+  margin-top: var(--space-xl);
+  background: none;
+  border: none;
+  font-family: var(--font-sans);
+  font-size: var(--text-caption);
+  color: var(--color-gray-400);
+  cursor: pointer;
+  letter-spacing: var(--tracking-wide);
+  padding: var(--space-sm) var(--space-md);
+  transition: color var(--transition-fast);
+}
+
+.pin-forgot:hover,
+.pin-back:hover {
+  color: var(--color-black);
+}
+
+/* Hint text - Bottom positioned */
+.pin-hint {
+  position: absolute;
+  bottom: var(--space-xl);
+  font-family: var(--font-sans);
+  font-size: var(--text-micro);
+  color: var(--color-gray-400);
+  letter-spacing: var(--tracking-wide);
+  text-align: center;
+}
+
+/* ==========================================================================
+   Account & Sync Styles
+   ========================================================================== */
+
+.settings-account-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-md) var(--space-lg);
+  background: var(--color-gray-50);
+  border: 1px solid var(--color-gray-100);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-md);
+}
+
+.account-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.account-email {
+  font-family: var(--font-sans);
+  font-size: var(--text-body);
+  font-weight: var(--weight-medium);
+  color: var(--color-black);
+}
+
+.sync-status {
+  font-family: var(--font-sans);
+  font-size: var(--text-caption);
+  color: var(--color-gray-500);
+}
+
+.sync-status-connected {
+  color: var(--color-gray-600);
+}
+
+.sync-status-syncing {
+  color: var(--color-gray-400);
+}
+
+.sync-status-error {
+  color: #c00;
+}
+
+.account-sync-btn {
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-full);
+  background: var(--color-white);
+  font-size: var(--text-heading);
+  color: var(--color-black);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.account-sync-btn:hover {
+  background: var(--color-gray-50);
+}
+
+.account-sync-btn:active {
+  transform: rotate(180deg);
+}
+
+.settings-auth-buttons {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.settings-btn-outline {
+  background: transparent;
+  border: 1px solid var(--color-black);
+  color: var(--color-black);
+}
+
+.settings-btn-outline:hover {
+  background: var(--color-black);
+  color: var(--color-white);
 }
