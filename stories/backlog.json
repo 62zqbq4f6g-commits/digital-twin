@@ -1,165 +1,245 @@
 {
-  "_meta": {"project": "Digital Twin Note Agent", "total_stories": 11},
+  "_meta": {
+    "project": "Digital Twin PWA",
+    "total_stories": 14,
+    "architecture": "Progressive Web App"
+  },
   "stories": [
     {
       "id": "DT-001",
-      "title": "Verify project structure",
+      "title": "PWA foundation",
       "status": "backlog",
+      "description": "Create base PWA structure with manifest and icons.",
       "acceptance_criteria": [
-        "CLAUDE.md exists",
-        "docs/PRD.md exists",
-        "config/settings.json exists and is valid JSON",
-        "data/inbox/ directory exists",
-        "data/archive/ directory exists",
-        "src/__init__.py exists",
-        "stories/backlog.json exists with all stories",
-        "learnings.json exists"
+        "index.html exists with proper HTML5 structure",
+        "manifest.json exists with name, icons, theme_color",
+        "assets/icon-192.png exists (can be placeholder)",
+        "assets/icon-512.png exists (can be placeholder)",
+        "index.html links to manifest.json",
+        "index.html has viewport meta tag for mobile"
       ],
-      "verification": "ls CLAUDE.md docs/PRD.md config/settings.json && ls data/ && ls src/",
-      "files_to_create": []
+      "verification": "ls index.html manifest.json && ls assets/",
+      "files_to_create": ["index.html", "manifest.json", "assets/icon-192.png", "assets/icon-512.png"]
     },
     {
       "id": "DT-002",
-      "title": "Create database schema",
+      "title": "Design system",
       "status": "backlog",
+      "description": "Create CSS with design tokens and base styles.",
       "acceptance_criteria": [
-        "data/notes.json exists",
-        "Has _schema_version field",
-        "Has empty notes array",
-        "Is valid JSON"
+        "css/styles.css exists",
+        "Has CSS custom properties (design tokens)",
+        "Has color palette (black, white, grays)",
+        "Has typography scale",
+        "Has spacing scale",
+        "Has base reset/normalize",
+        "index.html links to styles.css"
       ],
-      "verification": "cat data/notes.json | python3 -m json.tool",
-      "files_to_create": ["data/notes.json"]
+      "verification": "cat css/styles.css | head -50",
+      "files_to_create": ["css/styles.css"]
     },
     {
       "id": "DT-003",
-      "title": "Create classification prompt",
+      "title": "Database layer",
       "status": "backlog",
+      "description": "IndexedDB wrapper for note storage.",
       "acceptance_criteria": [
-        "prompts/classification.md exists",
-        "Has Personal keywords section",
-        "Has Work keywords section",
-        "Has 3+ examples each",
-        "Specifies JSON output format"
+        "js/db.js exists",
+        "Has initDB() function",
+        "Has saveNote(note) function",
+        "Has getAllNotes() function",
+        "Has getNotesByCategory(category) function",
+        "Has deleteNote(id) function",
+        "Uses IndexedDB API",
+        "Can test in browser console"
       ],
-      "verification": "cat prompts/classification.md",
-      "files_to_create": ["prompts/classification.md"]
+      "verification": "cat js/db.js",
+      "files_to_create": ["js/db.js"]
     },
     {
       "id": "DT-004",
-      "title": "Build classifier module",
+      "title": "App shell",
       "status": "backlog",
+      "description": "Create 3-screen app structure with navigation.",
       "acceptance_criteria": [
-        "src/classifier.py exists",
-        "Has classify(text) function",
-        "Returns {system, confidence, reasoning}",
-        "Handles empty input",
-        "Can run: python src/classifier.py 'test'"
+        "index.html has 3 screens: capture, notes, settings",
+        "Has bottom navigation bar",
+        "js/ui.js exists with screen switching logic",
+        "js/app.js exists as main entry point",
+        "Navigation highlights active screen",
+        "Only one screen visible at a time"
       ],
-      "verification": "python src/classifier.py 'call mom' && python src/classifier.py 'investor meeting'",
-      "files_to_create": ["src/classifier.py"]
+      "verification": "cat index.html | grep -c 'screen' && cat js/ui.js | head -30",
+      "files_to_create": ["js/ui.js", "js/app.js"]
     },
     {
       "id": "DT-005",
-      "title": "Build extractor module",
+      "title": "Text input",
       "status": "backlog",
+      "description": "Text area for capturing thoughts.",
       "acceptance_criteria": [
-        "src/extractor.py exists",
-        "Has extract(text) function",
-        "Returns {title, topics, action_items, sentiment, people}",
-        "Detects 'need to', 'should', 'must' as action items",
-        "Can run standalone"
+        "Capture screen has text input area",
+        "Placeholder text: What's on your mind?",
+        "Auto-expands as user types",
+        "Submit button or Enter key submits",
+        "Clears after successful submission",
+        "Shows brief success feedback"
       ],
-      "verification": "python src/extractor.py 'I need to call James about the project'",
-      "files_to_create": ["src/extractor.py"]
+      "verification": "cat index.html | grep -A5 'textarea'",
+      "files_to_create": []
     },
     {
       "id": "DT-006",
-      "title": "Build storage module",
+      "title": "Voice input",
       "status": "backlog",
+      "description": "Web Speech API integration for voice capture.",
       "acceptance_criteria": [
-        "src/storage.py exists",
-        "Has save_note(note) returning ID",
-        "Has get_all_notes()",
-        "Has get_notes_by_system(system)",
-        "Appends not overwrites"
+        "js/voice.js exists",
+        "Has startRecording() function",
+        "Has stopRecording() function",
+        "Uses Web Speech API (webkitSpeechRecognition)",
+        "Shows recording state visually",
+        "Populates text area with transcription",
+        "Handles microphone permission gracefully",
+        "Falls back gracefully if not supported"
       ],
-      "verification": "python -c \"import sys; sys.path.insert(0,'.'); from src.storage import save_note; print(save_note({'test':1}))\"",
-      "files_to_create": ["src/storage.py"]
+      "verification": "cat js/voice.js",
+      "files_to_create": ["js/voice.js"]
     },
     {
       "id": "DT-007",
-      "title": "Build file watcher",
+      "title": "Classifier",
       "status": "backlog",
+      "description": "Categorize input as Personal, Work, Health, or Ideas.",
       "acceptance_criteria": [
-        "src/watcher.py exists",
-        "Has Watcher class",
-        "Detects .txt and .md files in inbox",
-        "Ignores hidden files",
-        "Has debounce"
+        "js/classifier.js exists",
+        "Has classify(text) function",
+        "Returns {category, confidence, reasoning}",
+        "Detects Personal keywords (family, mom, friend, etc)",
+        "Detects Work keywords (meeting, client, velolume, etc)",
+        "Detects Health keywords (gym, sleep, doctor, etc)",
+        "Detects Ideas keywords (idea, what if, maybe, etc)",
+        "Defaults to 'personal' when ambiguous"
       ],
-      "verification": "timeout 3 python src/watcher.py --test || echo 'done'",
-      "files_to_create": ["src/watcher.py"]
+      "verification": "cat js/classifier.js",
+      "files_to_create": ["js/classifier.js"]
     },
     {
       "id": "DT-008",
-      "title": "Build refiner module",
+      "title": "Extractor",
       "status": "backlog",
+      "description": "Extract metadata from input text.",
       "acceptance_criteria": [
-        "src/refiner.py exists",
-        "Has refine(raw_text, classification, extracted) function",
-        "Returns {summary, formatted_output}",
-        "Work notes get meeting-minutes style formatting",
-        "Personal notes get simple clean formatting",
-        "Output is professional and shareable",
-        "Can run standalone"
+        "js/extractor.js exists",
+        "Has extract(text) function",
+        "Returns {title, topics, action_items, sentiment, people}",
+        "Title: first sentence, max 50 chars",
+        "Action items: detects 'need to', 'should', 'must', 'have to'",
+        "Sentiment: positive/negative/neutral",
+        "People: finds capitalized names"
       ],
-      "verification": "python src/refiner.py 'meeting went well they want to partner next steps send proposal'",
-      "files_to_create": ["src/refiner.py"]
+      "verification": "cat js/extractor.js",
+      "files_to_create": ["js/extractor.js"]
     },
     {
       "id": "DT-009",
-      "title": "Build pipeline",
+      "title": "Refiner",
       "status": "backlog",
+      "description": "Convert raw input to professional formatted output.",
       "acceptance_criteria": [
-        "src/pipeline.py exists",
-        "Flow: read->classify->extract->refine->save->archive",
-        "Has --once and --watch flags",
-        "Moves files to archive",
-        "Prints results"
+        "js/refiner.js exists",
+        "Has refine(rawText, classification, extracted) function",
+        "Returns {summary, formatted_output}",
+        "Work notes get meeting-minutes style",
+        "Health notes get wellness check-in style",
+        "Ideas get brainstorm style",
+        "Personal gets simple clean style",
+        "Output includes date, time, category icon"
       ],
-      "verification": "echo 'test meeting with investor' > data/inbox/test.txt && python src/pipeline.py --once && cat data/notes.json",
-      "files_to_create": ["src/pipeline.py"]
+      "verification": "cat js/refiner.js",
+      "files_to_create": ["js/refiner.js"]
     },
     {
       "id": "DT-010",
-      "title": "Build query interface",
+      "title": "Note storage",
       "status": "backlog",
+      "description": "Wire up processing pipeline and save to IndexedDB.",
       "acceptance_criteria": [
-        "src/query.py exists",
-        "--all shows all notes",
-        "--personal filters personal",
-        "--work filters work",
-        "--actions shows action items",
-        "Shows refined output"
+        "Text/voice input triggers full pipeline",
+        "Pipeline: classify → extract → refine → save",
+        "Note saved to IndexedDB with full schema",
+        "Generates unique ID (dt_YYYYMMDD_HHMMSS_xxx)",
+        "Stores timestamp with timezone",
+        "Shows success message after save"
       ],
-      "verification": "python src/query.py --all",
-      "files_to_create": ["src/query.py"]
+      "verification": "Submit test note and check IndexedDB in browser DevTools",
+      "files_to_create": []
     },
     {
       "id": "DT-011",
-      "title": "Create web dashboard",
+      "title": "Notes list UI",
       "status": "backlog",
+      "description": "Display all notes in list view with filters.",
       "acceptance_criteria": [
-        "web/dashboard.html exists",
-        "Loads notes.json",
-        "Shows stats",
-        "Lists notes with refined output",
-        "Has filter buttons",
-        "Dark theme"
+        "Notes screen shows all saved notes",
+        "Each note shows: title, category icon, date, preview",
+        "Filter tabs: All, Work, Personal, Health, Ideas",
+        "Sorted by newest first",
+        "Empty state when no notes",
+        "Tapping note opens detail view"
       ],
-      "verification": "cat web/dashboard.html | head -30",
-      "files_to_create": ["web/dashboard.html"]
+      "verification": "Visual check in browser",
+      "files_to_create": []
+    },
+    {
+      "id": "DT-012",
+      "title": "Note detail UI",
+      "status": "backlog",
+      "description": "Full note view with refined output.",
+      "acceptance_criteria": [
+        "Detail view shows complete refined output",
+        "Shows category icon and label",
+        "Shows full timestamp",
+        "Shows action items as checklist",
+        "Has back button to list",
+        "Has delete option",
+        "Markdown rendered as HTML"
+      ],
+      "verification": "Visual check in browser",
+      "files_to_create": []
+    },
+    {
+      "id": "DT-013",
+      "title": "Copy & Export",
+      "status": "backlog",
+      "description": "Copy note to clipboard and export all data.",
+      "acceptance_criteria": [
+        "Note detail has 'Copy to Clipboard' button",
+        "Copies formatted_output as markdown",
+        "Shows 'Copied!' feedback",
+        "Settings has 'Export All Data' button",
+        "Exports all notes as JSON file download",
+        "Filename: digital-twin-backup-YYYYMMDD.json"
+      ],
+      "verification": "Test copy and export functions in browser",
+      "files_to_create": []
+    },
+    {
+      "id": "DT-014",
+      "title": "Offline & PWA",
+      "status": "backlog",
+      "description": "Service worker for offline support and installability.",
+      "acceptance_criteria": [
+        "sw.js exists",
+        "Caches all app assets",
+        "App works offline",
+        "index.html registers service worker",
+        "App is installable (Add to Home Screen)",
+        "Shows install prompt on mobile",
+        "Lighthouse PWA score > 90"
+      ],
+      "verification": "Run Lighthouse PWA audit in Chrome DevTools",
+      "files_to_create": ["sw.js"]
     }
   ]
 }

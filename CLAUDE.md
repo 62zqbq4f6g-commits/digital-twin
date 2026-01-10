@@ -1,6 +1,6 @@
-# CLAUDE.md — Digital Twin Note Agent
+# CLAUDE.md — Digital Twin PWA
 
-## ⚠️ CRITICAL: Start Every Session With These Steps
+## Every Session: Do These Steps FIRST
 
 1. cat learnings.json
 2. cat stories/backlog.json
@@ -16,39 +16,42 @@
 
 ## Project Identity
 
-**Name:** Digital Twin Note Agent
+**Name:** Digital Twin
+**Type:** Progressive Web App (PWA)
 **Owner:** Rox
 **Version:** 0.1.0
-**Purpose:** Convert Wispr voice transcriptions into professional, structured notes
+**Purpose:** AI-powered second brain — capture thoughts, get professional structured notes
 
 ---
 
-## What We're Building
+## The Vision
 
-An automated voice-to-structured-data note-taking assistant that:
-1. **Captures:** Wispr transcription files dropped into data/inbox/
-2. **Classifies:** Personal or Work
-3. **Extracts:** Title, topics, action items, sentiment, people
-4. **Refines:** Converts raw voice transcription into professional structured output
-5. **Stores:** JSON database for querying
-6. **Outputs:** Professional format suitable for sharing with teams
+```
+PHASE 1 (NOW)     PHASE 2           PHASE 3
+─────────────     ───────           ───────
+CAPTURE           LEARN             ACT
+System of Record  System of Intel   System of Action
 
-### The Goal
+Voice/Text →      Pattern detect →  Draft emails
+Classify →        Insights →        Set reminders
+Extract →         Predictions →     Trigger flows
+Refine →          Connections →     Be proactive
+Store locally
+```
+
+---
+
+## What We're Building (Phase 1 MVP)
+
+A PWA that:
+1. **Captures** voice or text input
+2. **Classifies** into 4 categories (Personal, Work, Health, Ideas)
+3. **Extracts** title, topics, action items, sentiment, people
+4. **Refines** raw input into professional shareable format
+5. **Stores** in IndexedDB (100% local, never leaves device)
+6. **Displays** in beautiful minimal UI
+
 > "Speak naturally, get professional structured notes — zero manual work."
-
----
-
-## Key Feature: Professional Refinement
-
-The agent doesn't just classify — it REFINES raw voice transcriptions into:
-- Professional meeting minutes
-- Structured updates for teams
-- Clean action item lists
-- Properly formatted summaries
-
-Example transformation:
-- INPUT: "so yeah the meeting went well they're interested in working with us talked about partnership structure and uh next steps are they'll send proposal"
-- OUTPUT: Professional structured meeting summary with sections, action items, and clear formatting
 
 ---
 
@@ -56,60 +59,71 @@ Example transformation:
 
 | Layer | Technology |
 |-------|------------|
-| Voice Input | Wispr (external) |
-| Processing | Python 3.10+ |
-| Classification | Keyword matching |
-| Refinement | Template-based structuring |
-| Storage | JSON file |
-| Preview | HTML dashboard |
+| Framework | Vanilla JS + HTML/CSS |
+| Voice | Web Speech API |
+| Storage | IndexedDB |
+| Offline | Service Worker |
+| Hosting | Vercel (free) |
+| Design | Soho NYC minimal (black/white, typography-first) |
 
 ---
 
 ## Directory Structure
 
+```
 digital-twin/
-├── CLAUDE.md              ← This file
-├── docs/PRD.md            ← Requirements
-├── config/settings.json   ← Configuration
-├── data/inbox/            ← Wispr files here
-├── data/archive/          ← Processed files
-├── data/notes.json        ← Database
-├── src/
-│   ├── classifier.py      ← Personal vs Work
-│   ├── extractor.py       ← Metadata extraction
-│   ├── refiner.py         ← Professional formatting
-│   ├── storage.py         ← Database operations
-│   ├── watcher.py         ← File monitor
-│   ├── pipeline.py        ← Full flow
-│   └── query.py           ← CLI queries
-├── prompts/
-│   └── classification.md  ← Classification examples
-├── web/dashboard.html     ← Browser preview
-├── stories/backlog.json   ← User stories
-└── learnings.json         ← Persistent memory
+├── index.html              # Main app
+├── manifest.json           # PWA manifest
+├── sw.js                   # Service worker
+├── css/
+│   └── styles.css          # All styles
+├── js/
+│   ├── app.js              # Main controller
+│   ├── db.js               # IndexedDB operations
+│   ├── classifier.js       # Category classification
+│   ├── extractor.js        # Metadata extraction
+│   ├── refiner.js          # Professional formatting
+│   ├── voice.js            # Web Speech API
+│   └── ui.js               # UI interactions
+├── assets/
+│   ├── icon-192.png
+│   ├── icon-512.png
+│   └── favicon.ico
+├── docs/
+│   └── PRD.md
+├── stories/
+│   ├── backlog.json
+│   └── done.json
+└── learnings.json
+```
 
 ---
 
-## Classification Rules
+## 4 Categories
 
-### Personal Keywords
-family, health, gym, friend, hobby, home, feeling, weekend, vacation, mom, dad, exercise, relax, meditation, sleep, birthday, dinner, movie, relationship, kids, wife, husband, pet
+| Category | Icon | Example Keywords |
+|----------|------|------------------|
+| Personal | 🏠 | family, mom, dad, friend, home, weekend, dinner |
+| Work | 💼 | velolume, meeting, client, investor, project, pitch |
+| Health | 💪 | gym, exercise, sleep, meditation, doctor, stress |
+| Ideas | 💡 | idea, what if, maybe, could, future, experiment |
 
-### Work Keywords
-velolume, meeting, client, investor, revenue, deadline, project, team, strategy, product, business, api, integration, partnership, mcp, n8n, creator, pitch, deck, roadmap, sprint, launch, startup, funding, sales, marketing, hire, trust, spv, governance, proposal
-
-### Default: If confidence < 0.6, classify as "personal"
+**Default:** If no keywords match → Personal
 
 ---
 
-## Commands (After Built)
+## Note Schema
 
-python src/pipeline.py --watch    # Monitor inbox
-python src/pipeline.py --once     # Process once
-python src/query.py --all         # All notes
-python src/query.py --work        # Work notes
-python src/query.py --actions     # Action items
-python -m http.server 8000        # Dashboard
+```json
+{
+  "id": "dt_20250110_143052_a7x",
+  "timestamps": { "created_at": "ISO-8601", "day_of_week": "Friday" },
+  "input": { "type": "voice|text", "raw_text": "..." },
+  "classification": { "category": "work", "confidence": 0.87 },
+  "extracted": { "title": "...", "topics": [], "action_items": [], "sentiment": "positive", "people": [] },
+  "refined": { "summary": "...", "formatted_output": "..." }
+}
+```
 
 ---
 
@@ -123,3 +137,12 @@ python -m http.server 8000        # Dashboard
 6. Add to done.json
 7. Git commit
 8. Output: <promise>STORY_COMPLETE</promise>
+
+---
+
+## Design Principles
+
+- **Radical simplicity** — one screen does one thing
+- **Typography-first** — beautiful type, minimal decoration
+- **Monochrome** — black/white, color only for category icons
+- **Zero friction** — capture in under 3 seconds
