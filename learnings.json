@@ -64,6 +64,33 @@
       "what_happened": "Schema includes machine_readable",
       "lesson": "Include entities and relationships for future AI agent use",
       "resolution": "N/A"
+    },
+    {
+      "id": "LEARN-007",
+      "timestamp": "2026-01-10T14:00:00Z",
+      "story_id": "PHASE2B",
+      "category": "security",
+      "what_happened": "Implemented PIN-based encryption",
+      "lesson": "PIN derives encryption key via PBKDF2 (100k iterations). Key never leaves device. Only encrypted blobs go to cloud. This is true E2E encryption.",
+      "resolution": "N/A"
+    },
+    {
+      "id": "LEARN-008",
+      "timestamp": "2026-01-10T14:00:01Z",
+      "story_id": "PHASE2B",
+      "category": "design",
+      "what_happened": "Added Vogue magazine aesthetic",
+      "lesson": "Use Playfair Display (serif) for display text, Inter (sans) for body. Letter-spacing: 0.15em for brand. Keep it editorial and confident.",
+      "resolution": "N/A"
+    },
+    {
+      "id": "LEARN-009",
+      "timestamp": "2026-01-10T14:00:02Z",
+      "story_id": "PHASE2B",
+      "category": "pattern",
+      "what_happened": "PIN must init before app",
+      "lesson": "PIN.init() must run first in DOMContentLoaded. App modules only init after PIN.onUnlock(). This prevents access to unencrypted data.",
+      "resolution": "N/A"
     }
   ]
 }
