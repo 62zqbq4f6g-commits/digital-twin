@@ -35,6 +35,7 @@ const UI = {
     this.setupNotesFilters();
     this.setupNotesSearch();
     this.setupNoteDetail();
+    this.setupSettings();
     this.showScreen('capture');
   },
 
@@ -665,6 +666,44 @@ const UI = {
     } catch (error) {
       console.error('Failed to delete note:', error);
       this.showToast('Failed to delete');
+    }
+  },
+
+  /**
+   * Set up settings screen event handlers
+   */
+  setupSettings() {
+    const exportAllBtn = document.getElementById('export-all-btn');
+    if (exportAllBtn) {
+      exportAllBtn.addEventListener('click', () => this.exportAllNotes());
+    }
+  },
+
+  /**
+   * Export all notes as JSON backup file
+   */
+  async exportAllNotes() {
+    try {
+      const jsonString = await DB.exportAllNotes();
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+
+      // Generate filename with date
+      const date = new Date().toISOString().slice(0, 10);
+      const filename = `digital-twin-backup-${date}.json`;
+
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      this.showToast('Backup exported!');
+    } catch (error) {
+      console.error('Failed to export:', error);
+      this.showToast('Failed to export');
     }
   }
 };

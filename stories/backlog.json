@@ -380,7 +380,7 @@
     {
       "id": "DT-013",
       "title": "Copy and export functionality",
-      "status": "backlog",
+      "status": "done",
       "estimated_minutes": 20,
       "description": "Implement clipboard and file export.",
       "acceptance_criteria": [
