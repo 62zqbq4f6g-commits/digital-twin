@@ -4,34 +4,263 @@
  */
 
 const PIN = {
-  SALT_KEY: 'dt_pin_salt',
-  HASH_KEY: 'dt_pin_hash',
+  // Base keys (will be prefixed with user_id when user is signed in)
+  SALT_KEY_BASE: 'dt_pin_salt',
+  HASH_KEY_BASE: 'dt_pin_hash',
+  FALLBACK_KEY_BASE: 'dt_pin_fallback',
+  // Legacy keys (for migration)
+  LEGACY_SALT_KEY: 'dt_pin_salt',
+  LEGACY_HASH_KEY: 'dt_pin_hash',
   RECOVERY_KEY: 'dt_recovery_key',
   RECOVERY_EMAIL: 'elroycheo@me.com',
   PBKDF2_ITERATIONS: 10000, // Reduced from 100k for mobile Safari performance
+  // Lockout configuration
+  LOCKOUT_KEY: 'dt_pin_lockout',
+  ATTEMPTS_KEY: 'dt_pin_attempts',
+  MAX_ATTEMPTS: 5,
+  LOCKOUT_DURATION: 30000, // 30 seconds in milliseconds
   isSetup: false,
   isUnlocked: false,
   encryptionKey: null,
   isProcessing: false, // Prevent double-taps on iOS
+  lockoutInterval: null, // For countdown timer
+
+  /**
+   * Get the current user ID for PIN key prefixing
+   * Returns null if no user is signed in
+   */
+  getCurrentUserId() {
+    if (typeof Sync !== 'undefined' && Sync.user && Sync.user.id) {
+      return Sync.user.id;
+    }
+    return null;
+  },
+
+  /**
+   * Get the PIN salt key for current user
+   */
+  get SALT_KEY() {
+    const userId = this.getCurrentUserId();
+    return userId ? `${this.SALT_KEY_BASE}_${userId}` : this.SALT_KEY_BASE;
+  },
+
+  /**
+   * Get the PIN hash key for current user
+   */
+  get HASH_KEY() {
+    const userId = this.getCurrentUserId();
+    return userId ? `${this.HASH_KEY_BASE}_${userId}` : this.HASH_KEY_BASE;
+  },
+
+  /**
+   * Get the fallback key for current user
+   */
+  get FALLBACK_KEY() {
+    const userId = this.getCurrentUserId();
+    return userId ? `${this.FALLBACK_KEY_BASE}_${userId}` : this.FALLBACK_KEY_BASE;
+  },
+
+  /**
+   * Migrate legacy PIN keys to user-specific keys
+   * Called after user signs in/up
+   */
+  migratePINToUser(userId) {
+    if (!userId) return;
+
+    const legacySalt = localStorage.getItem(this.LEGACY_SALT_KEY);
+    const legacyHash = localStorage.getItem(this.LEGACY_HASH_KEY);
+    const legacyFallback = localStorage.getItem('dt_pin_fallback');
+
+    // Check if user-specific keys already exist
+    const userSaltKey = `${this.SALT_KEY_BASE}_${userId}`;
+    const userHashKey = `${this.HASH_KEY_BASE}_${userId}`;
+
+    if (localStorage.getItem(userHashKey)) {
+      console.log('[PIN] User already has PIN, skipping migration');
+      return;
+    }
+
+    // Migrate legacy keys to user-specific
+    if (legacySalt && legacyHash) {
+      console.log('[PIN] Migrating legacy PIN to user-specific keys');
+      localStorage.setItem(userSaltKey, legacySalt);
+      localStorage.setItem(userHashKey, legacyHash);
+      if (legacyFallback) {
+        localStorage.setItem(`${this.FALLBACK_KEY_BASE}_${userId}`, legacyFallback);
+      }
+
+      // Remove legacy keys
+      localStorage.removeItem(this.LEGACY_SALT_KEY);
+      localStorage.removeItem(this.LEGACY_HASH_KEY);
+      localStorage.removeItem('dt_pin_fallback');
+      console.log('[PIN] Migration complete, legacy keys removed');
+    }
+  },
+
+  // ==================
+  // LOCKOUT MANAGEMENT
+  // ==================
+
+  /**
+   * Check if user is currently locked out
+   * Persists across page refresh via localStorage
+   */
+  isLockedOut() {
+    const lockoutTime = localStorage.getItem(this.LOCKOUT_KEY);
+    if (!lockoutTime) return false;
+
+    const lockoutEnd = parseInt(lockoutTime, 10);
+    const now = Date.now();
+
+    if (now < lockoutEnd) {
+      return true;
+    }
+
+    // Lockout expired, clear it
+    this.clearLockout();
+    return false;
+  },
+
+  /**
+   * Get remaining lockout time in seconds
+   */
+  getLockoutRemaining() {
+    const lockoutTime = localStorage.getItem(this.LOCKOUT_KEY);
+    if (!lockoutTime) return 0;
+
+    const lockoutEnd = parseInt(lockoutTime, 10);
+    const remaining = Math.ceil((lockoutEnd - Date.now()) / 1000);
+    return Math.max(0, remaining);
+  },
+
+  /**
+   * Get current failed attempt count
+   */
+  getAttemptCount() {
+    const attempts = localStorage.getItem(this.ATTEMPTS_KEY);
+    return attempts ? parseInt(attempts, 10) : 0;
+  },
+
+  /**
+   * Record a failed attempt and check for lockout
+   * Returns true if lockout is now active
+   */
+  recordFailedAttempt() {
+    let attempts = this.getAttemptCount() + 1;
+    localStorage.setItem(this.ATTEMPTS_KEY, attempts.toString());
+    console.log(`[PIN] Failed attempt ${attempts}/${this.MAX_ATTEMPTS}`);
+
+    if (attempts >= this.MAX_ATTEMPTS) {
+      // Trigger lockout
+      const lockoutEnd = Date.now() + this.LOCKOUT_DURATION;
+      localStorage.setItem(this.LOCKOUT_KEY, lockoutEnd.toString());
+      console.log('[PIN] Lockout triggered for 30 seconds');
+      return true;
+    }
+    return false;
+  },
+
+  /**
+   * Clear lockout and reset attempts (on successful unlock)
+   */
+  clearLockout() {
+    localStorage.removeItem(this.LOCKOUT_KEY);
+    localStorage.removeItem(this.ATTEMPTS_KEY);
+    if (this.lockoutInterval) {
+      clearInterval(this.lockoutInterval);
+      this.lockoutInterval = null;
+    }
+  },
+
+  /**
+   * Show lockout screen with countdown
+   */
+  showLockoutScreen() {
+    const screen = document.getElementById('pin-screen');
+    const remaining = this.getLockoutRemaining();
+
+    screen.innerHTML = `
+      <div class="pin-container">
+        <div class="pin-header">
+          <span class="pin-brand">D I G I T A L</span>
+          <span class="pin-brand">T W I N</span>
+        </div>
+
+        <div class="pin-content">
+          <h2 class="pin-title">Too many attempts</h2>
+          <p class="pin-subtitle">Please wait before trying again</p>
+
+          <div class="pin-lockout-timer">
+            <span id="lockout-countdown">${remaining}</span>
+            <span>seconds</span>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Start countdown
+    this.startLockoutCountdown();
+  },
+
+  /**
+   * Start countdown timer and auto-unlock when done
+   */
+  startLockoutCountdown() {
+    if (this.lockoutInterval) {
+      clearInterval(this.lockoutInterval);
+    }
+
+    this.lockoutInterval = setInterval(() => {
+      const remaining = this.getLockoutRemaining();
+      const countdown = document.getElementById('lockout-countdown');
+
+      if (countdown) {
+        countdown.textContent = remaining;
+      }
+
+      if (remaining <= 0) {
+        clearInterval(this.lockoutInterval);
+        this.lockoutInterval = null;
+        this.clearLockout();
+        // Return to lock screen
+        this.showLockScreen();
+      }
+    }, 1000);
+  },
 
   /**
    * Initialize PIN module
    */
   async init() {
     this.isSetup = await this.hasExistingPIN();
+    console.log('[PIN] init: isSetup =', this.isSetup, 'userId =', this.getCurrentUserId());
 
     if (!this.isSetup) {
-      this.showSetupScreen();
+      // First time on this device - ask if new or existing user
+      this.showWelcomeScreen();
     } else {
-      this.showLockScreen();
+      // Check if user is locked out (persists across refresh)
+      if (this.isLockedOut()) {
+        console.log('[PIN] User is locked out, showing lockout screen');
+        const screen = document.getElementById('pin-screen');
+        const appContent = document.getElementById('app');
+        screen.classList.remove('hidden');
+        appContent.classList.add('hidden');
+        this.showLockoutScreen();
+      } else {
+        this.showLockScreen();
+      }
     }
   },
 
   /**
-   * Check if PIN is already set up
+   * Check if PIN is already set up for current user (or globally if no user)
    */
   async hasExistingPIN() {
-    const hash = localStorage.getItem(this.HASH_KEY);
+    const userId = this.getCurrentUserId();
+    const hashKey = this.HASH_KEY;
+    const hash = localStorage.getItem(hashKey);
+    console.log('[PIN] hasExistingPIN: checking key =', hashKey, 'exists =', hash !== null);
     return hash !== null;
   },
 
@@ -63,6 +292,444 @@ const PIN = {
     screen.classList.remove('hidden');
     appContent.classList.add('hidden');
     this.attachPadListeners('unlock');
+  },
+
+  // ==================
+  // WELCOME FLOW (New vs Existing User)
+  // ==================
+
+  showWelcomeScreen() {
+    const screen = document.getElementById('pin-screen');
+    const appContent = document.getElementById('app');
+
+    screen.innerHTML = this.renderWelcomeHTML();
+    screen.classList.remove('hidden');
+    appContent.classList.add('hidden');
+    this.attachWelcomeListeners();
+  },
+
+  renderWelcomeHTML() {
+    return `
+      <div class="pin-container">
+        <div class="pin-header">
+          <span class="pin-brand">D I G I T A L</span>
+          <span class="pin-brand">T W I N</span>
+        </div>
+
+        <div class="pin-content">
+          <h2 class="pin-title">Welcome</h2>
+          <p class="pin-subtitle">Your AI-powered second brain</p>
+        </div>
+
+        <div class="pin-welcome-buttons">
+          <button class="pin-welcome-btn pin-welcome-btn-primary" id="btn-new-user">
+            Create New Account
+          </button>
+          <button class="pin-welcome-btn pin-welcome-btn-secondary" id="btn-existing-user">
+            I Have an Account
+          </button>
+        </div>
+
+        <p class="pin-hint">Your notes are encrypted end-to-end</p>
+      </div>
+    `;
+  },
+
+  attachWelcomeListeners() {
+    document.getElementById('btn-new-user').addEventListener('click', () => {
+      this.isNewUser = true;
+      this.showSetupScreen();
+    });
+
+    document.getElementById('btn-existing-user').addEventListener('click', () => {
+      this.isNewUser = false;
+      this.showSignInScreen();
+    });
+  },
+
+  showSignInScreen() {
+    const screen = document.getElementById('pin-screen');
+
+    screen.innerHTML = `
+      <div class="pin-container">
+        <div class="pin-header">
+          <span class="pin-brand">D I G I T A L</span>
+          <span class="pin-brand">T W I N</span>
+        </div>
+
+        <div class="pin-content">
+          <h2 class="pin-title">Sign In</h2>
+          <p class="pin-subtitle">Sign in to sync your notes</p>
+
+          <div class="pin-form">
+            <input type="email" id="signin-email" class="pin-input" placeholder="Email" autocomplete="email" />
+            <input type="password" id="signin-password" class="pin-input" placeholder="Password" autocomplete="current-password" />
+            <p class="pin-error hidden" id="signin-error"></p>
+          </div>
+        </div>
+
+        <div class="pin-form-buttons">
+          <button class="pin-welcome-btn pin-welcome-btn-primary" id="btn-signin">
+            Sign In
+          </button>
+        </div>
+
+        <button class="pin-back" id="btn-back">Back</button>
+      </div>
+    `;
+
+    this.attachSignInListeners();
+  },
+
+  attachSignInListeners() {
+    const emailInput = document.getElementById('signin-email');
+    const passwordInput = document.getElementById('signin-password');
+    const signInBtn = document.getElementById('btn-signin');
+    const backBtn = document.getElementById('btn-back');
+    const errorEl = document.getElementById('signin-error');
+
+    signInBtn.addEventListener('click', async () => {
+      const email = emailInput.value.trim();
+      const password = passwordInput.value;
+
+      if (!email || !password) {
+        errorEl.textContent = 'Please enter email and password';
+        errorEl.classList.remove('hidden');
+        return;
+      }
+
+      signInBtn.disabled = true;
+      signInBtn.textContent = 'Signing in...';
+      errorEl.classList.add('hidden');
+
+      try {
+        // Initialize Sync if needed
+        if (typeof Sync !== 'undefined' && !Sync.supabase) {
+          await Sync.init();
+        }
+
+        // Sign in
+        await Sync.signIn(email, password);
+        console.log('[PIN] Signed in successfully');
+
+        // Fetch salt from cloud
+        const cloudSalt = await Sync.fetchSalt();
+
+        if (cloudSalt) {
+          console.log('[PIN] Found cloud salt, storing locally');
+          localStorage.setItem(this.SALT_KEY, cloudSalt);
+          this.cloudSaltFetched = true;
+          // Show existing user PIN entry (verify by decryption)
+          this.showExistingUserPINScreen();
+        } else {
+          console.log('[PIN] No cloud salt found - new account, show setup');
+          this.showSetupScreen();
+        }
+
+      } catch (error) {
+        console.error('[PIN] Sign in failed:', error);
+        errorEl.textContent = error.message || 'Sign in failed';
+        errorEl.classList.remove('hidden');
+        signInBtn.disabled = false;
+        signInBtn.textContent = 'Sign In';
+      }
+    });
+
+    backBtn.addEventListener('click', () => {
+      this.showWelcomeScreen();
+    });
+
+    // Enter key submits
+    passwordInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') signInBtn.click();
+    });
+  },
+
+  showSignUpScreen() {
+    const screen = document.getElementById('pin-screen');
+
+    screen.innerHTML = `
+      <div class="pin-container">
+        <div class="pin-header">
+          <span class="pin-brand">D I G I T A L</span>
+          <span class="pin-brand">T W I N</span>
+        </div>
+
+        <div class="pin-content">
+          <h2 class="pin-title">Create Account</h2>
+          <p class="pin-subtitle">Sign up to sync across devices</p>
+
+          <div class="pin-form">
+            <input type="email" id="signup-email" class="pin-input" placeholder="Email" autocomplete="email" />
+            <input type="password" id="signup-password" class="pin-input" placeholder="Password (min 6 chars)" autocomplete="new-password" />
+            <p class="pin-error hidden" id="signup-error"></p>
+          </div>
+        </div>
+
+        <div class="pin-form-buttons">
+          <button class="pin-welcome-btn pin-welcome-btn-primary" id="btn-signup">
+            Create Account
+          </button>
+          <button class="pin-welcome-btn pin-welcome-btn-secondary" id="btn-skip">
+            Skip for Now
+          </button>
+        </div>
+      </div>
+    `;
+
+    this.attachSignUpListeners();
+  },
+
+  attachSignUpListeners() {
+    const emailInput = document.getElementById('signup-email');
+    const passwordInput = document.getElementById('signup-password');
+    const signUpBtn = document.getElementById('btn-signup');
+    const skipBtn = document.getElementById('btn-skip');
+    const errorEl = document.getElementById('signup-error');
+
+    signUpBtn.addEventListener('click', async () => {
+      const email = emailInput.value.trim();
+      const password = passwordInput.value;
+
+      if (!email || !password) {
+        errorEl.textContent = 'Please enter email and password';
+        errorEl.classList.remove('hidden');
+        return;
+      }
+
+      if (password.length < 6) {
+        errorEl.textContent = 'Password must be at least 6 characters';
+        errorEl.classList.remove('hidden');
+        return;
+      }
+
+      signUpBtn.disabled = true;
+      signUpBtn.textContent = 'Creating account...';
+      errorEl.classList.add('hidden');
+
+      try {
+        // Initialize Sync if needed
+        if (typeof Sync !== 'undefined' && !Sync.supabase) {
+          await Sync.init();
+        }
+
+        // Sign up
+        await Sync.signUp(email, password);
+        console.log('[PIN] Signed up successfully');
+
+        // Upload salt to cloud (only if authenticated)
+        if (this.pendingSaltUpload && Sync.user && Sync.isAuthenticated()) {
+          console.log('[PIN] Uploading salt to cloud...');
+          try {
+            await Sync.saveSalt(this.pendingSaltUpload);
+            console.log('[PIN] Salt uploaded successfully');
+          } catch (saltError) {
+            console.warn('[PIN] Could not upload salt to cloud:', saltError.message);
+            // Salt stays local, will sync on next sign-in
+          }
+          this.pendingSaltUpload = null;
+        }
+
+        // Done - hide screen and start app
+        this.hideScreen();
+        await this.onUnlock();
+
+      } catch (error) {
+        console.error('[PIN] Sign up failed:', error);
+        errorEl.textContent = error.message || 'Sign up failed';
+        errorEl.classList.remove('hidden');
+        signUpBtn.disabled = false;
+        signUpBtn.textContent = 'Create Account';
+      }
+    });
+
+    skipBtn.addEventListener('click', () => {
+      // Skip sign-up, just use local storage
+      console.log('[PIN] Skipping sign up, using local only');
+      this.hideScreen();
+      this.onUnlock();
+    });
+
+    // Enter key submits
+    passwordInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') signUpBtn.click();
+    });
+  },
+
+  // ==================
+  // EXISTING USER PIN ENTRY (verify by decryption)
+  // ==================
+
+  showExistingUserPINScreen() {
+    const screen = document.getElementById('pin-screen');
+
+    screen.innerHTML = `
+      <div class="pin-container">
+        <div class="pin-header">
+          <span class="pin-brand">D I G I T A L</span>
+          <span class="pin-brand">T W I N</span>
+        </div>
+
+        <div class="pin-content">
+          <h2 class="pin-title">Welcome back</h2>
+          <p class="pin-subtitle">Enter your existing PIN</p>
+
+          <div class="pin-dots" id="pin-dots">
+            <span class="pin-dot"></span>
+            <span class="pin-dot"></span>
+            <span class="pin-dot"></span>
+            <span class="pin-dot"></span>
+            <span class="pin-dot"></span>
+            <span class="pin-dot"></span>
+          </div>
+
+          <p class="pin-error hidden" id="pin-error"></p>
+        </div>
+
+        ${this.renderNumpad()}
+
+        <p class="pin-hint">Same PIN you use on other devices</p>
+      </div>
+    `;
+
+    this.attachExistingUserPINListeners();
+  },
+
+  attachExistingUserPINListeners() {
+    let currentPIN = '';
+    const dots = document.querySelectorAll('.pin-dot');
+    const error = document.getElementById('pin-error');
+
+    document.querySelectorAll('.pin-key').forEach(key => {
+      key.addEventListener('click', async (e) => {
+        e.preventDefault();
+        if (this.isProcessing) return;
+
+        const value = key.dataset.key;
+
+        if (value === 'delete') {
+          currentPIN = currentPIN.slice(0, -1);
+        } else if (value && currentPIN.length < 6) {
+          currentPIN += value;
+          if (navigator.vibrate) navigator.vibrate(10);
+        }
+
+        dots.forEach((dot, i) => {
+          dot.classList.toggle('filled', i < currentPIN.length);
+        });
+
+        // Auto-submit when 6 digits
+        if (currentPIN.length === 6) {
+          error.classList.add('hidden');
+          this.isProcessing = true;
+          this.showLoading();
+
+          await new Promise(r => setTimeout(r, 50));
+
+          try {
+            const verified = await this.verifyPINByDecryption(currentPIN);
+            if (verified) {
+              // PIN is correct - save hash locally for future unlocks
+              const saltB64 = localStorage.getItem(this.SALT_KEY);
+              const hashB64 = await this.simpleHash(currentPIN + saltB64);
+              localStorage.setItem(this.HASH_KEY, hashB64);
+
+              this.isSetup = true;
+              this.isUnlocked = true;
+
+              // Force full sync
+              console.log('[PIN] Existing user verified - forcing full sync');
+              localStorage.removeItem('dt_last_sync');
+              await Sync.syncNow();
+
+              this.hideScreen();
+              this.onUnlock();
+            } else {
+              this.hideLoading();
+              this.showError('Incorrect PIN');
+              currentPIN = '';
+              dots.forEach(d => d.classList.remove('filled'));
+              document.getElementById('pin-dots').classList.add('shake');
+              setTimeout(() => {
+                document.getElementById('pin-dots').classList.remove('shake');
+              }, 500);
+            }
+          } catch (err) {
+            console.error('[PIN] Verify error:', err);
+            this.hideLoading();
+            this.showError('Verification failed');
+            currentPIN = '';
+            dots.forEach(d => d.classList.remove('filled'));
+          } finally {
+            this.isProcessing = false;
+          }
+        }
+      });
+    });
+  },
+
+  /**
+   * Verify PIN by trying to decrypt a note from cloud
+   * Returns true if PIN can decrypt cloud data
+   */
+  async verifyPINByDecryption(pin) {
+    const saltB64 = localStorage.getItem(this.SALT_KEY);
+    if (!saltB64) {
+      console.error('[PIN] No salt found');
+      return false;
+    }
+
+    // Derive key from PIN + salt
+    let testKey;
+    try {
+      testKey = await this.deriveKeySimple(pin, saltB64);
+    } catch (e) {
+      console.error('[PIN] Key derivation failed:', e);
+      return false;
+    }
+
+    // Fetch one note from cloud to test decryption
+    try {
+      const { data: notes, error } = await Sync.supabase
+        .from('notes')
+        .select('encrypted_data')
+        .eq('user_id', Sync.user.id)
+        .is('deleted_at', null)
+        .limit(1);
+
+      if (error) {
+        console.error('[PIN] Failed to fetch test note:', error);
+        return false;
+      }
+
+      if (!notes || notes.length === 0) {
+        // No notes to test - assume PIN is correct (new account with salt but no notes)
+        console.log('[PIN] No notes to verify against, assuming correct');
+        this.encryptionKey = testKey;
+        return true;
+      }
+
+      // Try to decrypt
+      const encryptedData = notes[0].encrypted_data;
+      const combined = Uint8Array.from(atob(encryptedData), c => c.charCodeAt(0));
+      const iv = combined.slice(0, 12);
+      const ciphertext = combined.slice(12);
+
+      await crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv },
+        testKey,
+        ciphertext
+      );
+
+      // If we get here, decryption succeeded - PIN is correct
+      console.log('[PIN] Decryption test passed - PIN verified');
+      this.encryptionKey = testKey;
+      return true;
+
+    } catch (e) {
+      console.error('[PIN] Decryption test failed:', e);
+      return false;
+    }
   },
 
   hideScreen() {
@@ -258,10 +925,23 @@ const PIN = {
                 console.log('[PIN] Confirm: savePIN done!');
                 this.isSetup = true;
                 this.isUnlocked = true;
-                this.hideScreen();
-                console.log('[PIN] Confirm: Screen hidden, calling onUnlock');
-                // Initialize app after PIN setup
-                this.onUnlock();
+
+                // New user flow: show sign-up after PIN creation
+                if (this.isNewUser && !Sync.isAuthenticated()) {
+                  console.log('[PIN] New user - showing sign up');
+                  this.showSignUpScreen();
+                } else {
+                  // Existing user flow: already signed in, just unlock
+                  // Force full sync for existing user on new device
+                  if (this.cloudSaltFetched && typeof Sync !== 'undefined' && Sync.user) {
+                    console.log('[PIN] Existing user - forcing full sync');
+                    localStorage.removeItem('dt_last_sync');
+                    await Sync.syncNow();
+                  }
+                  this.hideScreen();
+                  console.log('[PIN] Confirm: Screen hidden, calling onUnlock');
+                  this.onUnlock();
+                }
               } catch (err) {
                 console.error('[PIN] Confirm ERROR:', err);
               } finally {
@@ -280,20 +960,36 @@ const PIN = {
             try {
               const valid = await this.verifyPIN(currentPIN);
               if (valid) {
+                // Clear lockout on success
+                this.clearLockout();
                 this.isUnlocked = true;
                 this.hideScreen();
                 // Initialize app after unlock
                 this.onUnlock();
               } else {
                 this.hideLoading();
-                this.showError('Incorrect PIN');
-                currentPIN = '';
-                dots.forEach(d => d.classList.remove('filled'));
-                // Shake animation
-                document.getElementById('pin-dots').classList.add('shake');
-                setTimeout(() => {
-                  document.getElementById('pin-dots').classList.remove('shake');
-                }, 500);
+                // Track failed attempt
+                const attemptsRemaining = this.MAX_ATTEMPTS - this.getAttemptCount() - 1;
+                const isNowLocked = this.recordFailedAttempt();
+
+                if (isNowLocked) {
+                  // Show lockout screen
+                  this.showLockoutScreen();
+                } else {
+                  // Show error with remaining attempts
+                  if (attemptsRemaining <= 2 && attemptsRemaining > 0) {
+                    this.showError(`Incorrect PIN. ${attemptsRemaining} attempt${attemptsRemaining === 1 ? '' : 's'} remaining.`);
+                  } else {
+                    this.showError('Incorrect PIN');
+                  }
+                  currentPIN = '';
+                  dots.forEach(d => d.classList.remove('filled'));
+                  // Shake animation
+                  document.getElementById('pin-dots').classList.add('shake');
+                  setTimeout(() => {
+                    document.getElementById('pin-dots').classList.remove('shake');
+                  }, 500);
+                }
               }
             } finally {
               this.isProcessing = false;
@@ -628,24 +1324,36 @@ const PIN = {
     console.log('[PIN] savePIN starting...');
 
     try {
-      // Step 1: Generate salt
-      console.log('[PIN] Step 1: Generating salt...');
-      const saltArray = crypto.getRandomValues(new Uint8Array(16));
-      const saltB64 = btoa(String.fromCharCode(...saltArray));
+      let saltB64;
+
+      // Step 1: Check if salt already exists in localStorage (existing user flow)
+      const existingSalt = localStorage.getItem(this.SALT_KEY);
+      if (existingSalt && this.cloudSaltFetched) {
+        console.log('[PIN] Step 1: Using salt fetched from cloud');
+        saltB64 = existingSalt;
+      }
+
+      // Step 2: If no existing salt, generate new one (new user flow)
+      if (!saltB64) {
+        console.log('[PIN] Step 2: Generating new salt...');
+        const saltArray = crypto.getRandomValues(new Uint8Array(16));
+        saltB64 = btoa(String.fromCharCode(...saltArray));
+        this.pendingSaltUpload = saltB64; // Will upload after sign-up
+      }
       console.log('[PIN] Salt OK');
 
-      // Step 2: Hash PIN for verification (simple SHA-256, no PBKDF2)
-      console.log('[PIN] Step 2: Hashing PIN...');
+      // Step 3: Hash PIN for verification (simple SHA-256, no PBKDF2)
+      console.log('[PIN] Step 3: Hashing PIN...');
       const hashB64 = await this.simpleHash(pin + saltB64);
       console.log('[PIN] Hash OK');
 
-      // Step 3: Derive encryption key (simple method, iOS-safe)
-      console.log('[PIN] Step 3: Deriving key...');
+      // Step 4: Derive encryption key (simple method, iOS-safe)
+      console.log('[PIN] Step 4: Deriving key...');
       this.encryptionKey = await this.deriveKeySimple(pin, saltB64);
       console.log('[PIN] Key OK');
 
-      // Step 4: Save to localStorage
-      console.log('[PIN] Step 4: Saving to localStorage...');
+      // Step 5: Save to localStorage
+      console.log('[PIN] Step 5: Saving to localStorage...');
       localStorage.setItem(this.SALT_KEY, saltB64);
       localStorage.setItem(this.HASH_KEY, hashB64);
       console.log('[PIN] localStorage OK');
@@ -660,7 +1368,7 @@ const PIN = {
         const hashB64 = btoa(pin + saltB64); // Simple base64, no crypto
         localStorage.setItem(this.SALT_KEY, saltB64);
         localStorage.setItem(this.HASH_KEY, hashB64);
-        localStorage.setItem('dt_pin_fallback', 'true');
+        localStorage.setItem(this.FALLBACK_KEY, 'true');
         console.log('[PIN] Fallback saved OK');
       } catch (fallbackError) {
         console.error('[PIN] Fallback FAILED:', fallbackError);
@@ -675,7 +1383,7 @@ const PIN = {
     try {
       const saltB64 = localStorage.getItem(this.SALT_KEY);
       const storedHash = localStorage.getItem(this.HASH_KEY);
-      const isFallback = localStorage.getItem('dt_pin_fallback') === 'true';
+      const isFallback = localStorage.getItem(this.FALLBACK_KEY) === 'true';
 
       if (!saltB64 || !storedHash) {
         console.log('[PIN] No stored PIN found');
@@ -755,28 +1463,36 @@ const PIN = {
 
   async handleForgotPIN() {
     const confirmed = confirm(
-      'We\'ll send a recovery link to your email. Continue?'
+      'This will sign you out and clear local data. You can sign back in and create a new PIN. Continue?'
     );
 
-    if (confirmed) {
+    if (!confirmed) return;
+
+    console.log('[PIN] Forgot PIN - clearing all PIN data');
+
+    // Clear all PIN-related localStorage keys
+    Object.keys(localStorage)
+      .filter(k => k.includes('pin'))
+      .forEach(k => {
+        console.log('[PIN] Removing:', k);
+        localStorage.removeItem(k);
+      });
+
+    // Clear lockout data
+    localStorage.removeItem(this.LOCKOUT_KEY);
+    localStorage.removeItem(this.ATTEMPTS_KEY);
+
+    // Sign out if authenticated
+    if (typeof Sync !== 'undefined' && Sync.isAuthenticated()) {
       try {
-        await fetch('/api/recovery', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: this.RECOVERY_EMAIL,
-            action: 'forgot'
-          })
-        });
-        if (typeof UI !== 'undefined' && UI.showToast) {
-          UI.showToast('Recovery email sent');
-        }
-      } catch (error) {
-        if (typeof UI !== 'undefined' && UI.showToast) {
-          UI.showToast('Failed to send email');
-        }
+        await Sync.signOut();
+      } catch (e) {
+        console.warn('[PIN] Sign out error:', e);
       }
     }
+
+    // Reload to start fresh
+    location.reload();
   },
 
   // ==================

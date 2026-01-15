@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#000000">
-  <meta name="description" content="Digital Twin - AI-powered second brain for voice and text notes">
+  <meta name="description" content="roxthebox - AI-powered second brain for voice and text notes">
 
-  <title>Digital Twin</title>
+  <title>roxthebox</title>
 
   <!-- PWA Manifest -->
   <link rel="manifest" href="manifest.json">
@@ -21,7 +21,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
 
   <!-- Styles -->
-  <link rel="stylesheet" href="css/styles.css?v=212">
+  <link rel="stylesheet" href="css/styles.css?v=542">
 </head>
 <body>
   <!-- PIN Lock Screen (shown before app) -->
@@ -31,19 +31,32 @@
   <div id="app">
     <!-- Header -->
     <header class="header">
-      <h1 class="header-title">Digital Twin</h1>
+      <h1 class="header-title brand-logo">roxthebox</h1>
+      <div class="header-buttons">
+        <button class="header-lock-btn" id="header-lock-btn" onclick="UI.lockApp()" aria-label="Lock App" title="Lock App">
+          <span>🔒</span>
+        </button>
+        <button class="header-settings-btn" id="header-settings-btn" aria-label="Settings">
+          <span>⚙</span>
+        </button>
+      </div>
     </header>
 
     <!-- Main Content -->
     <main class="main">
-      <!-- Capture Screen -->
-      <section id="screen-capture" class="screen">
+      <!-- Capture Screen - Phase 4C: Now a sub-screen for image capture -->
+      <section id="screen-capture" class="screen hidden">
+        <!-- Back button to return to notes -->
+        <button id="capture-back-btn" class="capture-back-btn" aria-label="Back to notes">
+          <span>← Back</span>
+        </button>
         <!-- Capture Section (default view) -->
         <div id="capture-section">
           <!-- Voice button area -->
           <div class="capture-voice-area">
             <button id="voice-btn" class="voice-btn" aria-label="Start voice recording">
-              <span class="voice-icon">🎤</span>
+              <span class="voice-icon mic-icon">🎤</span>
+              <div class="stop-icon"></div>
             </button>
             <p class="voice-hint">Tap to speak</p>
             <p id="transcript-display" class="transcript-display"></p>
@@ -88,7 +101,8 @@
             </div>
             <div class="image-context-input-row">
               <button id="image-voice-btn" class="image-voice-btn" aria-label="Add context via voice">
-                <span>🎤</span>
+                <span class="mic-icon">🎤</span>
+                <div class="stop-icon"></div>
               </button>
               <textarea
                 id="image-context"
@@ -106,8 +120,32 @@
         </section>
       </section>
 
-      <!-- Notes Screen -->
-      <section id="screen-notes" class="screen hidden">
+      <!-- Notes Screen - Phase 4C: Now includes capture -->
+      <section id="screen-notes" class="screen">
+        <!-- Quick Capture Input (integrated into Notes) -->
+        <div class="notes-capture-area">
+          <div id="notes-image-preview" class="notes-image-preview"></div>
+          <div class="notes-capture-row">
+            <button id="notes-voice-btn" class="notes-voice-btn" aria-label="Voice input">
+              <span class="mic-icon">🎤</span>
+              <div class="stop-icon"></div>
+            </button>
+            <input
+              type="text"
+              id="notes-quick-input"
+              class="notes-quick-input"
+              placeholder="What's on your mind?"
+            >
+            <button id="notes-camera-btn" class="notes-camera-btn" aria-label="Add image">
+              <span>📷</span>
+            </button>
+            <button id="notes-submit-btn" class="notes-submit-btn" aria-label="Submit">
+              <span>→</span>
+            </button>
+          </div>
+          <p id="notes-transcript-display" class="notes-transcript-display"></p>
+        </div>
+
         <!-- Search Box -->
         <div class="notes-search">
           <input
@@ -123,7 +161,6 @@
           <button class="filter-tab active" data-category="all">All</button>
           <button class="filter-tab" data-category="work">💼 Work</button>
           <button class="filter-tab" data-category="personal">🏠 Personal</button>
-          <button class="filter-tab" data-category="health">💪 Health</button>
           <button class="filter-tab" data-category="ideas">💡 Ideas</button>
         </div>
 
@@ -134,7 +171,138 @@
 
         <!-- Empty State -->
         <div id="notes-empty" class="notes-empty hidden">
-          <p class="notes-empty-text">No notes yet. Tap Capture to add your first note.</p>
+          <p class="notes-empty-text">No notes yet. Start capturing your thoughts above.</p>
+        </div>
+      </section>
+
+      <!-- Twin Screen -->
+      <section id="screen-twin" class="screen hidden">
+        <div class="twin-header">
+          <h2 class="twin-title">the living script</h2>
+          <p class="twin-subtitle">a mirror in code</p>
+        </div>
+
+        <!-- Phase 8: About Me Section -->
+        <div class="about-me-section" id="about-me-section">
+          <h3>About You</h3>
+          <div class="about-me-content">
+            <div class="profile-field">
+              <label>Your Name</label>
+              <input type="text" id="profile-name" placeholder="What should I call you?">
+            </div>
+            <div class="profile-field">
+              <label>About You</label>
+              <textarea id="profile-about" placeholder="Tell me about yourself..."></textarea>
+            </div>
+            <div class="profile-field">
+              <label>Quick Descriptors</label>
+              <input type="text" id="profile-descriptors" placeholder="founder, dog owner, Singapore-based">
+              <small>Comma-separated traits</small>
+            </div>
+            <button id="save-profile" class="btn-primary">Save</button>
+          </div>
+        </div>
+
+        <!-- Phase 8: What I've Learned Section -->
+        <div class="learning-section-container" id="learning-section">
+          <!-- Populated by TwinUI.renderLearningSection() -->
+        </div>
+
+        <!-- 1. Thinking Through (Open Loops) -->
+        <div class="twin-open-decisions" id="twin-thinking-through-section">
+          <div class="twin-section-header">Thinking Through</div>
+          <div id="twin-thinking-through-list">
+            <p class="twin-empty">No open loops</p>
+          </div>
+        </div>
+
+        <!-- 2. Your Patterns (moved UP) -->
+        <div class="twin-section">
+          <h3 class="twin-section-title">Your Patterns</h3>
+          <div class="twin-section-content" id="twin-decision-patterns-list">
+            <p class="twin-empty">No patterns detected yet</p>
+          </div>
+        </div>
+
+        <!-- 3. This Week (moved DOWN) -->
+        <div class="twin-section" id="twin-this-week-section">
+          <h3 class="twin-section-title">This Week</h3>
+          <div class="twin-section-content" id="twin-this-week-list">
+            <p class="twin-empty">No activity yet</p>
+          </div>
+        </div>
+
+        <!-- Confidence Meter -->
+        <div class="twin-confidence">
+          <div class="twin-confidence-header">
+            <span class="twin-confidence-label">Twin Confidence</span>
+            <span class="twin-confidence-value" id="twin-confidence-value">0%</span>
+          </div>
+          <div class="twin-confidence-bar">
+            <div class="twin-confidence-fill" id="twin-confidence-fill" style="width: 0%"></div>
+          </div>
+          <p class="twin-confidence-hint" id="twin-confidence-hint">Add more notes to help your twin learn</p>
+        </div>
+
+        <!-- Stats Grid -->
+        <div class="twin-stats">
+          <div class="twin-stat">
+            <span class="twin-stat-value" id="twin-stat-notes">0</span>
+            <span class="twin-stat-label">Notes</span>
+          </div>
+          <div class="twin-stat">
+            <span class="twin-stat-value" id="twin-stat-decisions">0</span>
+            <span class="twin-stat-label">Decisions</span>
+          </div>
+          <div class="twin-stat">
+            <span class="twin-stat-value" id="twin-stat-patterns">0</span>
+            <span class="twin-stat-label">Patterns</span>
+          </div>
+          <div class="twin-stat">
+            <span class="twin-stat-value" id="twin-stat-feedback">0%</span>
+            <span class="twin-stat-label">Positive</span>
+          </div>
+        </div>
+
+        <!-- Quality Learning Stats -->
+        <div class="quality-section" id="quality-stats-section">
+          <div class="quality-card">
+            <div class="quality-header">
+              <span class="quality-title">Output Quality</span>
+              <span class="quality-trend" id="quality-trend">—</span>
+            </div>
+            <div class="quality-bar-container">
+              <div class="quality-bar" id="quality-bar" style="width: 0%"></div>
+            </div>
+            <div class="quality-stats-row">
+              <span id="quality-liked">0 liked</span>
+              <span id="quality-disliked">0 disliked</span>
+            </div>
+          </div>
+          <div class="quality-preferences" id="quality-preferences">
+            <!-- Filled by JS -->
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="twin-actions">
+          <button id="twin-rebuild-btn" class="twin-action-btn">
+            <span>Rebuild Profile</span>
+            <span class="twin-action-desc">Re-analyze all notes</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Actions Screen (Phase 4.1 - Simplified) -->
+      <section id="screen-actions" class="screen hidden">
+        <!-- Actions List - all content rendered by JS -->
+        <div class="actions-list" id="actions-list">
+          <!-- Populated by JS -->
+        </div>
+
+        <!-- Empty State -->
+        <div class="actions-empty hidden" id="actions-empty">
+          <!-- Populated by JS -->
         </div>
       </section>
 
@@ -154,6 +322,9 @@
             <button class="settings-btn settings-btn-outline" id="sign-in-btn">
               <span>Sign In</span>
             </button>
+            <p class="settings-auth-link">
+              Don't have an account? <button id="sign-up-link" class="settings-link-btn">Sign Up</button>
+            </p>
           </div>
         </div>
 
@@ -181,11 +352,11 @@
           </button>
         </div>
 
-        <div class="settings-section">
+        <div class="settings-section settings-danger-zone">
           <h2 class="settings-heading">Danger Zone</h2>
           <button id="clear-data-btn" class="settings-btn settings-btn-danger">
-            <span>Clear All Data</span>
-            <span class="settings-btn-desc">Delete all notes permanently</span>
+            <span>Delete All Data</span>
+            <span class="settings-btn-desc">Permanently deletes all notes, actions, and settings (including cloud)</span>
           </button>
           <button id="sign-out-btn" class="settings-btn settings-btn-danger hidden">
             <span>Sign Out</span>
@@ -194,7 +365,7 @@
         </div>
 
         <div class="settings-section settings-version">
-          <p class="settings-version-text">Digital Twin v<span id="app-version">2.1.2</span></p>
+          <p class="settings-version-text">roxthebox v<span id="app-version">5.3.0</span></p>
         </div>
       </section>
 
@@ -257,6 +428,77 @@
       </div>
     </div>
 
+    <!-- Auth Modal - Vogue Minimalist -->
+    <div id="auth-modal" class="auth-modal hidden">
+      <div class="auth-container">
+        <!-- Header -->
+        <div class="auth-header">
+          <span class="auth-brand brand-logo">roxthebox</span>
+        </div>
+
+        <!-- Close button -->
+        <button id="auth-close" class="auth-close" aria-label="Close">✕</button>
+
+        <!-- Sign In Form (default) -->
+        <div id="auth-signin" class="auth-form">
+          <div class="auth-content">
+            <h2 class="auth-title">Welcome Back</h2>
+            <p class="auth-subtitle">Sign in to sync your notes</p>
+          </div>
+
+          <div class="auth-fields">
+            <div class="auth-field">
+              <label class="auth-label" for="signin-email">Email</label>
+              <input type="email" id="signin-email" class="auth-input" placeholder="your@email.com" autocomplete="email">
+            </div>
+            <div class="auth-field">
+              <label class="auth-label" for="signin-password">Password</label>
+              <input type="password" id="signin-password" class="auth-input" placeholder="Enter password" autocomplete="current-password">
+            </div>
+          </div>
+
+          <p id="signin-error" class="auth-error hidden"></p>
+
+          <button id="signin-submit" class="auth-submit">Sign In</button>
+
+          <p class="auth-switch">
+            New here? <button id="show-signup" class="auth-switch-btn">Create account</button>
+          </p>
+        </div>
+
+        <!-- Sign Up Form -->
+        <div id="auth-signup" class="auth-form hidden">
+          <div class="auth-content">
+            <h2 class="auth-title">Create Account</h2>
+            <p class="auth-subtitle">Start syncing across devices</p>
+          </div>
+
+          <div class="auth-fields">
+            <div class="auth-field">
+              <label class="auth-label" for="signup-email">Email</label>
+              <input type="email" id="signup-email" class="auth-input" placeholder="your@email.com" autocomplete="email">
+            </div>
+            <div class="auth-field">
+              <label class="auth-label" for="signup-password">Password</label>
+              <input type="password" id="signup-password" class="auth-input" placeholder="Min 6 characters" autocomplete="new-password">
+            </div>
+            <div class="auth-field">
+              <label class="auth-label" for="signup-confirm">Confirm Password</label>
+              <input type="password" id="signup-confirm" class="auth-input" placeholder="Confirm password" autocomplete="new-password">
+            </div>
+          </div>
+
+          <p id="signup-error" class="auth-error hidden"></p>
+
+          <button id="signup-submit" class="auth-submit">Create Account</button>
+
+          <p class="auth-switch">
+            Have an account? <button id="show-signin" class="auth-switch-btn">Sign in</button>
+          </p>
+        </div>
+      </div>
+    </div>
+
     <!-- Digest Modal -->
     <div id="digest-modal" class="modal hidden">
       <div class="modal-content">
@@ -267,19 +509,16 @@
       </div>
     </div>
 
-    <!-- Bottom Navigation -->
-    <nav class="nav">
-      <button class="nav-tab active" data-screen="capture">
-        <span class="nav-icon">●</span>
-        <span class="nav-label">Capture</span>
+    <!-- Bottom Navigation - Phase 4C: 3 tabs only -->
+    <nav class="nav nav-three-tabs">
+      <button class="nav-tab active" data-screen="notes">
+        <span class="nav-label">NOTES</span>
       </button>
-      <button class="nav-tab" data-screen="notes">
-        <span class="nav-icon">☰</span>
-        <span class="nav-label">Notes</span>
+      <button class="nav-tab" data-screen="actions">
+        <span class="nav-label">ACTIONS</span>
       </button>
-      <button class="nav-tab" data-screen="settings">
-        <span class="nav-icon">⚙</span>
-        <span class="nav-label">Settings</span>
+      <button class="nav-tab" data-screen="twin">
+        <span class="nav-label">TWIN</span>
       </button>
     </nav>
   </div>
@@ -287,53 +526,143 @@
   <!-- Supabase Client -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-  <!-- Scripts (v2.1.2 cache bust) -->
-  <script src="js/db.js?v=212"></script>
-  <script src="js/classifier.js?v=212"></script>
-  <script src="js/extractor.js?v=212"></script>
-  <script src="js/refiner.js?v=212"></script>
-  <script src="js/app.js?v=212"></script>
-  <script src="js/ui.js?v=212"></script>
-  <script src="js/voice.js?v=212"></script>
-  <script src="js/camera.js?v=212"></script>
-  <script src="js/digest.js?v=212"></script>
-  <script src="js/pin.js?v=214"></script>
-  <script src="js/sync.js?v=212"></script>
+  <!-- Scripts (v3.3.0 cache bust) -->
+  <script src="js/db.js?v=510"></script>
+  <script src="js/classifier.js?v=510"></script>
+  <script src="js/extractor.js?v=510"></script>
+  <script src="js/refiner.js?v=510"></script>
+  <script src="js/app.js?v=510"></script>
+  <script src="js/ui.js?v=541"></script>
+  <script src="js/voice.js?v=510"></script>
+  <script src="js/camera.js?v=510"></script>
+  <script src="js/digest.js?v=510"></script>
+  <script src="js/pin.js?v=536"></script>
+  <script src="js/sync.js?v=536"></script>
+  <script src="js/entity-memory.js?v=540"></script>
+  <script src="js/user-profile.js?v=516"></script>
+  <script src="js/twin-profile.js?v=535"></script>
+  <script src="js/entity-extractor.js?v=524"></script>
+  <script src="js/belief-extractor.js?v=525"></script>
+  <script src="js/pattern-detector.js?v=510"></script>
+  <script src="js/twin-engine.js?v=524"></script>
+  <script src="js/twin-ui.js?v=516"></script>
+  <script src="js/quality-learning.js?v=510"></script>
+  <script src="js/analyzer.js?v=540"></script>
+  <script src="js/output-generator.js?v=510"></script>
+  <script src="js/feedback.js?v=510"></script>
+  <script src="js/decision-tracker.js?v=510"></script>
+  <script src="js/actions-ui.js?v=516"></script>
+  <script src="js/follow-up.js?v=510"></script>
+  <script src="js/nudge-tracker.js?v=510"></script>
+  <script src="js/onboarding.js?v=530"></script>
+  <script src="js/settings.js?v=530"></script>
   <script>
-    // Environment variables (injected by Vercel in production)
+    // Environment variables - loaded from API
     window.ENV = {
-      SUPABASE_URL: 'https://placeholder.supabase.co',
-      SUPABASE_ANON_KEY: 'placeholder-key'
+      SUPABASE_URL: '',
+      SUPABASE_ANON_KEY: ''
     };
 
-    // Register Service Worker
+    // SERVICE WORKER DISABLED - caching issues blocking beta
+    // Will re-enable after beta launch with proper caching strategy
+    // v5.2.0 - No caching, always fresh from server
+
+    // Unregister ALL existing service workers and clear caches
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js')
-          .then(registration => {
-            console.log('ServiceWorker registered:', registration.scope);
-          })
-          .catch(error => {
-            console.log('ServiceWorker registration failed:', error);
-          });
+      navigator.serviceWorker.getRegistrations().then(registrations => {
+        registrations.forEach(reg => {
+          reg.unregister();
+          console.log('[App] Unregistered service worker');
+        });
       });
     }
 
-    // Initialize app with PIN check first
-    document.addEventListener('DOMContentLoaded', async () => {
-      // Override PIN.onUnlock to initialize app modules after PIN entry
+    // Clear any existing caches
+    if ('caches' in window) {
+      caches.keys().then(names => {
+        names.forEach(name => {
+          caches.delete(name);
+          console.log('[App] Deleted cache:', name);
+        });
+      });
+    }
+
+    console.log('[App] Version: 5.2.0 (no SW)');
+
+    // Main initialization - runs immediately
+    (async function init() {
+      // STEP 1: Fetch environment FIRST (blocking)
+      console.log('Loading environment...');
+      try {
+        const response = await fetch('/api/env');
+        if (response.ok) {
+          const env = await response.json();
+          window.ENV.SUPABASE_URL = env.SUPABASE_URL || '';
+          window.ENV.SUPABASE_ANON_KEY = env.SUPABASE_ANON_KEY || '';
+          console.log('Environment loaded:', window.ENV.SUPABASE_URL ? 'Supabase configured' : 'Supabase not configured');
+        }
+      } catch (error) {
+        console.warn('Could not load environment:', error.message);
+      }
+
+      // STEP 2: Wait for DOM if not ready
+      if (document.readyState === 'loading') {
+        await new Promise(resolve => document.addEventListener('DOMContentLoaded', resolve));
+      }
+
+      // STEP 3: Initialize Sync FIRST to restore session (needed for user-specific PIN keys)
+      await Sync.init();
+      console.log('[Init] Sync initialized, user:', Sync.user?.email || 'none');
+
+      // STEP 4: Setup PIN unlock handler
       const originalOnUnlock = PIN.onUnlock;
       PIN.onUnlock = async function() {
+        console.log('[Init] onUnlock called, initializing App...');
         await App.init();
-        UI.init();
+        console.log('[Init] App.init complete, DB.notes count:', DB.notes?.length || 0);
+
+        // Check for onboarding (new users with no notes)
+        console.log('[Init] Checking onboarding, Sync.user:', Sync.user?.email || 'none');
+        if (typeof Onboarding !== 'undefined') {
+          const shouldShow = Onboarding.shouldShow();
+          console.log('[Init] Onboarding.shouldShow():', shouldShow);
+          if (shouldShow) {
+            console.log('[App] New user detected, starting onboarding');
+            Onboarding.start();
+          } else {
+            // Now UI can check auth state correctly
+            UI.init();
+          }
+        } else {
+          console.log('[Init] Onboarding module not found');
+          // Now UI can check auth state correctly
+          UI.init();
+        }
+
         Voice.init();
         Camera.init();
+        // Phase 8: Initialize UserProfile after sync (needs Supabase)
+        if (typeof UserProfile !== 'undefined') {
+          await UserProfile.init();
+        }
+        // Initialize Twin Engine
+        await TwinEngine.init();
+        TwinUI.init();
+        Feedback.init();
+        // Phase 4C: Initialize Actions UI
+        ActionsUI.init();
+        // Phase 8: Check for follow-ups after a delay (don't interrupt initial load)
+        setTimeout(async () => {
+          if (typeof FollowUp !== 'undefined') {
+            await FollowUp.checkPendingFollowUps();
+          }
+        }, 3000);
         originalOnUnlock.call(this);
       };
 
-      // PIN check before anything else
+      // STEP 5: Show PIN screen (now with user context from Sync)
       await PIN.init();
-    });
+    })();
   </script>
 </body>
 </html>
