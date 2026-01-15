@@ -4,7 +4,7 @@
 const REFINER_CONFIG = {
   // For local development, use localhost
   // For production, this will be your Vercel URL
-  apiEndpoint: 'http://localhost:3001/api/refine',
+  apiEndpoint: '/api/refine',
   timezone: 'Asia/Singapore'
 };
 
