@@ -618,8 +618,19 @@
       const originalOnUnlock = PIN.onUnlock;
       PIN.onUnlock = async function() {
         console.log('[Init] onUnlock called, initializing App...');
-        await App.init();
-        console.log('[Init] App.init complete, DB.notes count:', DB.notes?.length || 0);
+
+        // Wrap App.init in timeout to prevent hang
+        try {
+          const initPromise = App.init();
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('App.init timeout')), 5000)
+          );
+          await Promise.race([initPromise, timeoutPromise]);
+          console.log('[Init] App.init complete, DB.notes count:', DB.notes?.length || 0);
+        } catch (e) {
+          console.warn('[Init] App.init issue:', e.message);
+          // Continue anyway - DB might already be initialized
+        }
 
         // Check for onboarding (new users with no notes)
         console.log('[Init] Checking onboarding, Sync.user:', Sync.user?.email || 'none');
@@ -629,6 +640,7 @@
           if (shouldShow) {
             console.log('[App] New user detected, starting onboarding');
             Onboarding.start();
+            return; // Stop here, onboarding will handle the rest
           } else {
             // Now UI can check auth state correctly
             UI.init();
