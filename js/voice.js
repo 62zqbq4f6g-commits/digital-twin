@@ -88,12 +88,19 @@ const Voice = {
   setupEventListeners() {
     if (this.voiceBtn) {
       this.voiceBtn.addEventListener('click', () => {
-        if (this.isRecording) {
-          this.stopRecording();
-        } else {
-          this.startRecording();
-        }
+        this.toggle();
       });
+    }
+  },
+
+  /**
+   * Toggle recording state
+   */
+  toggle() {
+    if (this.isRecording) {
+      this.stopRecording();
+    } else {
+      this.startRecording();
     }
   },
 
@@ -115,27 +122,40 @@ const Voice = {
   },
 
   /**
-   * Stop voice recording
+   * Phase 4.7.1: Stop voice recording
+   * Can be called externally (e.g., from submit button)
    */
   stopRecording() {
-    if (!this.isRecording || !this.recognition) return;
+    if (!this.recognition) return;
 
+    // Always clear timer and stop recognition
     this.clearSilenceTimer();
-    this.recognition.stop();
+
+    if (this.isRecording) {
+      try {
+        this.recognition.stop();
+      } catch (e) {
+        console.warn('Recognition stop error:', e);
+      }
+    }
+
+    // Update state immediately (don't wait for onend event)
+    this.isRecording = false;
   },
 
   /**
-   * Called when recording starts
+   * Phase 4.7.1: Called when recording starts
    */
   onRecordingStart() {
     this.isRecording = true;
     this.setButtonState('recording');
-    this.updateHint('Listening...');
+    this.updateHint('Listening... tap mic or send when done');
     this.resetSilenceTimer();
   },
 
   /**
-   * Called when recording ends
+   * Phase 4.7: Called when recording ends
+   * Populates input field instead of auto-sending
    */
   onRecordingEnd() {
     this.isRecording = false;
@@ -143,19 +163,80 @@ const Voice = {
     this.setButtonState('idle');
     this.updateHint('Tap to speak');
 
-    // Transfer transcript to text input
-    if (this.transcript.trim() && this.textInput) {
-      this.textInput.value = this.transcript.trim();
-      // Trigger auto-expand
-      if (UI && UI.autoExpandTextarea) {
-        UI.autoExpandTextarea(this.textInput);
-      }
-      // Focus the text input
-      this.textInput.focus();
-    }
-
     // Clear transcript display
     this.updateTranscriptDisplay('');
+
+    // Phase 4.7: Stop ALL recording UI states
+    this.stopRecordingUI();
+
+    // Phase 4.7: Populate input field instead of auto-sending
+    if (this.transcript.trim()) {
+      this.populateInputWithTranscript(this.transcript.trim());
+    }
+  },
+
+  /**
+   * Phase 4.7: Stop all recording UI states
+   */
+  stopRecordingUI() {
+    // Remove recording class from all possible voice buttons
+    const voiceBtns = document.querySelectorAll(
+      '#notes-voice-btn, #voice-btn, .voice-btn, .notes-voice-btn, .mic-btn, [data-action="voice"]'
+    );
+
+    voiceBtns.forEach(btn => {
+      btn.classList.remove('recording', 'is-recording', 'active');
+      btn.setAttribute('aria-pressed', 'false');
+    });
+
+    // Stop any pulsing animation
+    const pulseEls = document.querySelectorAll('.recording-pulse, .mic-pulse');
+    pulseEls.forEach(el => el.remove());
+
+    // Reset any recording indicator
+    const indicators = document.querySelectorAll('.recording-indicator');
+    indicators.forEach(ind => ind.style.display = 'none');
+
+    console.log('Recording UI stopped');
+  },
+
+  /**
+   * Phase 4.7: Populate input field with transcript
+   * User can edit before sending
+   */
+  populateInputWithTranscript(transcript) {
+    const input = document.getElementById('notes-quick-input') || this.textInput;
+
+    if (input) {
+      input.value = transcript;
+      input.disabled = false;
+      input.focus();
+
+      // Move cursor to end
+      input.setSelectionRange(input.value.length, input.value.length);
+
+      console.log('Transcript populated in input:', transcript.substring(0, 50) + '...');
+    }
+
+    // Store voice data in case we need it when sending
+    window.pendingVoiceData = {
+      transcript: transcript,
+      type: 'voice',
+      timestamp: Date.now()
+    };
+
+    // Update hint
+    this.updateHint('Edit if needed, then tap send');
+  },
+
+  /**
+   * Legacy: Auto-process transcript (kept for backwards compatibility)
+   * @param {string} transcript - Transcribed text
+   * @deprecated Use populateInputWithTranscript instead
+   */
+  async autoProcessTranscript(transcript) {
+    // Now just populates input - use populateInputWithTranscript
+    this.populateInputWithTranscript(transcript);
   },
 
   /**

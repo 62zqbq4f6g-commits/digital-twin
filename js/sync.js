@@ -1,7 +1,54 @@
 /**
  * Digital Twin - Cloud Sync Module
  * Handles Supabase sync with end-to-end encryption
+ * Phase 5F: Added tombstone system to prevent deleted note resurrection
  */
+
+// ═══════════════════════════════════════════
+// TOMBSTONE SYSTEM - Prevents deleted notes from resurrecting
+// ═══════════════════════════════════════════
+const DELETED_NOTES_KEY = 'digital-twin-deleted-notes';
+
+/**
+ * Mark a note as deleted (tombstone)
+ */
+function markAsDeleted(noteId) {
+  const deleted = getDeletedNoteIds();
+  if (!deleted.includes(noteId)) {
+    deleted.push(noteId);
+    // Keep only last 500 tombstones to prevent unbounded growth
+    const trimmed = deleted.slice(-500);
+    localStorage.setItem(DELETED_NOTES_KEY, JSON.stringify(trimmed));
+    console.log('[Sync] Tombstone added:', noteId);
+  }
+}
+
+/**
+ * Get list of deleted note IDs
+ */
+function getDeletedNoteIds() {
+  try {
+    return JSON.parse(localStorage.getItem(DELETED_NOTES_KEY) || '[]');
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Check if a note was deleted
+ */
+function isDeleted(noteId) {
+  return getDeletedNoteIds().includes(noteId);
+}
+
+/**
+ * Clear tombstone after successful cloud deletion
+ */
+function clearDeletedMarker(noteId) {
+  const deleted = getDeletedNoteIds().filter(id => id !== noteId);
+  localStorage.setItem(DELETED_NOTES_KEY, JSON.stringify(deleted));
+  console.log('[Sync] Tombstone cleared:', noteId);
+}
 
 const Sync = {
   supabase: null,
@@ -9,6 +56,7 @@ const Sync = {
   syncInterval: null,
   lastSyncKey: 'dt_last_sync',
   isSyncing: false,
+  onSyncComplete: null,  // Callback for when sync completes
 
   /**
    * Initialize sync module
@@ -21,40 +69,97 @@ const Sync = {
     }
 
     // Check if we have valid environment config
-    if (!window.ENV || window.ENV.SUPABASE_URL === 'https://placeholder.supabase.co') {
+    if (!window.ENV || !window.ENV.SUPABASE_URL || window.ENV.SUPABASE_URL === 'https://placeholder.supabase.co') {
       console.warn('Supabase not configured - running in offline mode');
       return;
     }
 
     try {
+      // Create client with explicit persistence options
       this.supabase = window.supabase.createClient(
         window.ENV.SUPABASE_URL,
-        window.ENV.SUPABASE_ANON_KEY
+        window.ENV.SUPABASE_ANON_KEY,
+        {
+          auth: {
+            persistSession: true,
+            storageKey: 'digital-twin-auth',
+            autoRefreshToken: true,
+            detectSessionInUrl: true
+          }
+        }
       );
 
       // Check for existing session
-      const { data: { session } } = await this.supabase.auth.getSession();
+      const { data: { session }, error } = await this.supabase.auth.getSession();
 
       if (session) {
+        console.log('[Sync] Session restored from storage');
         this.user = session.user;
+
+        // CRITICAL: Verify user ownership - prevent data leakage between accounts
+        await this.verifyUserOwnership(session.user.id);
+
         this.startSync();
         this.updateSyncStatus('connected');
+        // Update UI to reflect authenticated state
+        this.updateAuthUI();
+      } else if (error) {
+        console.log('[Sync] Session error, attempting refresh:', error.message);
+        // Try to refresh the session
+        const { data: { session: refreshedSession } } = await this.supabase.auth.refreshSession();
+        if (refreshedSession) {
+          console.log('[Sync] Session refreshed successfully');
+          this.user = refreshedSession.user;
+
+          // CRITICAL: Verify user ownership
+          await this.verifyUserOwnership(refreshedSession.user.id);
+
+          this.startSync();
+          this.updateSyncStatus('connected');
+          this.updateAuthUI();
+        }
       }
 
       // Listen for auth changes
-      this.supabase.auth.onAuthStateChange((event, session) => {
+      this.supabase.auth.onAuthStateChange(async (event, session) => {
+        console.log('[Sync] Auth state changed:', event);
         if (event === 'SIGNED_IN') {
+          // CRITICAL: Verify user ownership before loading any data
+          await this.verifyUserOwnership(session.user.id);
+          this.user = session.user;
+
+          // Migrate legacy PIN to user-specific keys
+          if (typeof PIN !== 'undefined' && PIN.migratePINToUser) {
+            PIN.migratePINToUser(session.user.id);
+          }
+
+          this.startSync();
+          this.updateSyncStatus('connected');
+          this.updateAuthUI();
+        } else if (event === 'TOKEN_REFRESHED') {
+          // Token refresh - same user, just update session
           this.user = session.user;
           this.startSync();
           this.updateSyncStatus('connected');
+          this.updateAuthUI();
         } else if (event === 'SIGNED_OUT') {
           this.user = null;
           this.stopSync();
           this.updateSyncStatus('disconnected');
+          this.updateAuthUI();
         }
       });
     } catch (error) {
       console.error('Sync init error:', error);
+    }
+  },
+
+  /**
+   * Update auth UI after session changes
+   */
+  updateAuthUI() {
+    if (typeof UI !== 'undefined' && UI.updateAuthUI) {
+      UI.updateAuthUI();
     }
   },
 
@@ -70,6 +175,17 @@ const Sync = {
     });
 
     if (error) throw error;
+
+    // If user is immediately available (no email confirmation), migrate PIN
+    if (data.user) {
+      this.user = data.user;
+
+      // Migrate legacy PIN to user-specific keys
+      if (typeof PIN !== 'undefined' && PIN.migratePINToUser) {
+        PIN.migratePINToUser(data.user.id);
+      }
+    }
+
     return data;
   },
 
@@ -86,19 +202,159 @@ const Sync = {
 
     if (error) throw error;
     this.user = data.user;
+
+    // Migrate legacy PIN to user-specific keys
+    if (typeof PIN !== 'undefined' && PIN.migratePINToUser) {
+      PIN.migratePINToUser(data.user.id);
+    }
+
     this.startSync();
     return data;
   },
 
   /**
-   * Sign out
+   * Sign out - CRITICAL: Clear ALL local data to prevent data leakage
+   * BUT preserve user-specific PIN keys (so users can sign back in)
    */
   async signOut() {
     if (!this.supabase) return;
 
+    console.log('[Sync] Signing out - clearing ALL local data (preserving PIN keys)');
+
+    // Stop sync first
+    this.stopSync();
+
+    // Preserve PIN keys (they're user-specific and needed for re-login)
+    const pinKeys = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('dt_pin_')) {
+        pinKeys.push({ key, value: localStorage.getItem(key) });
+      }
+    }
+
+    // Clear ALL localStorage
+    const keyCount = localStorage.length;
+    localStorage.clear();
+    console.log('[Sync] Cleared ALL localStorage:', keyCount, 'keys removed');
+
+    // Restore PIN keys
+    pinKeys.forEach(({ key, value }) => {
+      localStorage.setItem(key, value);
+    });
+    console.log('[Sync] Restored', pinKeys.length, 'PIN keys');
+
+    // Clear IndexedDB (notes database)
+    try {
+      const databases = ['digital-twin', 'digital-twin-db', 'dt-db', 'notes-db'];
+      for (const dbName of databases) {
+        const deleteRequest = indexedDB.deleteDatabase(dbName);
+        deleteRequest.onsuccess = () => console.log('[Sync] Deleted IndexedDB:', dbName);
+        deleteRequest.onerror = () => console.warn('[Sync] Failed to delete IndexedDB:', dbName);
+      }
+    } catch (e) {
+      console.warn('[Sync] IndexedDB cleanup error:', e);
+    }
+
+    // Clear any caches
+    if ('caches' in window) {
+      try {
+        const cacheNames = await caches.keys();
+        await Promise.all(cacheNames.map(name => caches.delete(name)));
+        console.log('[Sync] Cleared all caches');
+      } catch (e) {
+        console.warn('[Sync] Cache cleanup error:', e);
+      }
+    }
+
+    // Sign out from Supabase
     await this.supabase.auth.signOut();
     this.user = null;
-    this.stopSync();
+
+    console.log('[Sync] Sign out complete - all local data cleared');
+  },
+
+  /**
+   * CRITICAL: Verify user ownership - prevent data leakage between accounts
+   * Clears local data if a different user is signing in
+   * @param {string} currentUserId - The user ID to verify
+   */
+  async verifyUserOwnership(currentUserId) {
+    const storedUserId = localStorage.getItem('user_id');
+
+    console.log('[Sync] Verifying user ownership:', { stored: storedUserId, current: currentUserId });
+
+    if (storedUserId && storedUserId !== currentUserId) {
+      console.log('[Sync] USER CHANGED - clearing all local data to prevent data leakage');
+
+      // Preserve PIN keys (they're user-specific and needed for re-login)
+      const pinKeys = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('dt_pin_')) {
+          pinKeys.push({ key, value: localStorage.getItem(key) });
+        }
+      }
+
+      // CRITICAL: Clear ALL localStorage including Supabase tokens
+      // The current session is already in memory, so we can safely clear everything
+      const keyCount = localStorage.length;
+      localStorage.clear();
+      console.log('[Sync] Cleared ALL localStorage:', keyCount, 'keys removed');
+
+      // Restore PIN keys
+      pinKeys.forEach(({ key, value }) => {
+        localStorage.setItem(key, value);
+      });
+      console.log('[Sync] Restored', pinKeys.length, 'PIN keys');
+
+      // Clear IndexedDB (notes database)
+      try {
+        const databases = ['digital-twin', 'digital-twin-db', 'dt-db', 'notes-db'];
+        for (const dbName of databases) {
+          await new Promise((resolve, reject) => {
+            const deleteRequest = indexedDB.deleteDatabase(dbName);
+            deleteRequest.onsuccess = () => {
+              console.log('[Sync] Deleted IndexedDB:', dbName);
+              resolve();
+            };
+            deleteRequest.onerror = () => {
+              console.warn('[Sync] Failed to delete IndexedDB:', dbName);
+              resolve(); // Continue even on error
+            };
+            deleteRequest.onblocked = () => {
+              console.warn('[Sync] IndexedDB deletion blocked:', dbName);
+              resolve();
+            };
+          });
+        }
+      } catch (e) {
+        console.warn('[Sync] IndexedDB cleanup error:', e);
+      }
+
+      // Clear any caches
+      if ('caches' in window) {
+        try {
+          const cacheNames = await caches.keys();
+          await Promise.all(cacheNames.map(name => caches.delete(name)));
+          console.log('[Sync] Cleared all caches');
+        } catch (e) {
+          console.warn('[Sync] Cache cleanup error:', e);
+        }
+      }
+
+      // Reset DB module to reinitialize with empty database
+      if (typeof DB !== 'undefined' && DB.initDB) {
+        await DB.initDB();
+        console.log('[Sync] Reinitialized DB module');
+      }
+
+      console.log('[Sync] Local data cleared for new user');
+    }
+
+    // Store current user ID for future verification
+    localStorage.setItem('user_id', currentUserId);
+    console.log('[Sync] User ownership verified, ID stored');
   },
 
   /**
@@ -159,15 +415,68 @@ const Sync = {
       // 2. Pull remote changes
       await this.pullChanges();
 
+      // 3. Sync TwinProfile (patterns, etc.)
+      await this.syncTwinProfile();
+
       // Update last sync time
       localStorage.setItem(this.lastSyncKey, new Date().toISOString());
       this.updateSyncStatus('connected');
       console.log('Sync complete');
+
+      // Fire sync complete callback if registered
+      if (this.onSyncComplete && typeof this.onSyncComplete === 'function') {
+        try {
+          this.onSyncComplete();
+        } catch (e) {
+          console.warn('[Sync] onSyncComplete callback error:', e);
+        }
+      }
     } catch (error) {
       console.error('Sync error:', error);
       this.updateSyncStatus('error');
     } finally {
       this.isSyncing = false;
+    }
+  },
+
+  /**
+   * Sync TwinProfile between local and cloud
+   */
+  async syncTwinProfile() {
+    if (typeof TwinProfile === 'undefined') return;
+
+    try {
+      const localProfile = await TwinProfile.load();
+      const hasLocalPatterns = Array.isArray(localProfile?.patterns) && localProfile.patterns.length > 0;
+
+      // Try to load from cloud
+      const cloudProfile = await TwinProfile.loadFromCloud();
+
+      if (cloudProfile) {
+        const hasCloudPatterns = Array.isArray(cloudProfile.patterns) && cloudProfile.patterns.length > 0;
+        const cloudUpdated = cloudProfile.meta?.lastUpdated || cloudProfile.patternsDetectedAt;
+        const localUpdated = localProfile?.meta?.lastUpdated || localProfile?.patternsDetectedAt;
+
+        // If cloud has patterns and local doesn't, or cloud is newer
+        if ((hasCloudPatterns && !hasLocalPatterns) ||
+            (cloudUpdated && localUpdated && new Date(cloudUpdated) > new Date(localUpdated))) {
+          // Merge cloud data into local
+          if (hasCloudPatterns) {
+            localProfile.patterns = cloudProfile.patterns;
+            localProfile.patternsConfidence = cloudProfile.patternsConfidence;
+            localProfile.patternsDetectedAt = cloudProfile.patternsDetectedAt;
+            localProfile.patternsSuggestion = cloudProfile.patternsSuggestion;
+          }
+          await TwinProfile.save(localProfile);
+          console.log('[Sync] TwinProfile restored from cloud');
+        }
+      } else if (hasLocalPatterns) {
+        // Push local to cloud if cloud is empty
+        await TwinProfile.syncToCloud();
+        console.log('[Sync] TwinProfile pushed to cloud');
+      }
+    } catch (error) {
+      console.warn('[Sync] TwinProfile sync error:', error);
     }
   },
 
@@ -181,6 +490,8 @@ const Sync = {
     for (const note of localNotes) {
       // Check if needs sync (not yet synced or has local changes)
       if (note._syncStatus === 'synced' && !note._localChanges) continue;
+
+      console.log('[Sync] Pushing note:', note.id, 'questionAnswer:', !!note.questionAnswer, 'feedback.rating:', note.feedback?.rating, 'feedback.comment:', !!note.feedback?.comment);
 
       try {
         // Encrypt note before upload
@@ -200,7 +511,7 @@ const Sync = {
           // Mark as synced locally
           note._syncStatus = 'synced';
           note._localChanges = false;
-          await DB.saveNote(note);
+          await DB.saveNote(note, { fromSync: true });
         }
       } catch (error) {
         console.error('Push error for note:', note.id, error);
@@ -210,10 +521,17 @@ const Sync = {
 
   /**
    * Pull remote changes
+   * Phase 5F: Filter out tombstoned notes to prevent resurrection
    */
   async pullChanges() {
     // Get last sync timestamp
-    const lastSync = localStorage.getItem(this.lastSyncKey) || '1970-01-01T00:00:00Z';
+    let lastSync = localStorage.getItem(this.lastSyncKey) || '1970-01-01T00:00:00Z';
+
+    // New device check: if no local notes, pull everything from cloud
+    const localNotes = await DB.getAllNotes();
+    if (localNotes.length === 0) {
+      lastSync = '1970-01-01T00:00:00Z';
+    }
 
     // Fetch updated notes from cloud
     const { data: remoteNotes, error } = await this.supabase
@@ -225,7 +543,27 @@ const Sync = {
 
     if (error) throw error;
 
+    // Get tombstoned note IDs
+    const deletedIds = getDeletedNoteIds();
+
     for (const remoteNote of remoteNotes || []) {
+      // Phase 5F: Skip notes that were deleted locally (tombstoned)
+      if (deletedIds.includes(remoteNote.id)) {
+        console.log('[Sync] Skipping tombstoned note:', remoteNote.id);
+        // Also try to delete from cloud (cleanup orphaned cloud notes)
+        try {
+          await this.supabase
+            .from('notes')
+            .update({ deleted_at: new Date().toISOString() })
+            .eq('id', remoteNote.id);
+          // Clear tombstone after successful cloud cleanup
+          clearDeletedMarker(remoteNote.id);
+        } catch (err) {
+          console.warn('[Sync] Failed to cleanup cloud note:', remoteNote.id, err);
+        }
+        continue;
+      }
+
       try {
         // Decrypt
         const decrypted = await PIN.decrypt(remoteNote.encrypted_data);
@@ -237,12 +575,14 @@ const Sync = {
 
         if (!localNote) {
           // New note from cloud
-          await DB.saveNote(decrypted);
+          await DB.saveNote(decrypted, { fromSync: true });
+          console.log('[Sync] Pulled new note from cloud:', decrypted.id, 'questionAnswer:', !!decrypted.questionAnswer, 'feedback.rating:', decrypted.feedback?.rating);
         } else {
           // Check if remote is newer
           const localUpdated = localNote.timestamps?.updated_at || localNote.timestamps?.created_at;
           if (new Date(remoteNote.updated_at) > new Date(localUpdated)) {
-            await DB.saveNote(decrypted);
+            await DB.saveNote(decrypted, { fromSync: true });
+            console.log('[Sync] Updated note from cloud:', decrypted.id, 'questionAnswer:', !!decrypted.questionAnswer, 'feedback.rating:', decrypted.feedback?.rating);
           }
         }
       } catch (error) {
@@ -251,24 +591,102 @@ const Sync = {
     }
   },
 
+  // ==================
+  // SALT SYNC (for cross-device encryption)
+  // ==================
+
   /**
-   * Delete note from cloud
+   * Save encryption salt to cloud
+   * Called when user creates PIN on first device
+   */
+  async saveSalt(salt) {
+    if (!this.user || !this.supabase) return;
+
+    try {
+      const { error } = await this.supabase
+        .from('user_salts')
+        .upsert({
+          user_id: this.user.id,
+          encryption_salt: salt,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'user_id' });
+
+      if (error) {
+        console.error('Failed to save salt to cloud:', error);
+      } else {
+        console.log('[Sync] Salt saved to cloud');
+      }
+    } catch (error) {
+      console.error('saveSalt error:', error);
+    }
+  },
+
+  /**
+   * Fetch encryption salt from cloud
+   * Called when user creates PIN on new device (after signing in)
+   */
+  async fetchSalt() {
+    if (!this.user || !this.supabase) return null;
+
+    try {
+      const { data, error } = await this.supabase
+        .from('user_salts')
+        .select('encryption_salt')
+        .eq('user_id', this.user.id)
+        .maybeSingle();
+
+      if (error || !data) {
+        console.log('[Sync] No salt found in cloud');
+        return null;
+      }
+
+      console.log('[Sync] Salt fetched from cloud');
+      return data.encryption_salt;
+    } catch (error) {
+      console.error('fetchSalt error:', error);
+      return null;
+    }
+  },
+
+  /**
+   * Delete note from cloud with tombstone tracking
+   * Phase 5F: Prevents deleted notes from resurrecting during sync
    */
   async deleteNote(noteId) {
-    // Soft delete in cloud
+    console.log('[Sync] Deleting note:', noteId);
+
+    // STEP 1: Mark as deleted FIRST (tombstone prevents resurrection)
+    markAsDeleted(noteId);
+
+    // STEP 2: Delete from cloud (soft delete)
     if (this.user && this.supabase) {
       try {
-        await this.supabase
+        const { error } = await this.supabase
           .from('notes')
           .update({ deleted_at: new Date().toISOString() })
           .eq('id', noteId);
+
+        if (error) {
+          console.error('[Sync] Cloud delete error:', error);
+          // Tombstone remains, so note won't resurrect even if cloud delete fails
+        } else {
+          console.log('[Sync] Cloud delete successful:', noteId);
+          // Clear tombstone after successful cloud delete
+          clearDeletedMarker(noteId);
+        }
       } catch (error) {
-        console.error('Cloud delete error:', error);
+        console.error('[Sync] Cloud delete exception:', error);
+        // Tombstone remains
       }
     }
 
-    // Delete locally
-    await DB.deleteNote(noteId);
+    // STEP 3: Delete locally
+    try {
+      await DB.deleteNote(noteId);
+      console.log('[Sync] Local delete successful:', noteId);
+    } catch (error) {
+      console.error('[Sync] Local delete error:', error);
+    }
   },
 
   /**

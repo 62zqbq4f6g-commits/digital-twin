@@ -26,8 +26,21 @@ const Camera = {
     const removeBtn = document.getElementById('remove-image');
     const processBtn = document.getElementById('process-image-btn');
 
-    imageBtn?.addEventListener('click', () => imageInput?.click());
-    imageInput?.addEventListener('change', (e) => this.handleImageSelect(e));
+    console.log('[Camera] Setting up listeners:', {
+      imageBtn: !!imageBtn,
+      imageInput: !!imageInput,
+      removeBtn: !!removeBtn,
+      processBtn: !!processBtn
+    });
+
+    imageBtn?.addEventListener('click', () => {
+      console.log('[Camera] Image button clicked');
+      imageInput?.click();
+    });
+    imageInput?.addEventListener('change', (e) => {
+      console.log('[Camera] Image selected:', e.target.files?.length);
+      this.handleImageSelect(e);
+    });
     removeBtn?.addEventListener('click', () => this.clearImage());
     processBtn?.addEventListener('click', () => this.processImage());
   },
@@ -170,10 +183,53 @@ const Camera = {
   },
 
   /**
+   * Compress an image file to reduce size for API upload
+   * @param {File} file - Original image file
+   * @param {number} maxSize - Max width/height in pixels (default 1024)
+   * @param {number} quality - JPEG quality 0-1 (default 0.8)
+   * @returns {Promise<Blob>} Compressed image blob
+   */
+  compressImage(file, maxSize = 1024, quality = 0.8) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        // Calculate new dimensions maintaining aspect ratio
+        if (width > height && width > maxSize) {
+          height = (height * maxSize) / width;
+          width = maxSize;
+        } else if (height > maxSize) {
+          width = (width * maxSize) / height;
+          height = maxSize;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        canvas.toBlob((blob) => {
+          if (blob) {
+            console.log('[Camera] Compressed:', Math.round(file.size / 1024), 'KB →', Math.round(blob.size / 1024), 'KB');
+            resolve(blob);
+          } else {
+            reject(new Error('Canvas toBlob failed'));
+          }
+        }, 'image/jpeg', quality);
+      };
+      img.onerror = () => reject(new Error('Failed to load image'));
+      img.src = URL.createObjectURL(file);
+    });
+  },
+
+  /**
    * Handle image file selection
    * @param {Event} event - File input change event
    */
-  handleImageSelect(event) {
+  async handleImageSelect(event) {
     const file = event.target.files[0];
     if (!file) return;
 
@@ -183,23 +239,32 @@ const Camera = {
       return;
     }
 
-    // Validate file size (max 5MB for API)
-    if (file.size > 5 * 1024 * 1024) {
-      UI.showToast('Image too large. Max 5MB.');
-      return;
-    }
+    console.log('[Camera] Original file size:', Math.round(file.size / 1024), 'KB');
 
-    // Convert to base64
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      this.currentImage = {
-        base64: e.target.result,
-        type: file.type,
-        name: file.name
+    try {
+      // Compress large images (>300KB or from camera which are typically large)
+      let imageToProcess = file;
+      if (file.size > 300 * 1024) {
+        UI.showToast('Compressing image...');
+        imageToProcess = await this.compressImage(file, 1024, 0.7);
+      }
+
+      // Convert to base64
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        this.currentImage = {
+          base64: e.target.result,
+          type: 'image/jpeg', // After compression, always JPEG
+          name: file.name
+        };
+        this.showPreview();
       };
-      this.showPreview();
-    };
-    reader.readAsDataURL(file);
+      reader.readAsDataURL(imageToProcess);
+
+    } catch (error) {
+      console.error('[Camera] Compression error:', error);
+      UI.showToast('Failed to process image');
+    }
   },
 
   /**
@@ -250,7 +315,12 @@ const Camera = {
    * Process image through Vision API
    */
   async processImage() {
-    if (!this.currentImage) return;
+    console.log('[Camera] Processing image, currentImage:', !!this.currentImage);
+    if (!this.currentImage) {
+      console.error('[Camera] No image to process');
+      UI.showToast('No image selected');
+      return;
+    }
 
     const contextInput = document.getElementById('image-context');
     const context = contextInput?.value || '';
@@ -258,6 +328,7 @@ const Camera = {
     UI.showProcessing('Analyzing image...');
 
     try {
+      console.log('[Camera] Calling Vision API...');
       const response = await fetch('/api/vision', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -267,15 +338,51 @@ const Camera = {
         })
       });
 
+      console.log('[Camera] Vision API response status:', response.status);
+
       if (!response.ok) {
-        throw new Error('Vision API failed');
+        const errorData = await response.json().catch(() => ({}));
+        console.error('[Camera] Vision API error:', errorData);
+        const errorMsg = errorData.details || errorData.error || 'Unknown error';
+        UI.hideProcessing();
+        UI.showToast(`API Error: ${errorMsg.substring(0, 50)}`);
+        return;
       }
 
       const result = await response.json();
+      console.log('[Camera] Vision result:', result);
+
+      // Check if result has an error property
+      if (result.error) {
+        console.error('[Camera] Vision API returned error:', result);
+        UI.hideProcessing();
+        UI.showToast(`Error: ${result.error}`);
+        return;
+      }
 
       // Create and save note
       const note = this.createImageNote(result);
       await DB.saveNote(note);
+
+      // Store entities from vision (with relationship_to_user)
+      if (result.entities && result.entities.length > 0 && typeof EntityMemory !== 'undefined') {
+        console.log('[Camera] Storing entities from vision:', result.entities);
+        for (const entity of result.entities) {
+          try {
+            const visualDesc = result.description || 'From photo';
+            await EntityMemory.storeEntityWithVisual(
+              {
+                name: entity.name,
+                type: entity.type,
+                relationship_to_user: entity.relationship_to_user
+              },
+              visualDesc
+            );
+          } catch (err) {
+            console.warn('[Camera] Entity storage failed:', err.message);
+          }
+        }
+      }
 
       UI.hideProcessing();
       UI.showToast('Image processed!');
@@ -285,7 +392,7 @@ const Camera = {
       UI.openNoteDetail(note.id);
 
     } catch (error) {
-      console.error('Vision processing error:', error);
+      console.error('[Camera] Vision processing error:', error);
       UI.hideProcessing();
       UI.showToast('Failed to process image');
     }
@@ -299,9 +406,18 @@ const Camera = {
   createImageNote(visionResult) {
     const now = new Date();
 
+    // Get original context and cleaned version
+    const originalContext = visionResult.original_context || '';
+    const cleanedContext = visionResult.cleaned_context || originalContext;
+    const ocrText = visionResult.extracted_text || '';
+
+    // Combine context and OCR text for raw_text
+    const rawText = originalContext || ocrText;
+
     return {
       id: DB.generateId(),
       version: '1.0',
+      imageData: this.currentImage.base64, // Store compressed image for display
       timestamps: {
         created_at: now.toISOString(),
         input_date: now.toISOString().split('T')[0],
@@ -311,9 +427,9 @@ const Camera = {
       },
       input: {
         type: 'image',
-        raw_text: visionResult.extracted_text || '',
+        raw_text: rawText,
         image_description: visionResult.description,
-        image_thumbnail: this.currentImage.base64
+        extracted_text: ocrText
       },
       classification: {
         category: visionResult.category || 'personal',
@@ -330,6 +446,14 @@ const Camera = {
       refined: {
         summary: visionResult.summary || visionResult.description,
         formatted_output: visionResult.formatted_output || `# ${visionResult.title}\n\n${visionResult.description}`
+      },
+      // Add analysis section so Phase3a format renders with ORIGINAL section
+      analysis: {
+        cleanedInput: cleanedContext || null,
+        summary: visionResult.summary || visionResult.description,
+        title: visionResult.title || 'Image Capture',
+        actions: visionResult.action_items || [],
+        category: visionResult.category || 'personal'
       }
     };
   }

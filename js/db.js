@@ -4,8 +4,10 @@
  */
 
 const DB_NAME = 'digital-twin';
-const DB_VERSION = 1;
+const DB_VERSION = 3;
 const STORE_NAME = 'notes';
+const TWIN_STORE_NAME = 'twin_profile';
+const QUALITY_STORE_NAME = 'quality_learning';
 
 let db = null;
 
@@ -45,14 +47,26 @@ function initDB() {
 
     request.onupgradeneeded = (event) => {
       const database = event.target.result;
+      const oldVersion = event.oldVersion;
 
-      // Create object store with keyPath 'id'
-      const store = database.createObjectStore(STORE_NAME, { keyPath: 'id' });
+      // Version 1: Create notes store
+      if (oldVersion < 1) {
+        const store = database.createObjectStore(STORE_NAME, { keyPath: 'id' });
+        store.createIndex('by_date', 'timestamps.input_date', { unique: false });
+        store.createIndex('by_category', 'classification.category', { unique: false });
+        store.createIndex('by_created', 'timestamps.created_at', { unique: false });
+      }
 
-      // Create indexes
-      store.createIndex('by_date', 'timestamps.input_date', { unique: false });
-      store.createIndex('by_category', 'classification.category', { unique: false });
-      store.createIndex('by_created', 'timestamps.created_at', { unique: false });
+      // Version 2: Create twin_profile store
+      if (oldVersion < 2) {
+        const twinStore = database.createObjectStore(TWIN_STORE_NAME, { keyPath: 'id' });
+        twinStore.createIndex('by_updated', 'meta.lastUpdated', { unique: false });
+      }
+
+      // Version 3: Create quality_learning store
+      if (oldVersion < 3) {
+        database.createObjectStore(QUALITY_STORE_NAME, { keyPath: 'id' });
+      }
     };
   });
 }
@@ -61,9 +75,11 @@ function initDB() {
  * Save a note to the database
  * Auto-generates ID if missing, adds timestamps.created_at if missing
  * @param {Object} note - Note object
+ * @param {Object} options - Save options
+ * @param {boolean} options.fromSync - If true, preserve sync status (called by sync module)
  * @returns {Promise<Object>} Saved note with ID
  */
-function saveNote(note) {
+function saveNote(note, options = {}) {
   return new Promise((resolve, reject) => {
     initDB().then((database) => {
       const transaction = database.transaction([STORE_NAME], 'readwrite');
@@ -84,8 +100,10 @@ function saveNote(note) {
       // Always update timestamps.updated_at for sync tracking
       note.timestamps.updated_at = new Date().toISOString();
 
-      // Mark as pending sync if not already synced (for cloud sync)
-      if (note._syncStatus !== 'synced') {
+      // Mark as having local changes for cloud sync
+      // If called from sync module (fromSync=true), preserve the sync status
+      // Otherwise, mark as pending to trigger re-sync
+      if (!options.fromSync) {
         note._syncStatus = 'pending';
         note._localChanges = true;
       }
@@ -275,6 +293,129 @@ function getNotesByDateRange(startDate, endDate) {
   });
 }
 
+/**
+ * Save twin profile to database
+ * @param {Object} profile - Twin profile object
+ * @returns {Promise<Object>} Saved profile
+ */
+function saveTwinProfile(profile) {
+  return new Promise((resolve, reject) => {
+    initDB().then((database) => {
+      const transaction = database.transaction([TWIN_STORE_NAME], 'readwrite');
+      const store = transaction.objectStore(TWIN_STORE_NAME);
+
+      // Ensure profile has an ID
+      if (!profile.id) {
+        profile.id = 'default';
+      }
+
+      const request = store.put(profile);
+
+      request.onsuccess = () => {
+        resolve(profile);
+      };
+
+      request.onerror = () => {
+        reject(new Error('Failed to save twin profile'));
+      };
+    }).catch(reject);
+  });
+}
+
+/**
+ * Load twin profile from database
+ * @param {string} id - Profile ID (default: 'default')
+ * @returns {Promise<Object|null>} Profile object or null
+ */
+function loadTwinProfile(id = 'default') {
+  return new Promise((resolve, reject) => {
+    initDB().then((database) => {
+      const transaction = database.transaction([TWIN_STORE_NAME], 'readonly');
+      const store = transaction.objectStore(TWIN_STORE_NAME);
+      const request = store.get(id);
+
+      request.onsuccess = () => {
+        resolve(request.result || null);
+      };
+
+      request.onerror = () => {
+        reject(new Error('Failed to load twin profile'));
+      };
+    }).catch(reject);
+  });
+}
+
+/**
+ * Delete twin profile from database
+ * @param {string} id - Profile ID (default: 'default')
+ * @returns {Promise<void>}
+ */
+function deleteTwinProfile(id = 'default') {
+  return new Promise((resolve, reject) => {
+    initDB().then((database) => {
+      const transaction = database.transaction([TWIN_STORE_NAME], 'readwrite');
+      const store = transaction.objectStore(TWIN_STORE_NAME);
+      const request = store.delete(id);
+
+      request.onsuccess = () => {
+        resolve();
+      };
+
+      request.onerror = () => {
+        reject(new Error('Failed to delete twin profile'));
+      };
+    }).catch(reject);
+  });
+}
+
+/**
+ * Generic get from any store
+ * @param {string} storeName - Store name
+ * @param {string} id - Object ID
+ * @returns {Promise<Object|null>}
+ */
+function get(storeName, id) {
+  return new Promise((resolve, reject) => {
+    initDB().then((database) => {
+      const transaction = database.transaction([storeName], 'readonly');
+      const store = transaction.objectStore(storeName);
+      const request = store.get(id);
+
+      request.onsuccess = () => {
+        resolve(request.result || null);
+      };
+
+      request.onerror = () => {
+        reject(new Error(`Failed to get from ${storeName}`));
+      };
+    }).catch(reject);
+  });
+}
+
+/**
+ * Generic save to any store
+ * @param {string} storeName - Store name
+ * @param {Object} object - Object to save (must have id field)
+ * @returns {Promise<Object>}
+ */
+function save(storeName, object) {
+  return new Promise((resolve, reject) => {
+    initDB().then((database) => {
+      const transaction = database.transaction([storeName], 'readwrite');
+      const store = transaction.objectStore(storeName);
+      const request = store.put(object);
+
+      request.onsuccess = () => {
+        resolve(object);
+      };
+
+      request.onerror = () => {
+        reject(new Error(`Failed to save to ${storeName}`));
+      };
+    }).catch(reject);
+  });
+}
+
 // Export functions for use in other modules
 window.DB = {
   initDB,
@@ -286,5 +427,10 @@ window.DB = {
   exportAllNotes,
   clearAllNotes,
   getNotesByDateRange,
-  generateId
+  generateId,
+  saveTwinProfile,
+  loadTwinProfile,
+  deleteTwinProfile,
+  get,
+  save
 };
