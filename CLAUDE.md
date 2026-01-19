@@ -1,6 +1,6 @@
 # CLAUDE.md — Inscript Developer Guide
 
-## Version 8.0.0 | January 2026
+## Version 8.0.0 | January 20, 2026
 
 ---
 
@@ -12,6 +12,7 @@
 | **Tagline** | Your mirror in code |
 | **Category** | Personal AI Memory |
 | **Version** | 8.0.0 |
+| **Production URL** | https://digital-twin-ecru.vercel.app |
 | **Working Directory** | `/Users/airoxthebox/Projects/digital-twin` |
 
 ---
@@ -24,7 +25,7 @@
 
 We're creating a new category: **Personal AI Memory**
 
-> "Inscript is the first AI that actually remembers you.  
+> "Inscript is the first AI that actually remembers you.
 > Not just your notes — your world."
 
 ## Core Value Proposition
@@ -52,6 +53,33 @@ Input → Learn → Demonstrate → Trust → More Input → Smarter
 
 ---
 
+# CURRENT STATE (Phase 11 Complete)
+
+## What's Working in Production
+
+| Feature | Status |
+|---------|--------|
+| Login / Sign up | ✅ Live |
+| 8-screen onboarding flow | ✅ Live |
+| Note creation (text, voice, image) | ✅ Live |
+| AI reflection with personalization | ✅ Live |
+| Seeded people → AI context injection | ✅ Verified |
+| Entity extraction | ✅ Live |
+| Feedback loop | ✅ Live |
+| Actions tab | ✅ Live |
+| TWIN tab | ✅ Live |
+| Cloud sync (E2E encrypted) | ✅ Live |
+| PIN authentication | ✅ Live |
+
+## The Critical Test — PASSED
+
+When user wrote about Marcus, the AI responded:
+> "I noticed you're holding input from Marcus—**your close friend**—alongside Sarah's pivot thinking..."
+
+This is the "holy shit, it knows" moment working in production.
+
+---
+
 # DESIGN SYSTEM
 
 ## Philosophy
@@ -66,12 +94,12 @@ Input → Learn → Demonstrate → Trust → More Input → Smarter
   --paper: #FFFFFF;
   --paper-warm: #FAFAFA;
   --paper-cream: #F7F7F5;
-  
+
   /* Ink */
   --ink: #000000;
   --ink-rich: #1A1A1A;
   --ink-soft: #333333;
-  
+
   /* Silver scale */
   --silver-50: #F9F9F9;
   --silver-100: #F5F5F5;
@@ -83,7 +111,7 @@ Input → Learn → Demonstrate → Trust → More Input → Smarter
   --silver-700: #404040;
   --silver-800: #262626;
   --silver-900: #171717;
-  
+
   /* Semantic (minimal — color is earned) */
   --error: #8B0000;
   --error-soft: #FEE2E2;
@@ -129,31 +157,35 @@ Input → Learn → Demonstrate → Trust → More Input → Smarter
 /
 ├── index.html              # Main app entry
 ├── api/
-│   ├── analyze.js          # Main reflection endpoint (3018 lines)
+│   ├── analyze.js          # Main reflection endpoint (3,128 lines)
 │   ├── chat.js             # "Go deeper" conversation
+│   ├── vision.js           # Image analysis (Claude Vision)
 │   ├── extract-entities.js # Entity extraction
 │   ├── embed.js            # OpenAI embeddings
 │   ├── infer-connections.js
 │   ├── classify-importance.js
-│   ├── compress-memory.js
-│   └── forgetting.js
+│   └── compress-memory.js
 ├── js/
-│   ├── ui.js               # Main UI (4799 lines — SPLIT NEEDED)
+│   ├── ui.js               # Main UI (4,824 lines — SPLIT NEEDED)
+│   ├── app.js              # Application entry point
+│   ├── onboarding.js       # 8-screen onboarding flow
+│   ├── analyzer.js         # Analysis orchestration
 │   ├── entities.js         # Entity management
+│   ├── entity-memory.js    # Memory operations
 │   ├── twin-ui.js          # TWIN tab
 │   ├── actions-ui.js       # Actions tab
-│   ├── entity-memory.js    # Memory operations
-│   └── pin.js              # Pinned notes
+│   ├── sync.js             # Cloud sync
+│   └── pin.js              # PIN authentication
 ├── css/
 │   ├── design-system.css   # Variables and tokens
-│   └── styles.css          # Main styles (8219 lines)
+│   └── styles.css          # Main styles (8,280 lines)
 └── supabase/
     └── migrations/         # Database migrations
 ```
 
 ## Large File Warning
 
-⚠️ **ui.js is 4799 lines** — DO NOT read in full. Use grep.
+⚠️ **ui.js is 4,824 lines** — DO NOT read in full. Use grep.
 
 ```bash
 # Find functions
@@ -165,57 +197,61 @@ grep -n "renderNote\|showModal\|handleSubmit" js/ui.js
 
 ---
 
-# DATABASE SCHEMA
+# ONBOARDING DATA
 
-## Core Tables
+## 8-Screen Flow
 
-| Table | Purpose |
-|-------|---------|
-| `notes` | User notes with content and metadata |
-| `note_embeddings` | Vector embeddings for semantic search |
-| `user_entities` | Extracted people, places, themes |
-| `entity_relationships` | Connections between entities |
-| `entity_mentions` | Where entities appear in notes |
-| `user_profiles` | User settings and onboarding data |
-| `user_feedback` | Thumbs up/down on reflections |
-| `user_learning_profile` | Learned preferences |
-| `quality_learning` | Reflection quality metrics |
-| `conversations` | Chat history for "Go deeper" |
-| `actions` | User action items |
+| # | Screen | Captures |
+|---|--------|----------|
+| 0 | Welcome | - |
+| 1 | Name | User's name |
+| 2 | Seasons | Life season (building, transition, healing, etc.) |
+| 3 | Focus | What's on their mind (max 3) |
+| 4 | Depth | Contextual question + answer |
+| 5 | People | Seed 1-3 people with relationships |
+| 6 | Privacy | Privacy promise |
+| 7 | Wow | First note prompt |
 
-## RLS Policy
-
-All tables have Row Level Security enabled. Users can only access their own data.
+## Database Schema
 
 ```sql
--- Example policy
-CREATE POLICY "Users can only see own notes"
-ON notes FOR ALL
-USING (auth.uid() = user_id);
+CREATE TABLE onboarding_data (
+  id UUID PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) UNIQUE,
+  name TEXT NOT NULL,
+  life_seasons TEXT[],           -- Multi-select
+  mental_focus TEXT[],           -- Max 3
+  depth_question TEXT,           -- Which question was asked
+  depth_answer TEXT,             -- Their answer
+  seeded_people JSONB,           -- [{name, context}]
+  completed_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT NOW()
+);
 ```
 
----
+## AI Context Injection
 
-# API ENDPOINTS
+The AI receives this context in every analysis:
 
-| Endpoint | Method | Purpose |
-|----------|--------|---------|
-| `/api/analyze` | POST | Main reflection generation |
-| `/api/chat` | POST | Conversation about a note |
-| `/api/extract-entities` | POST | Extract entities from text |
-| `/api/embed` | POST | Generate embeddings |
-| `/api/infer-connections` | POST | Find entity relationships |
-| `/api/classify-importance` | POST | Rate note importance |
-| `/api/compress-memory` | POST | Summarize old memories |
-| `/api/forgetting` | POST | Decay old, unimportant memories |
+```xml
+<user_context>
+User's name: Test
+Life season: Building something new
+Currently focused on: work, decisions, future
+
+People in their world:
+- Marcus (close friend)
+- Sarah (cofounder)
+</user_context>
+```
+
+**Implementation:** `api/analyze.js` lines 9-91 contain `getUserOnboardingContext()` and `buildOnboardingContextPrompt()` functions.
 
 ---
 
 # REFLECTION QUALITY
 
 ## The Three-Layer Structure
-
-AI reflections should follow this pattern:
 
 ### HEARD (Always)
 Prove you understood. Be specific. Quote their words.
@@ -225,13 +261,11 @@ Prove you understood. Be specific. Quote their words.
 ### NOTICED (When memory is relevant)
 Connect to what you know about their world.
 - "This is the third time this month the launch has slipped"
-- "Jamie has come up in tense moments before"
 - "You usually mention Marcus when processing career decisions"
 
 ### OFFERED (When valuable)
 A question, connection, or gentle observation.
 - "What made the conversation with Jamie feel different this time?"
-- "Last time you felt this stuck, taking a day off helped. Worth considering?"
 
 ## Forbidden Phrases
 
@@ -241,7 +275,7 @@ Never use:
 - "Based on my analysis..."
 - "As an AI..."
 - "I understand that..."
-- "I notice that..."
+- "Based on my records..."
 
 ## Quality Rules
 
@@ -253,185 +287,96 @@ Never use:
 
 ---
 
-# ENTITY SYSTEM
+# DATABASE SCHEMA
 
-## Entity Types
+## Core Tables
 
-| Type | Examples |
-|------|----------|
-| `person` | Marcus, Mom, Dr. Lee |
-| `place` | Home, Office, San Francisco |
-| `project` | The app, Q4 launch |
-| `theme` | Work stress, Health goals |
-| `organization` | Company, Team |
+| Table | Purpose |
+|-------|---------|
+| `notes` | Encrypted note storage |
+| `onboarding_data` | Phase 11 onboarding (name, seasons, focus, people) |
+| `user_entities` | Extracted people, places, themes |
+| `note_embeddings` | Vector embeddings for semantic search |
+| `entity_relationships` | Connections between entities |
+| `user_feedback` | Thumbs up/down on reflections |
+| `user_learning_profile` | Learned preferences |
 
-## Entity Context Accumulation
+## RLS Policy
 
-Each entity accumulates:
-- `mention_count` — How often mentioned
-- `recent_context` — Last 5 contexts
-- `relationship` — Inferred relationship type
-- `sentiment_trend` — Emotional trajectory
-- `pattern` — Observed behavioral pattern
-- `first_seen` / `last_seen` — Temporal range
-
----
-
-# ONBOARDING DATA SCHEMA
+All tables have Row Level Security enabled. Users can only access their own data.
 
 ```sql
-CREATE TABLE onboarding_data (
-  id UUID PRIMARY KEY,
-  user_id UUID REFERENCES auth.users(id) UNIQUE,
-  name TEXT NOT NULL,
-  life_seasons TEXT[],           -- 10 options
-  mental_focus TEXT[],           -- 10 options, max 3
-  depth_question TEXT,           -- Which question was asked
-  depth_answer TEXT,             -- Their answer
-  seeded_people JSONB,           -- [{name, context}]
-  completed_at TIMESTAMP,
-  created_at TIMESTAMP DEFAULT NOW()
-);
-```
-
-## Using Onboarding Data in Reflections
-
-The AI MUST use onboarding data in the first response:
-
-```javascript
-// Build context from onboarding
-const onboardingContext = `
-User's name: ${onboarding.name}
-Life season: ${onboarding.life_seasons.join(', ')}
-Current focus: ${onboarding.mental_focus.join(', ')}
-Shared context: ${onboarding.depth_answer}
-Key people: ${onboarding.seeded_people.map(p => `${p.name} (${p.context})`).join(', ')}
-`;
+CREATE POLICY "Users can only see own data"
+ON table_name FOR ALL
+USING (auth.uid() = user_id);
 ```
 
 ---
 
-# KEY FEATURES
+# API ENDPOINTS
 
-## Knowledge Pulse
-
-Shows learning in real-time after note save:
-
-```
-┌─────────────────────────────────┐
-│ ✓ Saved                         │
-│                                 │
-│ ◆ Learned: Marcus is a friend   │
-│ ○ Noticed: Work stress theme    │
-└─────────────────────────────────┘
-```
-
-## Entity Cards
-
-Click any entity name to see accumulated knowledge:
-
-```
-┌─────────────────────────────────┐
-│ [M]  Marcus                     │
-│      Close friend               │
-│ ─────────────────────────────── │
-│ JOURNEY                         │
-│ From college roommate to career │
-│ advisor over 8 years.           │
-│ ─────────────────────────────── │
-│ RECENT                          │
-│ "Marcus thinks I should..."     │
-│ "Called Marcus about the..."    │
-│ ─────────────────────────────── │
-│ 12 mentions · Since Oct 2025    │
-└─────────────────────────────────┘
-```
-
-## Pattern Detection
-
-Surface non-obvious patterns:
-
-```
-"I've noticed something: You tend to write about work 
-stress on Sunday evenings. Four of your last five 
-Sunday notes mention feeling anxious about the week ahead."
-```
-
----
-
-# LOADING STATES
-
-## Editorial Messages
-
-```javascript
-const LOADING_MESSAGES = [
-  'thinking with you...',
-  'listening...',
-  'reflecting...',
-  'connecting...',
-  'considering...',
-];
-```
-
-## Typography
-
-```css
-.loading-message {
-  font-family: var(--font-editorial);
-  font-size: var(--text-xl);
-  font-style: italic;
-  color: var(--silver-500);
-}
-```
-
----
-
-# IMPLEMENTATION PRIORITIES
-
-## Phase 11 — Current
-
-| Priority | Feature |
-|----------|---------|
-| **P0** | Rebrand to Inscript throughout app |
-| **P0** | Enhanced 7-screen onboarding |
-| **P0** | Seeded people recognition in first note |
-| **P0** | First response uses ALL onboarding data |
-| **P0** | Privacy screen in onboarding |
-| **P0** | Privacy settings page |
-| **P1** | Knowledge Pulse visibility |
-| **P1** | Entity Cards |
-| **P1** | Reflection quality engine |
-
-## Phase 12 — Next
-
-| Priority | Feature |
-|----------|---------|
-| **P0** | Pattern verification UI |
-| **P0** | "What does Inscript know?" query |
-| **P1** | Memory depth visualization |
-| **P1** | Preference learning from feedback |
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/analyze` | POST | Main reflection generation + context injection |
+| `/api/chat` | POST | Conversation about a note |
+| `/api/vision` | POST | Image analysis (Claude Vision) |
+| `/api/extract-entities` | POST | Extract entities from text |
+| `/api/embed` | POST | Generate embeddings |
+| `/api/infer-connections` | POST | Find entity relationships |
+| `/api/classify-importance` | POST | Rate entity importance |
+| `/api/compress-memory` | POST | Summarize old memories |
 
 ---
 
 # DEVELOPMENT COMMANDS
 
 ```bash
+# Production URL
+https://digital-twin-ecru.vercel.app
+
 # Start local dev server
-vercel dev
+vercel dev --listen 3001
 
-# Run on specific port
-vercel dev --listen 3000
+# Deploy to production
+git add -A && git commit -m "message" && git push origin main
 
-# Check for errors without reading large files
-grep -r "error\|Error\|ERROR" js/*.js api/*.js 2>/dev/null | head -20
+# Force deploy
+vercel --prod
 
-# Find specific functionality
+# Check version (browser console)
+APP_VERSION  // "8.0.0"
+
+# Find specific functionality (avoid reading large files)
 grep -rn "functionName" js/*.js api/*.js
 
 # Git status
 git status
 git log --oneline -5
 ```
+
+---
+
+# TECHNICAL DEBT
+
+## Must Fix Before Phase 12
+
+| File | Lines | Issue |
+|------|-------|-------|
+| `js/ui.js` | 4,824 | Split into ui-core, ui-notes, ui-twin, ui-modals, ui-onboarding |
+| `api/analyze.js` | 3,128 | Extract prompts to separate files |
+| `css/styles.css` | 8,280 | Modularize by feature |
+
+---
+
+# NEXT PHASE (12)
+
+| Priority | Task |
+|----------|------|
+| P0 | Split `ui.js` into modules |
+| P1 | Knowledge Pulse (show learning after save) |
+| P1 | Entity Cards (click name → see context) |
+| P2 | "What does Inscript know?" query |
+| P2 | Pattern verification UI |
 
 ---
 
@@ -451,11 +396,12 @@ git log --oneline -5
 
 | Version | Phase | Key Changes |
 |---------|-------|-------------|
+| **8.0.0** | 11.0 | Inscript rebrand, 8-screen onboarding, AI context injection, production deploy |
 | 7.8.0 | 10.8 | Intelligent Memory Layer, Mem0 parity |
-| 7.9.0 | 10.9 | UI module split (if completed) |
-| 8.0.0 | 11.0 | Inscript rebrand, enhanced onboarding, privacy |
+| 7.5.0 | 10.3 | Semantic search with pgvector |
 
 ---
 
 *CLAUDE.md — Inscript Developer Guide*
-*Last Updated: January 19, 2026*
+*Last Updated: January 20, 2026*
+*Production: https://digital-twin-ecru.vercel.app*

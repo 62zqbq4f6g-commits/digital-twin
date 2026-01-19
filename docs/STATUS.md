@@ -1,14 +1,53 @@
-# Digital Twin — Project Status
-## January 19, 2026 | Version 7.8.0
+# Inscript — Project Status
+## January 20, 2026 | Version 8.0.0
 
 ---
 
 ## Executive Summary
 
-**Current State:** Production-ready, stable, all core features working.
-**Phase:** 10.8 complete (Intelligent Memory Layer with Mem0 parity)
-**Next Phase:** Phase 11 (TBD - requires architectural cleanup first)
-**Blocker:** `ui.js` at 4799 lines must be split before major new work.
+**Current State:** Phase 11 complete — deployed to production
+**Production URL:** https://digital-twin-ecru.vercel.app
+**Brand:** Inscript — "Your mirror in code"
+**Category:** Personal AI Memory
+**Previous Name:** Digital Twin / The Living Script
+**Personalization:** VERIFIED — AI recognizes seeded people (tested: "Marcus—your close friend")
+**Technical Debt:** `ui.js` at 4,824 lines must be split before major new work
+
+---
+
+## What's Working RIGHT NOW (Production)
+
+| Feature | Status | Verified |
+|---------|--------|----------|
+| Login / Sign up | ✅ Live | Jan 20 |
+| 8-screen onboarding flow | ✅ Live | Jan 20 |
+| Note creation (text, voice, image) | ✅ Live | Jan 20 |
+| AI reflection with personalization | ✅ Live | AI said "Marcus—your close friend" |
+| Seeded people → AI context injection | ✅ Live | Tested |
+| Entity extraction | ✅ Live | Jan 20 |
+| Feedback (Resonates/Not quite) | ✅ Live | Jan 20 |
+| Actions tab | ✅ Live | Jan 20 |
+| TWIN tab with profile | ✅ Live | Jan 20 |
+| Cloud sync (E2E encrypted) | ✅ Live | Jan 20 |
+| PIN authentication | ✅ Live | Jan 20 |
+
+---
+
+## Phase 11 Deliverables
+
+| Deliverable | Status |
+|-------------|--------|
+| Rebrand: Digital Twin → Inscript | ✅ Complete |
+| 8-screen onboarding flow | ✅ Complete |
+| Privacy promise screen | ✅ Complete |
+| onboarding_data table + RLS | ✅ Complete |
+| Seeded people → AI context | ✅ Complete |
+| Login screen redesign | ✅ Complete |
+| Editorial CSS (white bg, centered) | ✅ Complete |
+| AI context injection (api/analyze.js) | ✅ Complete |
+| Google Fonts (Playfair, Cormorant, Inter) | ✅ Complete |
+| Production deployment | ✅ Complete (Jan 20, 2026) |
+| Personalization test | ✅ PASSED |
 
 ---
 
@@ -16,7 +55,8 @@
 
 | Version | Date | Changes |
 |---------|------|---------|
-| **7.8.0** | Jan 19, 2026 | Phase 10.6-10.8: Cross-memory reasoning, importance classification, automatic forgetting |
+| **8.0.0** | Jan 20, 2026 | Phase 11: Inscript rebrand, 8-screen onboarding, AI context injection, production deploy |
+| 7.8.0 | Jan 19, 2026 | Phase 10.6-10.8: Cross-memory reasoning, importance classification, automatic forgetting |
 | 7.7.0 | Jan 19, 2026 | Phase 10.5: LLM memory compression |
 | 7.6.0 | Jan 19, 2026 | Phase 10.4: LLM entity extraction |
 | 7.5.0 | Jan 19, 2026 | Phase 10.3: Semantic search with pgvector |
@@ -25,124 +65,116 @@
 
 ---
 
-## Live App Metrics
+## Onboarding Flow (8 Screens)
 
-| Metric | Value |
-|--------|-------|
-| **Total Notes** | 36 |
-| **People Detected** | 5 (Marcus, Daniel, Priya, Tom, Jordan) |
-| **Projects Detected** | 1 (API integration project) |
-| **Feedback Given** | 2 approved, 0 rejected |
-| **Actions Open** | 2 |
-| **Twin Confidence** | 76% |
+| # | Screen | What It Captures |
+|---|--------|------------------|
+| 0 | Welcome | - |
+| 1 | Name | User's name for personalization |
+| 2 | Seasons | Life season (building, transition, healing, etc.) |
+| 3 | Focus | What's on their mind (max 3 topics) |
+| 4 | Depth | Contextual question + free-text answer |
+| 5 | People | Seed 1-3 people with relationship context |
+| 6 | Privacy | Privacy promise (data handling) |
+| 7 | Wow | First note prompt |
 
----
-
-## Feature Status
-
-### Core Features (All Working)
-
-| Feature | Status | Notes |
-|---------|--------|-------|
-| Text Notes | ✅ Live | Fast, reliable |
-| Voice Notes | ✅ Live | Web Audio API transcription |
-| Image Notes | ✅ Live | Claude Vision analysis |
-| Tiered Analysis | ✅ Live | "What I Heard" / "Question for You" format |
-| Entity Extraction | ✅ Live | Auto-detects people, projects, places |
-| Feedback Loop | ✅ Live | "Resonates" / "Not quite" buttons |
-| Actions Tab | ✅ Live | Shows suggested actions with streak |
-| TWIN Tab | ✅ Live | Profile, entities, learning stats |
-| Cloud Sync | ✅ Live | E2E encrypted via Supabase |
-| PIN Auth | ✅ Live | AES-256-GCM encryption |
-| Onboarding | ✅ Live | 4-screen flow captures name, role, goals |
-
-### Phase 10 Memory Features (All Working)
-
-| Feature | Status | Notes |
-|---------|--------|-------|
-| Semantic Search | ✅ Live | pgvector + OpenAI embeddings |
-| LLM Entity Extraction | ✅ Live | Claude extracts relationships |
-| Memory Compression | ✅ Live | LLM summarizes entity context |
-| Cross-Memory Reasoning | ✅ Live | Infers connections between entities |
-| Importance Classification | ✅ Live | LLM scores entity importance |
-| Automatic Forgetting | ✅ Live | Decays low-importance entities |
+**Data stored in:** `onboarding_data` table with RLS
 
 ---
 
-## Known Issues
+## AI Context Injection
 
-| Issue | Priority | Status |
-|-------|----------|--------|
-| `ui.js` at 4799 lines | 🔴 Critical | Must split before Phase 11 |
-| Service worker disabled | 🟢 Low | Intentional (no offline support) |
-| Console verbose logging | 🟢 Low | Cleanup for production |
+The AI receives user context in every analysis:
 
-**No critical bugs in user-facing features.**
+```xml
+<user_context>
+User's name: Test
+Life season: Building something new
+Currently focused on: work, decisions, future
+
+People in their world:
+- Marcus (close friend)
+- Sarah (cofounder)
+</user_context>
+```
+
+**Verified behavior:** When user mentioned Marcus in a note, AI responded with "Marcus—your close friend" in the reflection.
+
+---
+
+## Brand Identity
+
+| Element | Value |
+|---------|-------|
+| **Name** | Inscript |
+| **Tagline** | Your mirror in code |
+| **Category** | Personal AI Memory |
+| **Voice** | Warm, intelligent, intimate, poetic |
+| **Design** | Editorial minimalist (Linear x Vogue) |
+| **Colors** | Black, white, silver only |
+| **Fonts** | Playfair Display, Cormorant Garamond, Inter, JetBrains Mono |
 
 ---
 
 ## Technical Debt
 
-### Must Fix Before Phase 11
+### Critical (Must Fix Before Phase 12)
 
-1. **Split `ui.js` (4799 lines)** into:
-   - `ui-core.js` - Rendering, state management
-   - `ui-notes.js` - Note list, note detail
-   - `ui-twin.js` - TWIN tab
-   - `ui-modals.js` - All modals
-   - `ui-onboarding.js` - Onboarding flow
-
-2. **Split `api/analyze.js` (3018 lines)** - Extract prompts to separate files
+| File | Lines | Issue |
+|------|-------|-------|
+| `js/ui.js` | 4,824 | Must split into ui-core, ui-notes, ui-twin, ui-modals, ui-onboarding |
+| `api/analyze.js` | 3,128 | Extract prompts to separate files |
+| `css/styles.css` | 8,280 | Modularize by feature |
 
 ### Should Fix
 
-3. `css/styles.css` (8219 lines) - Modularize by feature
-4. Consolidate `entities.js` and `entity-memory.js` - Some overlap
+- Consolidate `entities.js` and `entity-memory.js` (some overlap)
+- Clean up verbose console logging for production
+- Service worker disabled (intentional — no offline support yet)
 
 ---
 
-## Database Schema (20 Tables)
+## Database Schema (Key Tables)
 
 ### Core Tables
-- `notes` - Encrypted note storage
-- `user_profiles` - Onboarding data (name, role, goals)
-- `user_entities` - Auto-detected entities
-- `user_feedback` - Approve/reject actions
-- `user_learning_profile` - Aggregated learning
+| Table | Purpose |
+|-------|---------|
+| `notes` | Encrypted note storage |
+| `onboarding_data` | Phase 11 onboarding (name, seasons, focus, people) |
+| `user_entities` | Auto-detected entities from notes |
+| `user_profiles` | Legacy profile data |
 
 ### Memory System (Phase 10)
-- `note_embeddings` - pgvector embeddings
-- `memory_inferences` - Cross-memory reasoning
-- `entity_relationships` - Relationship graph
+| Table | Purpose |
+|-------|---------|
+| `note_embeddings` | pgvector embeddings for semantic search |
+| `memory_inferences` | Cross-memory reasoning results |
+| `entity_relationships` | Relationship graph |
 
 ### Other Tables
-- `action_signals`, `decisions`, `entities`, `entity_corrections`
-- `nudge_effectiveness`, `output_feedback`, `quality_learning`
-- `twin_profiles`, `twin_relationships`, `user_inner_circle`
-- `user_key_people`, `user_salts`, `weekly_suggestions`
+`action_signals`, `decisions`, `entities`, `entity_corrections`, `nudge_effectiveness`, `output_feedback`, `quality_learning`, `twin_profiles`, `twin_relationships`, `user_feedback`, `user_inner_circle`, `user_key_people`, `user_learning_profile`, `user_salts`, `weekly_suggestions`
 
 **RLS:** Enabled on all tables with `auth.uid() = user_id`
 
 ---
 
-## API Endpoints (15 Total)
+## API Endpoints
 
 | Endpoint | Purpose | Lines |
 |----------|---------|-------|
-| `/api/analyze.js` | 3-stage analysis pipeline | 3018 |
-| `/api/chat.js` | Socratic dialogue | ~200 |
+| `/api/analyze.js` | Main analysis pipeline + context injection | 3,128 |
 | `/api/vision.js` | Image analysis (Claude Vision) | ~260 |
+| `/api/chat.js` | Socratic dialogue | ~200 |
 | `/api/embed.js` | OpenAI embeddings | ~50 |
 | `/api/extract-entities.js` | LLM entity extraction | ~100 |
 | `/api/compress-memory.js` | LLM memory compression | ~80 |
 | `/api/infer-connections.js` | Cross-memory reasoning | ~90 |
 | `/api/classify-importance.js` | Entity importance scoring | ~75 |
-| `/api/classify-feedback.js` | Feedback classification | ~90 |
-| `/api/patterns.js` | Pattern detection | ~150 |
-| `/api/extract.js` | Entity/belief extraction | ~140 |
-| `/api/refine.js` | Text refinement | ~120 |
-| `/api/digest.js` | Weekly digest | ~120 |
 | `/api/recovery.js` | PIN recovery email | ~150 |
+| `/api/refine.js` | Text refinement | ~120 |
+| `/api/extract.js` | Entity/belief extraction | ~140 |
+| `/api/patterns.js` | Pattern detection | ~150 |
+| `/api/digest.js` | Weekly digest | ~120 |
 | `/api/env.js` | Public Supabase config | ~30 |
 
 ---
@@ -160,82 +192,120 @@
 
 ---
 
-## Architecture Overview
+## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                         USER                                 │
-└────────────────────────────┬────────────────────────────────┘
-                             │
-                             ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    index.html + js/*.js                      │
-│    (Notes Tab | Actions Tab | TWIN Tab | Settings)          │
-└────────────────────────────┬────────────────────────────────┘
-                             │
-         ┌───────────────────┼───────────────────┐
-         ▼                   ▼                   ▼
-┌─────────────┐    ┌─────────────┐    ┌─────────────┐
-│  js/app.js  │    │js/sync.js   │    │ js/pin.js   │
-│  (Pipeline) │    │ (Cloud)     │    │ (Encryption)│
-└──────┬──────┘    └──────┬──────┘    └─────────────┘
-       │                  │
-       ▼                  ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    api/*.js (Vercel)                         │
-│  analyze | chat | vision | embed | infer-connections | etc.  │
-└────────────────────────────┬────────────────────────────────┘
-                             │
-         ┌───────────────────┼───────────────────┐
-         ▼                   ▼                   ▼
-┌─────────────┐    ┌─────────────┐    ┌─────────────┐
-│  Supabase   │    │  Anthropic  │    │   OpenAI    │
-│  PostgreSQL │    │  Claude API │    │ Embeddings  │
-│  + pgvector │    │             │    │             │
-└─────────────┘    └─────────────┘    └─────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                         USER                                    │
+└────────────────────────────────┬────────────────────────────────┘
+                                 │
+                                 ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    index.html + js/*.js                         │
+│    (Notes Tab | Actions Tab | TWIN Tab | Settings)              │
+└────────────────────────────────┬────────────────────────────────┘
+                                 │
+         ┌───────────────────────┼───────────────────────┐
+         ▼                       ▼                       ▼
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│  js/app.js      │    │  js/sync.js     │    │  js/pin.js      │
+│  (Pipeline)     │    │  (Cloud)        │    │  (Encryption)   │
+└────────┬────────┘    └────────┬────────┘    └─────────────────┘
+         │                      │
+         ▼                      ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    api/*.js (Vercel)                            │
+│  analyze | chat | vision | embed | infer-connections | etc.     │
+└────────────────────────────────┬────────────────────────────────┘
+                                 │
+         ┌───────────────────────┼───────────────────────┐
+         ▼                       ▼                       ▼
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│  Supabase       │    │  Anthropic      │    │  OpenAI         │
+│  PostgreSQL     │    │  Claude API     │    │  Embeddings     │
+│  + pgvector     │    │                 │    │                 │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 
 ---
 
-## Intelligence Score
+## Known Issues
 
-| Category | Score | Notes |
-|----------|-------|-------|
-| Memory Layer | 8/10 | Entities, visual learning, compression |
-| Learning Layer | 7/10 | Feedback loop working, needs more data |
-| Context Injection | 9/10 | Full personalization in prompts |
-| Entity Intelligence | 8/10 | Cross-memory reasoning, importance |
-| Pattern Recognition | 6/10 | Code exists, limited production data |
-| **Total** | **76%** | Strong foundation, needs user engagement |
+| Issue | Priority | Status |
+|-------|----------|--------|
+| `ui.js` at 4,824 lines | P0 | Must split before Phase 12 |
+| Service worker disabled | P3 | Intentional (no offline support) |
+| Console verbose logging | P3 | Cleanup for production |
+
+**No critical bugs in user-facing features.**
 
 ---
 
-## Flywheel Health
+## Privacy Promise (Displayed in Onboarding)
 
 ```
-✅ Input: Users creating notes (36 notes)
-✅ Learn: Feedback captured (2 approved)
-✅ Demonstrate: Context injected in prompts
-✅ Trust: 76% Twin confidence
-⚠️ Scale: Needs more users for full validation
+Your thoughts stay private.
+
+✓ Your notes are never reviewed by our team.
+✓ We don't sell or share your data.
+✓ We don't use your content to train AI.
+
+Your world is yours alone.
 ```
+
+**TODO:**
+- [ ] Subscribe to enterprise LLM tier (training opt-out)
+- [ ] Formal privacy policy page
+- [ ] Data export functionality
+- [ ] Data deletion functionality (beyond "Delete All My Data" in settings)
+
+---
+
+## Next Steps (Phase 12)
+
+| Priority | Task |
+|----------|------|
+| P0 | Split `ui.js` into modules |
+| P1 | Knowledge Pulse (show learning after save) |
+| P1 | Entity Cards (click name → see context) |
+| P2 | "What does Inscript know?" query |
+| P2 | Pattern verification UI |
+| P2 | Memory milestones (30/90/365 days) |
+| P3 | Push notifications |
 
 ---
 
 ## Quick Commands
 
 ```bash
-# Deploy
-vercel --prod
+# Production URL
+https://digital-twin-ecru.vercel.app
 
-# Check version (browser console)
-APP_VERSION  // "7.8.0"
+# Deploy to production
+git add -A && git commit -m "message" && git push origin main
+# (Vercel auto-deploys from main)
 
 # Local dev
-vercel dev
+vercel dev --listen 3001
+
+# Check version (browser console)
+APP_VERSION  // "8.0.0"
+
+# Force deploy
+vercel --prod
 ```
 
 ---
 
-*Last Updated: January 19, 2026*
-*Audit Performed: Claude Code (Opus 4.5)*
+## The Critical Test
+
+> **PASSED:** When user wrote about Marcus, the AI responded:
+> "I noticed you're holding input from Marcus—**your close friend**—alongside Sarah's pivot thinking..."
+
+This is the "holy shit, it knows" moment working in production.
+
+---
+
+*Last Updated: January 20, 2026 01:00 SGT*
+*Version: 8.0.0 — Inscript*
+*Production: https://digital-twin-ecru.vercel.app*
