@@ -4,6 +4,41 @@
  * Phase 4A: Added detectNoteType for personal vs productive output
  */
 
+// Banned phrases that should never appear in outputs
+const BANNED_PHRASES = [
+  'captured for future reference',
+  'noted for later',
+  'will remember this',
+  'saved for reference',
+  'user has',
+  'the user',
+  'someone named',
+  'this has been recorded',
+  'entry logged',
+  'worth tracking',
+  'good to document',
+  'interesting thought',
+  'worth considering',
+  'important to remember'
+];
+
+/**
+ * Clean output text by removing banned phrases
+ * Belt-and-suspenders approach since LLMs may not always obey negative instructions
+ * @param {string} text - Text to clean
+ * @returns {string} Cleaned text
+ */
+function cleanOutput(text) {
+  if (!text) return text;
+  let cleaned = text;
+  BANNED_PHRASES.forEach(phrase => {
+    const regex = new RegExp(phrase, 'gi');
+    cleaned = cleaned.replace(regex, '');
+  });
+  // Clean up any double spaces or leading/trailing spaces
+  return cleaned.replace(/\s+/g, ' ').trim();
+}
+
 const Analyzer = {
   /**
    * Detect if note should receive personal or productive output
@@ -149,6 +184,19 @@ const Analyzer = {
       }
     }
 
+    // Phase 9: Build personalization context from user_profiles
+    let personalizationContext = '';
+    if (typeof Context !== 'undefined' && Sync?.user?.id) {
+      try {
+        personalizationContext = await Context.buildUserContext(Sync.user.id);
+        if (personalizationContext) {
+          console.log('[Analyzer] Phase 9 - Loaded personalization context:', personalizationContext.length, 'chars');
+        }
+      } catch (err) {
+        console.warn('[Analyzer] Failed to load personalization context:', err);
+      }
+    }
+
     // Merge contexts
     const fullContext = {
       patterns: context.patterns || [],
@@ -156,7 +204,8 @@ const Analyzer = {
       output_preferences: context.outputPreferences || {},
       ...learningContext,
       ...memoryContext, // Phase 6: Add memory context
-      userProfile: userProfile // Phase 8: Add user profile for self-awareness
+      userProfile: userProfile, // Phase 8: Add user profile for self-awareness
+      personalizationContext: personalizationContext // Phase 9: Detailed user context
     };
 
     // Debug: Verify context merge
@@ -168,6 +217,14 @@ const Analyzer = {
 
     // Visual Learning: Check if input has an image
     const hasImage = Boolean(input.image || input.type === 'image');
+
+    // First note detection: check localStorage flag set during onboarding
+    const isFirstNote = localStorage.getItem('is_first_note') === 'true';
+    if (isFirstNote) {
+      console.log('[Analyzer] First note detected - adding special context');
+      // Clear the flag after reading (only first note gets special treatment)
+      localStorage.removeItem('is_first_note');
+    }
 
     try {
       // Try API first
@@ -186,7 +243,9 @@ const Analyzer = {
           preferencesXML: preferencesContext?.combinedXML || '',
           hasPersonalization: preferencesContext?.hasPreferences || false,
           // Visual Learning: Flag if image present
-          hasImage: hasImage
+          hasImage: hasImage,
+          // First note special handling
+          isFirstNote: isFirstNote
         })
       });
 
@@ -203,6 +262,9 @@ const Analyzer = {
           await this.storeVisualEntities(data.visualEntities);
         }
 
+        // Phase 10: Handle memory conflicts if detected
+        await this.processMemoryUpdates(data);
+
         return this.processAPIResponse(data);
       }
     } catch (error) {
@@ -211,6 +273,54 @@ const Analyzer = {
 
     // Fallback to local analysis
     return this.localAnalyze(content, input.type);
+  },
+
+  /**
+   * Phase 10: Process memory updates from analysis response
+   * Handles conflict detection and resolution
+   */
+  async processMemoryUpdates(data) {
+    try {
+      // Check for memory_update in the response
+      const responseStr = JSON.stringify(data);
+      const match = responseStr.match(/<memory_update>([\s\S]*?)<\/memory_update>/);
+
+      if (!match) return;
+
+      const xml = match[1];
+      const memoryUpdate = {
+        type: xml.match(/<type>(.*?)<\/type>/)?.[1],
+        old_fact: xml.match(/<old_fact>(.*?)<\/old_fact>/)?.[1],
+        new_fact: xml.match(/<new_fact>(.*?)<\/new_fact>/)?.[1],
+        entity_name: xml.match(/<entity_name>(.*?)<\/entity_name>/)?.[1]
+      };
+
+      if (!memoryUpdate.entity_name) return;
+
+      console.log('[Analyzer] Memory update detected:', memoryUpdate);
+
+      // Get user ID
+      if (typeof Sync !== 'undefined' && Sync.supabase && Sync.user?.id) {
+        // Call EntityMemory.handleConflict
+        if (typeof EntityMemory !== 'undefined') {
+          const result = await EntityMemory.handleConflict(
+            Sync.user.id,
+            memoryUpdate,
+            Sync.supabase
+          );
+
+          if (result.resolved) {
+            console.log('[Analyzer] ✓ Memory conflict resolved:', memoryUpdate.new_fact);
+            // Optionally show toast to user
+            if (typeof UI !== 'undefined' && UI.showToast) {
+              UI.showToast('Memory updated: ' + memoryUpdate.new_fact);
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.warn('[Analyzer] processMemoryUpdates error:', error.message);
+    }
   },
 
   /**
@@ -239,18 +349,24 @@ const Analyzer = {
   },
 
   /**
-   * Process API response into standard format (Phase 3b + Phase 4A)
+   * Process API response into standard format (Phase 3b + Phase 4A + Phase 8.8)
    */
   processAPIResponse(data) {
+    // Phase 8.8 DEBUG: Log raw API response
+    console.log('[Analyzer] processAPIResponse - raw data keys:', Object.keys(data));
+    console.log('[Analyzer] processAPIResponse - data.tier:', data.tier);
+    console.log('[Analyzer] processAPIResponse - data.heard:', data.heard);
+    console.log('[Analyzer] processAPIResponse - data.noticed:', data.noticed);
+
     return {
       // Phase 3b fields
       cleanedInput: data.cleanedInput || null,
-      title: data.title || null,
+      title: cleanOutput(data.title) || null,
       actions: Array.isArray(data.actions) ? data.actions : [],
       shareability: data.shareability || { ready: false, reason: '' },
-      // Phase 3a fields
-      summary: data.summary || '',
-      insight: data.insight || '',
+      // Phase 3a fields - apply cleanOutput to catch any banned phrases that slipped through
+      summary: cleanOutput(data.summary) || '',
+      insight: cleanOutput(data.insight) || '',
       question: data.question || null,
       type: data.type || 'observation',
       category: data.category || 'personal',
@@ -267,7 +383,14 @@ const Analyzer = {
       questionToSitWith: data.questionToSitWith || null,
       memoryTags: data.memoryTags || [],
       // Visual Learning: Include visual entities
-      visualEntities: data.visualEntities || []
+      visualEntities: data.visualEntities || [],
+      // Phase 8.8: Tiered response fields
+      tier: data.tier || null,
+      heard: data.heard || null,
+      noticed: data.noticed || null,
+      hidden_assumption: data.hidden_assumption || null,
+      experiment: data.experiment || null,
+      invite: data.invite || null
     };
   },
 

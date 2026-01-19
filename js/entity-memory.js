@@ -300,12 +300,231 @@ const EntityMemory = {
       // Upsert entities (update if exists, insert if new)
       for (const entity of entitiesToStore) {
         await this.upsertEntity(entity, user.id);
+
+        // Phase 10: Sync to user_entities table
+        await this.syncToUserEntities(user.id, {
+          name: entity.metadata.original_name,
+          type: entity.type,
+          context: entity.metadata.context || null
+        }, Sync.supabase);
       }
 
       console.log(`[EntityMemory] Stored ${entitiesToStore.length} entities`);
 
     } catch (error) {
       console.error('[EntityMemory] Error storing entities:', error);
+    }
+  },
+
+  /**
+   * Phase 10: Calculate entity relevance with time decay
+   * More recent + more frequent = more relevant
+   */
+  calculateRelevanceScore(entity) {
+    const now = Date.now();
+    const lastAccessed = new Date(entity.last_accessed_at || entity.last_mentioned_at || entity.created_at).getTime();
+    const daysSinceAccess = (now - lastAccessed) / (1000 * 60 * 60 * 24);
+
+    // Time decay: relevance halves every 14 days
+    const recencyScore = 1 / (1 + daysSinceAccess / 14);
+
+    // Frequency boost: cap at 2x for 10+ mentions
+    const frequencyScore = Math.min(2, 1 + (entity.mention_count || 1) / 10);
+
+    // Verified entities get boost
+    const verifiedBoost = entity.verified || entity.user_corrected ? 1.3 : 1.0;
+
+    // Has relationship context boost
+    const relationshipBoost = entity.relationship || entity.relationship_to_user ? 1.2 : 1.0;
+
+    return recencyScore * frequencyScore * verifiedBoost * relationshipBoost;
+  },
+
+  /**
+   * Phase 10: Get entities for context with time decay scoring
+   */
+  async getEntitiesWithRelevance(userId, supabase, limit = 15) {
+    try {
+      // Try new user_entities table first
+      const { data: entities, error } = await supabase
+        .from('user_entities')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('status', 'active')
+        .eq('dismissed', false)
+        .order('last_accessed_at', { ascending: false })
+        .limit(50);
+
+      if (error || !entities || entities.length === 0) {
+        console.log('[EntityMemory] No user_entities found, trying legacy table');
+        // Fallback to legacy entities table
+        return await this.loadEntities();
+      }
+
+      // Score and sort by relevance
+      const scored = entities.map(e => ({
+        ...e,
+        _score: this.calculateRelevanceScore(e)
+      }));
+
+      scored.sort((a, b) => b._score - a._score);
+
+      // Update last_accessed for top entities (fire and forget)
+      const topIds = scored.slice(0, limit).map(e => e.id);
+      this.updateLastAccessed(topIds, supabase);
+
+      console.log('[EntityMemory] Returning', Math.min(limit, scored.length), 'entities with relevance scoring');
+      return scored.slice(0, limit);
+    } catch (err) {
+      console.warn('[EntityMemory] getEntitiesWithRelevance error:', err.message);
+      return [];
+    }
+  },
+
+  /**
+   * Phase 10: Update last_accessed for entities being used
+   */
+  updateLastAccessed(entityIds, supabase) {
+    if (!entityIds || entityIds.length === 0 || !supabase) return;
+
+    supabase
+      .from('user_entities')
+      .update({ last_accessed_at: new Date().toISOString() })
+      .in('id', entityIds)
+      .then(() => console.log('[EntityMemory] Updated last_accessed for', entityIds.length, 'entities'))
+      .catch(err => console.warn('[EntityMemory] last_accessed update failed:', err.message));
+  },
+
+  /**
+   * Phase 10: Handle detected memory conflicts
+   * Archives old facts and creates new ones
+   */
+  async handleConflict(userId, update, supabase) {
+    if (!update || !update.entity_name) return { resolved: false };
+
+    console.log('[EntityMemory] Handling conflict:', update);
+
+    try {
+      // Find existing entity to archive
+      const { data: existing } = await supabase
+        .from('user_entities')
+        .select('id, context')
+        .eq('user_id', userId)
+        .eq('status', 'active')
+        .ilike('name', `%${update.entity_name}%`)
+        .limit(1)
+        .maybeSingle();
+
+      if (existing) {
+        // Create new entity with updated fact
+        const { data: newEntity } = await supabase
+          .from('user_entities')
+          .insert({
+            user_id: userId,
+            name: update.entity_name,
+            entity_type: 'fact',
+            context: update.new_fact,
+            status: 'active',
+            mention_count: 1,
+            first_mentioned_at: new Date().toISOString(),
+            last_mentioned_at: new Date().toISOString(),
+            last_accessed_at: new Date().toISOString()
+          })
+          .select()
+          .single();
+
+        // Archive old entity
+        await supabase
+          .from('user_entities')
+          .update({
+            status: 'superseded',
+            superseded_by: newEntity?.id,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existing.id);
+
+        console.log('[EntityMemory] ✓ Conflict resolved:', update.old_fact, '→', update.new_fact);
+        return { resolved: true, archived: existing.id, created: newEntity?.id };
+      }
+
+      // No existing entity found, just create new one
+      await supabase
+        .from('user_entities')
+        .insert({
+          user_id: userId,
+          name: update.entity_name,
+          entity_type: 'fact',
+          context: update.new_fact,
+          status: 'active',
+          mention_count: 1,
+          first_mentioned_at: new Date().toISOString(),
+          last_mentioned_at: new Date().toISOString(),
+          last_accessed_at: new Date().toISOString()
+        });
+
+      console.log('[EntityMemory] Created new fact (no existing to archive):', update.new_fact);
+      return { resolved: true, archived: null, created: 'new' };
+
+    } catch (err) {
+      console.error('[EntityMemory] Conflict handling error:', err);
+      return { resolved: false };
+    }
+  },
+
+  /**
+   * Phase 10: Sync entity to user_entities table for intelligent memory
+   */
+  async syncToUserEntities(userId, entity, supabase) {
+    try {
+      if (!supabase || !userId || !entity.name) return;
+
+      // Check if entity exists
+      const { data: existing } = await supabase
+        .from('user_entities')
+        .select('id, mention_count')
+        .eq('user_id', userId)
+        .eq('name', entity.name)
+        .maybeSingle();
+
+      if (existing) {
+        // Update existing entity
+        await supabase
+          .from('user_entities')
+          .update({
+            mention_count: (existing.mention_count || 0) + 1,
+            last_mentioned_at: new Date().toISOString(),
+            last_accessed_at: new Date().toISOString()
+          })
+          .eq('id', existing.id);
+
+        console.log('[EntityMemory] ✓ Updated user_entities:', entity.name);
+      } else {
+        // Insert new entity
+        const { error } = await supabase
+          .from('user_entities')
+          .insert({
+            user_id: userId,
+            name: entity.name,
+            entity_type: entity.type || 'person',
+            context: entity.context || null,
+            mention_count: 1,
+            status: 'active',
+            first_mentioned_at: new Date().toISOString(),
+            last_mentioned_at: new Date().toISOString(),
+            last_accessed_at: new Date().toISOString()
+          });
+
+        if (error) {
+          // Unique constraint violation is OK (race condition)
+          if (error.code !== '23505') {
+            console.warn('[EntityMemory] user_entities insert failed:', error.message);
+          }
+        } else {
+          console.log('[EntityMemory] ✓ Synced to user_entities:', entity.name);
+        }
+      }
+    } catch (err) {
+      console.warn('[EntityMemory] syncToUserEntities error:', err.message);
     }
   },
 

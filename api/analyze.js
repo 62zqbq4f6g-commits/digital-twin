@@ -13,31 +13,72 @@ const Anthropic = require('@anthropic-ai/sdk');
 const CRITICAL_LANGUAGE_RULE = `
 ## CRITICAL LANGUAGE RULE — READ THIS FIRST
 
+You ARE the user's digital twin. You KNOW them personally.
+
 ALL output text MUST use SECOND-PERSON language. This is non-negotiable.
 
 ALWAYS USE:
-- "your" (e.g., "your dog Seri", "your meeting", "your co-founder")
-- "you" (e.g., "you mentioned", "you need to")
+- "you" and "your" (e.g., "your dog Seri", "your meeting", "your co-founder")
+- "you mentioned", "you need to", "you shared"
 - "you're", "you've", "you'll"
+- If the user shares their name, use it naturally: "You introduced yourself, Elroy"
 
-NEVER USE:
+NEVER USE (BANNED PATTERNS):
 - "the user" or "the user's"
 - "they", "them", "their" (when referring to the note author)
 - "one's" or "one"
-- Third-person references to the person who wrote the note
+- "someone named [Name]" — NEVER use this pattern
+- "Brief introduction from someone..." — NEVER start titles this way
+- "Introduction from [Name]" — NEVER use this pattern
+- "[Name] mentioned..." — NEVER start with third-person name references
+- "A person named..." — NEVER use this pattern
+- "Captured for future reference" — NEVER use this phrase
+- "User has..." — NEVER start with this
+- "The individual..." — NEVER use this
+- "This person..." — NEVER use this
+- Any title or summary that treats the note author as a third party
+
+FORBIDDEN PHRASES (never use these):
+- "Captured for future reference"
+- "Noted for later"
+- "This has been recorded"
+- "Entry logged"
+- "Worth tracking"
+- "Good to document"
+- "Interesting thought"
+- "Worth considering"
+- "Important to remember"
+- Any language that sounds like a database, not a friend
 
 EXAMPLES:
+❌ WRONG: "Brief introduction from someone named Elroy"
+✅ RIGHT: "First Hello" or "Meeting Your Twin" or "Your Introduction"
+
+❌ WRONG: "Introduction from Elroy"
+✅ RIGHT: "You introduced yourself, Elroy"
+
+❌ WRONG: "Someone named Sarah wants to..."
+✅ RIGHT: "You mentioned wanting to..."
+
 ❌ WRONG: "The user's French Bulldog needs a vet appointment"
 ✅ RIGHT: "Your French Bulldog needs a vet appointment"
 
 ❌ WRONG: "The user mentioned they want to call their mom"
 ✅ RIGHT: "You mentioned you want to call your mom"
 
-❌ WRONG: "Schedule vet visit for the user's dog Seri"
-✅ RIGHT: "Schedule vet visit for your dog Seri"
+❌ WRONG: "Captured for future reference"
+✅ RIGHT: (Don't say anything like this. Just provide the insight.)
 
-❌ WRONG: "Reminder for the user to finish the deck"
-✅ RIGHT: "Reminder to finish your deck"
+## IMPORTANT: ENTITY POSSESSIVE PRESERVATION
+
+When eliminating third-person language, only change references to the USER themselves.
+Keep entity names and their possessives unchanged.
+
+EXAMPLES:
+- "Sarah's dog" stays "Sarah's dog" (Sarah's possession, not the user's)
+- "John's project" stays "John's project" (John's possession, not the user's)
+- "The user's meeting" becomes "your meeting" (the user's possession)
+- "Their dog Seri" becomes "your dog Seri" (the user's possession)
 
 This rule applies to: title, summary, actions, core.intent, and ALL text output.
 `;
@@ -77,6 +118,515 @@ RULES:
 - ALWAYS capture the possessive phrase (my dog, my mom, etc.) in the relationship attribute
 - If user uses first-person language (I, me, my) with an image of a person, that's likely the user - do NOT extract as unknown person
 `;
+
+// ═══════════════════════════════════════════
+// PHASE 8.7: ANALYSIS VALIDATION SYSTEM
+// Prevents garbage output from reaching users
+// ═══════════════════════════════════════════
+
+const VALIDATION_BANNED_PHRASES = [
+  // Insight bans
+  'captured for future reference',
+  'noted for later',
+  'saved for later',
+  'will remember this',
+  'recorded for reference',
+  'logged for future',
+  'stored for reference',
+  'worth tracking',
+  'worth considering',
+  'worth thinking about',
+  'interesting thought',
+  'good to track',
+  'good to document',
+  'important to remember',
+  'these insights compound',
+  'this is valuable',
+  'good to recognize',
+  'reflection noted',
+  // Summary bans (third-person)
+  'user has',
+  'user is',
+  'the user',
+  'user wants',
+  'user needs',
+  'user shared',
+  'user mentioned',
+  'user expressed',
+  'the individual',
+  'this person',
+  'someone named',
+  // Generic title bans
+  'brief introduction from'
+];
+
+/**
+ * Calculate similarity between two strings (0-1)
+ */
+function calculateSimilarity(str1, str2) {
+  const s1 = (str1 || '').toLowerCase().trim();
+  const s2 = (str2 || '').toLowerCase().trim();
+  if (!s1 || !s2) return 0;
+  if (s1 === s2) return 1.0;
+  if (s1.includes(s2) || s2.includes(s1)) return 0.9;
+
+  const words1 = new Set(s1.split(/\s+/).filter(w => w.length > 3));
+  const words2 = new Set(s2.split(/\s+/).filter(w => w.length > 3));
+  if (words1.size === 0 || words2.size === 0) return 0;
+
+  const intersection = [...words1].filter(w => words2.has(w)).length;
+  const union = new Set([...words1, ...words2]).size;
+  return intersection / union;
+}
+
+/**
+ * Validate analysis output - Phase 8.7
+ */
+function validateAnalysisOutput(input, analysis) {
+  const issues = [];
+  const summary = analysis.summary || analysis.insight || analysis.whatThisReveals || '';
+  const insight = analysis.insight || analysis.whatThisReveals || '';
+  const title = analysis.title || '';
+
+  // Check summary doesn't echo input (>70% similarity = fail)
+  if (summary) {
+    const similarity = calculateSimilarity(input, summary);
+    if (similarity > 0.7) {
+      issues.push(`Summary echoes input (${Math.round(similarity * 100)}% similar)`);
+    }
+  }
+
+  // Check for banned phrases
+  const lowerSummary = summary.toLowerCase();
+  const lowerInsight = insight.toLowerCase();
+  const lowerTitle = title.toLowerCase();
+
+  for (const phrase of VALIDATION_BANNED_PHRASES) {
+    if (lowerSummary.includes(phrase)) issues.push('Summary contains banned phrase: ' + phrase);
+    if (lowerInsight.includes(phrase)) issues.push('Insight contains banned phrase: ' + phrase);
+    if (lowerTitle.includes(phrase)) issues.push('Title contains banned phrase: ' + phrase);
+  }
+
+  // Check insight isn't too short
+  if (insight && insight.length < 20 && insight.length > 0) {
+    issues.push('Insight too short');
+  }
+
+  // Check summary uses "you" language
+  if (summary && summary.length > 30) {
+    if (!lowerSummary.includes('you') && !lowerSummary.includes("you're") && !lowerSummary.includes("your")) {
+      issues.push('Summary missing "you" language');
+    }
+  }
+
+  return { valid: issues.length === 0, issues };
+}
+
+/**
+ * Generate fallback when validation fails - Phase 8.7
+ */
+function generateValidationFallback(input, category) {
+  const lower = input.toLowerCase();
+
+  // Generate evocative title
+  let title = 'A Moment';
+  if (lower.includes('content') || lower.includes('engagement') || lower.includes('audience')) title = 'Growing Your Reach';
+  else if (lower.includes('work') || lower.includes('job') || lower.includes('career')) title = 'Work Thoughts';
+  else if (lower.includes('love') || lower.includes('feel')) title = 'On Your Heart';
+  else if (lower.includes('idea') || lower.includes('thinking')) title = 'A Thought';
+  else if (lower.includes('?')) title = 'A Question';
+
+  // Generate category-appropriate summary
+  const summaries = {
+    'work': "You're working through something important.",
+    'personal_task': "You have something to take care of.",
+    'personal_reflection': "You opened up about something meaningful.",
+    'personal': "You shared something personal.",
+    'default': "You shared a thought."
+  };
+
+  const insights = {
+    'work': "What's the next step you're considering?",
+    'personal_task': "What would help you move forward?",
+    'personal_reflection': "Your Twin is listening.",
+    'personal': "Your Twin is here, no judgment.",
+    'default': "Sometimes it helps just to say it out loud."
+  };
+
+  return {
+    title,
+    summary: summaries[category] || summaries['default'],
+    insight: insights[category] || insights['default']
+  };
+}
+
+// ═══════════════════════════════════════════
+// PHASE 8.8: TIERED RESPONSE SYSTEM
+// Proportional depth based on input analysis
+// ═══════════════════════════════════════════
+
+// Emotional markers indicating deeper processing needed
+const EMOTIONAL_MARKERS = /\b(feel|feeling|felt|scared|afraid|angry|furious|sad|depressed|hurt|love|hate|can't|cannot|won't|overwhelmed|exhausted|anxious|worried|confused|lost|stuck|hopeless|excited|thrilled|devastated|heartbroken|terrified)\b/i;
+
+// Relational stakes that warrant deeper engagement
+const STAKES_MARKERS = /\b(cofounder|co-founder|partner|marriage|married|wife|husband|boyfriend|girlfriend|friend|friendship|mom|mother|dad|father|parent|boss|manager|team|employee|relationship|divorce|breakup|fired|quit|pregnant|baby|death|died|cancer|sick|illness)\b/i;
+
+// Urgency/avoidance signals
+const URGENCY_MARKERS = /\b(can't stop|keep putting|keep avoiding|stuck on|don't know how|need to|have to|must|scared to|afraid to|avoiding|procrastinating|running out of time|deadline|urgent)\b/i;
+
+// Explicit help requests - expanded to catch more seeking-help patterns
+const HELP_REQUEST_MARKERS = /\b(how do i|how can i|what should|should i|any ideas|help me|where do i start|what do you think|advice|suggest|recommend|trying to figure|not sure|figure out how|wondering how|struggling with|need guidance|where to start|don't know where|don't know how)\b/i;
+
+/**
+ * Phase 8.8: Detect response tier based on input
+ */
+function detectTier(input) {
+  const text = (input || '').trim();
+  const wordCount = text.split(/\s+/).filter(w => w.length > 0).length;
+  const signals = [];
+
+  const hasEmotion = EMOTIONAL_MARKERS.test(text);
+  if (hasEmotion) signals.push('emotional_content');
+
+  const hasStakes = STAKES_MARKERS.test(text);
+  if (hasStakes) signals.push('relational_stakes');
+
+  const hasUrgency = URGENCY_MARKERS.test(text);
+  if (hasUrgency) signals.push('urgency_avoidance');
+
+  const hasHelpRequest = HELP_REQUEST_MARKERS.test(text);
+  if (hasHelpRequest) signals.push('help_request');
+
+  const punctuationMatches = text.match(/!{2,}|\.{3,}/g) || [];
+  const hasPunctuationIntensity = punctuationMatches.length >= 2;
+  if (hasPunctuationIntensity) signals.push('punctuation_intensity');
+
+  const isEmotionallyLoaded = hasEmotion || hasStakes || hasUrgency || hasPunctuationIntensity;
+  const isHighLoad = (hasEmotion && hasStakes) || (hasUrgency && hasStakes) || wordCount > 100;
+
+  let tier;
+  if (isHighLoad) {
+    tier = 'deep';
+  } else if (wordCount > 100) {
+    tier = 'deep';
+  } else if (isEmotionallyLoaded || hasHelpRequest || wordCount > 30) {
+    tier = 'standard';
+  } else {
+    tier = 'quick';
+  }
+
+  return { tier, signals, wordCount };
+}
+
+/**
+ * Phase 8.8: UNIFIED ANALYSIS PROMPT
+ */
+const UNIFIED_ANALYSIS_PROMPT = `You are the user's Digital Twin—a perceptive, warm AI that helps them understand themselves.
+
+## CRITICAL RULES — VIOLATION CAUSES REJECTION
+
+1. ALWAYS use "you/your" language. NEVER say "user", "they", "the person"
+2. "heard" MUST quote the user's exact words
+3. "noticed" MUST be NON-OBVIOUS insight, NOT a summary or restatement
+4. "hidden_assumption" MUST use hypothesis language (might/could/wonder) AND end with "?"
+5. Titles must be 2-4 evocative words. NEVER use: strategy, planning, development, assessment, management, analysis, optimization, framework, implementation
+
+## RESPONSE FORMAT
+
+You will receive a tier (quick/standard/deep). Return ONLY the JSON for that tier.
+
+### QUICK TIER
+{
+  "tier": "quick",
+  "title": "2-4 evocative words",
+  "heard": "You're '[quote their exact words]'",
+  "question": "Open-ended question that invites reflection",
+  "invite": "Share more if you'd like me to dig deeper."
+}
+
+### STANDARD TIER
+{
+  "tier": "standard",
+  "title": "2-4 evocative words",
+  "heard": "You're '[quote their exact words]'—acknowledge the weight",
+  "noticed": "I noticed [NON-OBVIOUS pattern/insight with evidence from their words]",
+  "question": "Socratic question that creates pause",
+  "experiment": "Specific 10-15 minute action tailored to their situation"
+}
+
+### DEEP TIER
+{
+  "tier": "deep",
+  "title": "2-4 evocative words matching emotional weight",
+  "heard": "You said '[quote key phrases]'—acknowledge the full weight",
+  "noticed": "I noticed [pattern/tension with specific evidence from their words]",
+  "hidden_assumption": "You might be assuming [hypothesis about unstated belief]. Is that what's underneath?",
+  "question": "Deep Socratic question that creates real pause",
+  "experiment": "Meaningful action specific to their situation"
+}
+
+## EXAMPLES
+
+### QUICK EXAMPLE
+Input: "Thinking about content today"
+Tier: quick
+{
+  "tier": "quick",
+  "title": "On Your Mind",
+  "heard": "You're 'thinking about content today'",
+  "question": "What's pulling at you about it?",
+  "invite": "Share more if you'd like me to dig deeper."
+}
+
+### STANDARD EXAMPLE
+Input: "I'm trying to figure out how to grow my audience. Not sure where to start."
+Tier: standard
+{
+  "tier": "standard",
+  "title": "Finding Your Voice",
+  "heard": "You're 'trying to figure out' how to grow but 'not sure where to start'",
+  "noticed": "The uncertainty might be the real thing here—tactics are everywhere, but knowing YOUR right path takes more than research.",
+  "question": "What would success actually look like for you in 6 months?",
+  "experiment": "List 3 creators you admire. What do they do that you don't yet?"
+}
+
+### DEEP EXAMPLE
+Input: "I keep putting off the hard conversation with my cofounder. I know I need to have it but I just can't. Every time I think about it I feel this pit in my stomach."
+Tier: deep
+{
+  "tier": "deep",
+  "title": "The Conversation You're Circling",
+  "heard": "You 'keep putting off' the conversation and feel 'this pit in your stomach' every time you think about it",
+  "noticed": "The word 'can't'—not 'won't' or 'haven't'—suggests this feels impossible rather than just difficult.",
+  "hidden_assumption": "You might be assuming that honesty and this relationship can't coexist. But avoiding it is also a choice with consequences. Is that what's underneath?",
+  "question": "What's the cost of another month of carrying this?",
+  "experiment": "Write the opening sentence you'd say. Just see how it feels to make it real."
+}
+
+## BANNED PATTERNS — WILL BE REJECTED
+
+- "User is...", "User has...", "The user..." (use "You're", "You've")
+- "Captured for future reference", "Noted for later"
+- Titles with: strategy, planning, development, assessment, management
+- "noticed" that just restates "heard" in different words
+- Yes/no questions (use open-ended)
+- Generic advice like "Research best practices" or "Think about..."
+
+Return ONLY valid JSON. No markdown, no explanation.`;
+
+/**
+ * Phase 8.8: Build tier-aware user prompt for reflection analysis
+ * Phase 9: Includes personalization context from user_profiles
+ */
+function buildTieredUserPrompt(input, tier, context = {}) {
+  // Phase 9: Add personalization context if available
+  const personalizationSection = context.personalizationContext
+    ? `\n---\n${context.personalizationContext}\n---\n`
+    : '';
+
+  return `${personalizationSection}Tier: ${tier}
+
+User input: "${input}"
+
+Return JSON for ${tier} tier. Follow the format exactly.`;
+}
+
+/**
+ * Phase 8.8: Validate tiered analysis output (server-side version)
+ */
+function validateTieredOutput(input, analysis, tier) {
+  const issues = [];
+
+  // Check heard exists and references input
+  if (!analysis.heard || analysis.heard.length < 10) {
+    issues.push('heard field missing or too short');
+  } else {
+    // Specificity check: heard should reference user's words
+    const inputWords = (input || '').toLowerCase().split(/\s+/)
+      .map(w => w.replace(/[^a-z]/g, ''))
+      .filter(w => w.length >= 4);
+    const heardLower = (analysis.heard || '').toLowerCase();
+    const matchedWords = inputWords.filter(word => heardLower.includes(word));
+    if (matchedWords.length < 2 && inputWords.length >= 2) {
+      issues.push('heard does not reference user words');
+    }
+  }
+
+  // Check for banned phrases
+  const bannedCheck = (text) => {
+    const lower = (text || '').toLowerCase();
+    return VALIDATION_BANNED_PHRASES.some(phrase => lower.includes(phrase));
+  };
+
+  // Check for banned title words (corporate language ONLY - not content words)
+  // Only ban true corporate jargon, NOT content words like "growth" or "audience"
+  const BANNED_TITLE_WORDS = ['strategy', 'planning', 'development', 'assessment', 'management', 'analysis', 'optimization', 'framework', 'structure', 'implementation'];
+  const titleLower = (analysis.title || '').toLowerCase();
+  const hasBannedTitleWord = BANNED_TITLE_WORDS.some(word => titleLower.includes(word));
+  if (hasBannedTitleWord) {
+    issues.push('title contains corporate/banned word: ' + BANNED_TITLE_WORDS.filter(w => titleLower.includes(w)).join(', '));
+  }
+
+  if (bannedCheck(analysis.heard)) issues.push('heard contains banned phrase');
+  if (bannedCheck(analysis.noticed)) issues.push('noticed contains banned phrase');
+  if (bannedCheck(analysis.title)) issues.push('title contains banned phrase');
+
+  // Check question is open-ended
+  if (analysis.question) {
+    const yesNoPattern = /^(do you|are you|is it|was it|did you|have you|can you|will you|would you)\b/i;
+    if (yesNoPattern.test(analysis.question)) {
+      issues.push('question should be open-ended, not yes/no');
+    }
+  }
+
+  // Tier-specific validation
+  if (tier === 'quick') {
+    if (analysis.hidden_assumption) issues.push('quick tier should not have hidden_assumption');
+    if (analysis.experiment) issues.push('quick tier should not have experiment');
+    if (analysis.noticed) issues.push('quick tier should not have noticed');
+    if (!analysis.invite) issues.push('quick tier must have invite field');
+  }
+
+  if (tier === 'standard') {
+    // Standard tier MUST have noticed and experiment, but NOT invite or hidden_assumption
+    if (!analysis.noticed || analysis.noticed.length < 20) {
+      issues.push('noticed field missing or too short for standard tier');
+    }
+    if (!analysis.experiment || analysis.experiment.length < 15) {
+      issues.push('experiment field missing or too short for standard tier');
+    }
+    if (analysis.invite) issues.push('standard tier should not have invite');
+    if (analysis.hidden_assumption) issues.push('standard tier should not have hidden_assumption');
+    // Check noticed is different from heard
+    if (analysis.heard && analysis.noticed) {
+      const heardNorm = (analysis.heard || '').toLowerCase().replace(/[^a-z\s]/g, '');
+      const noticedNorm = (analysis.noticed || '').toLowerCase().replace(/[^a-z\s]/g, '');
+      if (heardNorm === noticedNorm || noticedNorm.includes(heardNorm) || heardNorm.includes(noticedNorm)) {
+        issues.push('noticed is too similar to heard - must add new insight');
+      }
+    }
+  }
+
+  if (tier === 'deep') {
+    // Deep tier MUST have noticed, hidden_assumption, and experiment
+    if (!analysis.noticed || analysis.noticed.length < 20) {
+      issues.push('noticed field missing or too short for deep tier');
+    }
+    if (!analysis.hidden_assumption || analysis.hidden_assumption.length < 20) {
+      issues.push('hidden_assumption field missing or too short for deep tier');
+    }
+    if (!analysis.experiment || analysis.experiment.length < 15) {
+      issues.push('experiment field missing or too short for deep tier');
+    }
+    if (analysis.invite) issues.push('deep tier should not have invite');
+    // Check noticed is different from heard
+    if (analysis.heard && analysis.noticed) {
+      const heardNorm = (analysis.heard || '').toLowerCase().replace(/[^a-z\s]/g, '');
+      const noticedNorm = (analysis.noticed || '').toLowerCase().replace(/[^a-z\s]/g, '');
+      if (heardNorm === noticedNorm || noticedNorm.includes(heardNorm) || heardNorm.includes(noticedNorm)) {
+        issues.push('noticed is too similar to heard - must add new insight');
+      }
+    }
+  }
+
+  if (tier === 'deep') {
+    // Check hidden_assumption uses hypothesis language
+    if (analysis.hidden_assumption) {
+      const hasHypothesis = /\b(might|could|may|wonder|perhaps|possibly|seems like|it sounds like)\b/i.test(analysis.hidden_assumption);
+      if (!hasHypothesis) {
+        issues.push('hidden_assumption lacks hypothesis framing');
+      }
+      const hasCalibration = /\?[\s]*$/.test((analysis.hidden_assumption || '').trim());
+      if (!hasCalibration) {
+        issues.push('hidden_assumption missing calibration question');
+      }
+    }
+  }
+
+  // Check for "You are..." personality labels
+  const youArePattern = /\byou are (a |an |the )?(very |quite |really )?\w+\b/i;
+  if (analysis.heard && youArePattern.test(analysis.heard)) {
+    issues.push('heard contains "You are..." personality label');
+  }
+  if (analysis.noticed && youArePattern.test(analysis.noticed)) {
+    issues.push('noticed contains "You are..." personality label');
+  }
+
+  return {
+    valid: issues.length === 0,
+    issues
+  };
+}
+
+/**
+ * Phase 8.8: Generate tiered fallback when validation fails
+ */
+function generateTieredFallback(input, tier) {
+  const lower = (input || '').toLowerCase();
+
+  // Generate evocative title based on content signals
+  let title = 'A Moment';
+  let noticed = 'Something is stirring here that deserves attention.';
+  let experiment = 'Take 5 minutes to write what feels most important about this.';
+
+  if (lower.includes('grow') || lower.includes('audience') || lower.includes('content')) {
+    title = 'Finding Your Voice';
+    noticed = 'The desire to be heard often carries more weight than tactics—it might be about being seen and valued.';
+    experiment = 'List 3 creators you admire. What do they do that resonates with you?';
+  } else if (lower.includes('figure') || lower.includes('start') || lower.includes('where')) {
+    title = 'Finding Your Path';
+    noticed = 'Not knowing where to start might be protecting you from committing to one path.';
+    experiment = 'Write down 3 possible first steps. Which one feels most exciting?';
+  } else if (lower.includes('love') || lower.includes('feel')) {
+    title = 'On Your Heart';
+    noticed = 'This seems to carry emotional weight beyond the surface.';
+  } else if (lower.includes('work') || lower.includes('job')) {
+    title = 'Work Thoughts';
+    noticed = 'There may be something deeper here about what this work means to you.';
+  } else if (lower.includes('worry') || lower.includes('anxious') || lower.includes('scared')) {
+    title = 'Something Heavy';
+    noticed = 'The worry might be pointing to something you care deeply about.';
+  } else if (lower.includes('stuck') || lower.includes('block') || lower.includes('can\'t')) {
+    title = 'A Crossroads';
+    noticed = 'Being stuck often means there\'s a choice you\'re not ready to make yet.';
+  } else if (lower.includes('?')) {
+    title = 'A Question';
+    noticed = 'The question itself reveals what matters to you.';
+  }
+
+  // Extract key phrases from input for heard field
+  const words = (input || '').split(/\s+/).filter(w => w.length > 3);
+  const keyPhrase = words.slice(0, 4).join(' ') || "what's on your mind";
+
+  const base = {
+    title,
+    heard: `You mentioned "${keyPhrase}"—that stands out.`,
+    question: "What would feel like real progress on this?"
+  };
+
+  if (tier === 'quick') {
+    return {
+      ...base,
+      invite: "Share more if you'd like me to dig deeper."
+    };
+  }
+
+  if (tier === 'standard') {
+    return {
+      ...base,
+      noticed,
+      experiment
+    };
+  }
+
+  // Deep tier
+  return {
+    ...base,
+    noticed,
+    hidden_assumption: "There might be something underneath this worth exploring. What feels most true to you?",
+    experiment: "Take 5 minutes to write what you'd want someone to understand about this."
+  };
+}
 
 /**
  * Parse visual entities from response text
@@ -138,15 +688,21 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { input, context = {}, mode, noteType, preferencesXML, hasPersonalization, hasImage } = req.body;
+  const { input, context = {}, mode, noteType, preferencesXML, hasPersonalization, hasImage, isFirstNote } = req.body;
   console.log('[Analyze] Received knownEntities:', JSON.stringify(context.knownEntities || []));
   console.log('[Analyze] Phase 7 - hasPersonalization:', hasPersonalization, 'preferencesXML length:', preferencesXML?.length || 0);
   console.log('[Analyze] Phase 8 - userProfile:', context.userProfile ? `${context.userProfile.userName}` : 'none');
   console.log('[Analyze] Visual Learning - hasImage:', hasImage || false);
+  console.log('[Analyze] First Note Detection - isFirstNote:', isFirstNote || false);
 
   // Handle refine mode (Phase 3c)
   if (mode === 'refine') {
     return handleRefine(req, res);
+  }
+
+  // Handle reflect mode - tier upgrade with user reflection
+  if (mode === 'reflect') {
+    return handleReflection(req, res);
   }
 
   if (!input?.content || input.content.trim().length < 10) {
@@ -175,69 +731,270 @@ module.exports = async function handler(req, res) {
     }
 
     // Determine processing mode
-    const isReflection = category === 'personal_reflection';
-    const shouldExtractActions = !isReflection;
+    // Phase 8.8: ALL notes use tiered analysis for quality insights
+    const useTieredSystem = true;
+    const isPersonalCategory = category === 'personal_reflection' || category === 'personal';
+    const shouldExtractActions = !isPersonalCategory; // Only extract actions for work/task notes
+
+    console.log('[Analyze] Processing mode - useTieredSystem:', useTieredSystem, 'category:', category, 'isPersonal:', isPersonalCategory);
+
+    // ═══════════════════════════════════════════
+    // PHASE 8.8: TIERED RESPONSE FOR ALL NOTES
+    // ═══════════════════════════════════════════
+    let tier = null;
+    let tierSignals = [];
+
+    if (useTieredSystem) {
+      // Phase 8.8: Detect appropriate response tier for ALL notes
+      const tierResult = detectTier(cleanedInput);
+      tier = tierResult.tier;
+      tierSignals = tierResult.signals;
+      console.log(`[Analyze] Phase 8.8 - Tier detected: ${tier} (words: ${tierResult.wordCount}, signals: ${tierSignals.join(', ')})`);
+    }
 
     // ═══════════════════════════════════════════
     // STAGE 3: ANALYZE
     // ═══════════════════════════════════════════
     let systemPrompt, userPrompt;
 
-    if (isReflection) {
-      // Pure reflection - no actions, emotional insight
-      systemPrompt = buildPersonalSystemPrompt(context, preferencesXML, hasImage);
-      userPrompt = buildPersonalUserPrompt({ ...input, content: cleanedInput });
+    if (useTieredSystem) {
+      // Phase 8.8: Use tiered analysis prompt for ALL notes
+      systemPrompt = UNIFIED_ANALYSIS_PROMPT;
+      userPrompt = buildTieredUserPrompt(cleanedInput, tier, context);
+      console.log('[Analyze] Phase 8.8 DEBUG - Using TIERED prompt');
+      console.log('[Analyze] Phase 8.8 DEBUG - Tier:', tier, 'Category:', category, 'Signals:', tierSignals);
+      console.log('[Analyze] Phase 8.8 DEBUG - User prompt:', userPrompt.substring(0, 200));
     } else {
-      // Task mode - extract actions, practical insight
-      systemPrompt = buildTaskSystemPrompt(context, category, preferencesXML, hasImage);
+      // Legacy mode - only used if tiered system disabled
+      systemPrompt = buildTaskSystemPrompt(context, category, preferencesXML, hasImage, isFirstNote);
       userPrompt = buildTaskUserPrompt({ ...input, content: cleanedInput }, category);
     }
 
-    // Phase 5F.2: Lower temperature for task notes to get predictable output
-    const temperature = isReflection ? 0.7 : 0.3;
+    // Phase 8.8: Use consistent temperature for tiered analysis
+    const temperature = useTieredSystem ? 0.5 : 0.3;
 
-    const message = await client.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 2000,
-      temperature: temperature,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: userPrompt }]
-    });
+    // ═══════════════════════════════════════════
+    // PHASE 8.7: VALIDATION + RETRY LOGIC
+    // Ensures analysis quality, retries once if invalid
+    // ═══════════════════════════════════════════
+    const MAX_RETRIES = 2;
+    let result = null;
+    let responseText = '';
+    let validationPassed = false;
 
-    // Parse response
-    const responseText = message.content[0].text.trim();
-    let result;
+    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+      // Build prompt - on retry, add explicit instruction to avoid issues
+      let attemptUserPrompt = userPrompt;
+      if (attempt > 0) {
+        attemptUserPrompt = `${userPrompt}
 
-    try {
-      const jsonMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)```/) || [null, responseText];
-      result = JSON.parse(jsonMatch[1].trim());
-    } catch (parseError) {
-      console.error('Failed to parse Claude response:', responseText);
-      result = getFallbackAnalysis(cleanedInput, isReflection ? 'personal' : category);
+CRITICAL RETRY INSTRUCTION:
+Your previous response was rejected because it echoed the input or used banned phrases.
+DO NOT repeat the user's words back to them.
+DO NOT use phrases like "Captured for future reference" or "Noted for later".
+SHOW understanding, don't just REPEAT.
+
+❌ WRONG Summary: "${cleanedInput}"
+✅ RIGHT Summary: Show what this MEANS, use "you" language, be insightful`;
+      }
+
+      const message = await client.messages.create({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 2000,
+        temperature: temperature,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: attemptUserPrompt }]
+      });
+
+      // Parse response
+      responseText = message.content[0].text.trim();
+
+      try {
+        const jsonMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)```/) || [null, responseText];
+        result = JSON.parse(jsonMatch[1].trim());
+
+        // Phase 8.8 DEBUG: Log raw parsed result
+        if (useTieredSystem && tier) {
+          console.log('[Analyze] Phase 8.8 DEBUG - Raw LLM response (first 500 chars):', responseText.substring(0, 500));
+          console.log('[Analyze] Phase 8.8 DEBUG - Parsed result keys:', Object.keys(result));
+          console.log('[Analyze] Phase 8.8 DEBUG - Result:', JSON.stringify(result, null, 2).substring(0, 800));
+        }
+      } catch (parseError) {
+        console.error('Failed to parse Claude response:', responseText);
+        result = getFallbackAnalysis(cleanedInput, isPersonalCategory ? 'personal' : category);
+        break; // Parse error, use fallback
+      }
+
+      // Inject the cleaned transcript
+      result.cleaned = result.cleaned || cleanedInput;
+      result.cleanedInput = result.cleanedInput || cleanedInput;
+
+      // Phase 5F.2: Strip emotional content from task notes (skip for personal notes)
+      if (!isPersonalCategory) {
+        result = stripEmotionalContent(result, cleanedInput);
+      }
+
+      // Phase 8.8: Use tiered validation for ALL notes now
+      let validation;
+      if (useTieredSystem && tier) {
+        validation = validateTieredOutput(cleanedInput, result, tier);
+        console.log(`[Analyze] Phase 8.8 - Tiered validation (${tier}):`, validation.valid ? 'PASSED' : validation.issues);
+      } else {
+        validation = validateAnalysisOutput(cleanedInput, result);
+      }
+
+      if (validation.valid) {
+        console.log(`[Analyze] Validation passed on attempt ${attempt + 1}`);
+        validationPassed = true;
+        break;
+      } else {
+        console.warn(`[Analyze] Validation failed (attempt ${attempt + 1}):`, validation.issues);
+
+        if (attempt < MAX_RETRIES - 1) {
+          console.log('[Analyze] Retrying with explicit instructions...');
+        }
+      }
     }
 
-    // Inject the cleaned transcript (in case AI didn't return it properly)
-    result.cleaned = result.cleaned || cleanedInput;
-    result.cleanedInput = result.cleanedInput || cleanedInput;
+    // If validation still failed after retries, apply fallback values
+    if (!validationPassed && result) {
+      console.warn('[Analyze] All attempts failed validation. Applying fallback.');
 
-    // Phase 5F.2: Strip emotional content from task notes
-    if (!isReflection) {
-      result = stripEmotionalContent(result, cleanedInput);
+      if (useTieredSystem && tier) {
+        // Phase 8.8: Use tiered fallback for ALL notes
+        const tieredFallback = generateTieredFallback(cleanedInput, tier);
+        result = { ...result, ...tieredFallback };
+        console.log(`[Analyze] Phase 8.8 - Applied tiered fallback for ${tier} tier`);
+      } else {
+        // Standard fallback (legacy)
+        const fallback = generateValidationFallback(cleanedInput, category);
+        result.title = fallback.title;
+        result.summary = fallback.summary;
+        result.insight = fallback.insight;
+        if (result.whatThisReveals) {
+          result.whatThisReveals = fallback.insight;
+        }
+      }
     }
 
-    // Quality gate (skip for reflection notes - different quality criteria)
-    if (!isReflection && isLowQuality(result)) {
+    // SAFETY NET: Always sanitize titles
+    // Catches: banned words, raw input as title, titles too long
+    if (result && result.title) {
+      const BANNED_TITLE_WORDS_LIST = ['strategy', 'planning', 'development', 'assessment', 'management', 'analysis', 'optimization', 'framework', 'structure', 'implementation'];
+
+      let needsFallback = false;
+      let titleWords = result.title.split(/\s+/);
+
+      // Check 1: Title is too long (more than 5 words = not evocative)
+      if (titleWords.length > 5) {
+        console.log('[Analyze] Title too long, needs fallback:', result.title);
+        needsFallback = true;
+      }
+
+      // Check 2: Title matches input (LLM returned raw input as title)
+      const titleNorm = result.title.toLowerCase().replace(/[^a-z\s]/g, '').trim();
+      const inputNorm = cleanedInput.toLowerCase().replace(/[^a-z\s]/g, '').trim();
+      if (titleNorm === inputNorm || inputNorm.startsWith(titleNorm) || titleNorm.length > 50) {
+        console.log('[Analyze] Title matches input or too long, needs fallback');
+        needsFallback = true;
+      }
+
+      // Check 3: Contains banned words
+      const cleanedTitleWords = titleWords.filter(word => {
+        const lowerWord = word.toLowerCase().replace(/[^a-z]/g, '');
+        return !BANNED_TITLE_WORDS_LIST.some(banned => lowerWord.includes(banned));
+      });
+
+      if (cleanedTitleWords.length < titleWords.length) {
+        console.log('[Analyze] Title has banned words:', titleWords.filter(w => !cleanedTitleWords.includes(w)));
+        titleWords = cleanedTitleWords;
+        if (titleWords.length < 2) {
+          needsFallback = true;
+        }
+      }
+
+      // Generate fallback if needed
+      if (needsFallback) {
+        const lower = cleanedInput.toLowerCase();
+        if (lower.includes('cofounder') || lower.includes('co-founder') || lower.includes('conversation')) {
+          result.title = 'The Conversation Ahead';
+        } else if (lower.includes('grow') || lower.includes('audience') || lower.includes('content')) {
+          result.title = 'Finding Your Voice';
+        } else if (lower.includes('figure') || lower.includes('start') || lower.includes('where')) {
+          result.title = 'Finding Your Path';
+        } else if (lower.includes('employee') || lower.includes('team') || lower.includes('hire') || lower.includes('fire') || lower.includes('let go')) {
+          result.title = 'A Hard Decision';
+        } else if (lower.includes('work') || lower.includes('job') || lower.includes('project')) {
+          result.title = 'Work on Your Mind';
+        } else if (lower.includes('feel') || lower.includes('emotion') || lower.includes('scared') || lower.includes('anxious')) {
+          result.title = 'What You\'re Carrying';
+        } else if (lower.includes('?')) {
+          result.title = 'A Question';
+        } else {
+          result.title = 'A Moment';
+        }
+        console.log('[Analyze] Title sanitization - using fallback:', result.title);
+      } else if (cleanedTitleWords.length < result.title.split(/\s+/).length) {
+        // Just had banned words removed, use cleaned version
+        result.title = cleanedTitleWords.join(' ');
+        console.log('[Analyze] Title sanitization - removed banned words:', result.title);
+      }
+    }
+
+    // Quality gate (skip when using tiered system - it has its own validation)
+    if (!useTieredSystem && isLowQuality(result)) {
       console.log('[Analyze] Low quality detected, regenerating...');
       result = await regenerateWithFeedback(client, systemPrompt, { ...input, content: cleanedInput }, result);
     }
 
     // Normalize the response structure
-    const finalCategory = isReflection ? 'personal' : (category === 'personal_task' ? 'personal' : category);
-    result = normalizeResponse(result, cleanedInput, isReflection ? 'personal' : null, shouldExtractActions);
+    const finalCategory = isPersonalCategory ? 'personal' : (category === 'personal_task' ? 'personal' : category);
+
+    // Phase 8.8: For tiered system, preserve new schema and add compatibility fields
+    if (useTieredSystem && tier) {
+      // Keep the new tiered schema fields (heard, noticed, hidden_assumption, question, experiment, invite)
+      // Add compatibility fields for UI
+      result.cleanedInput = result.cleaned || cleanedInput;
+      result.category = finalCategory;
+      result.noteType = isPersonalCategory ? 'personal' : 'productive';
+      result.tier = tier;
+
+      // Map new fields to legacy for backward compatibility
+      result.summary = result.heard || '';
+      result.insight = result.noticed || result.heard || '';
+      result.whatThisReveals = result.noticed || result.heard || '';
+      result.questionToSitWith = result.question || null;
+
+      // CRITICAL FIX: Extract actions for work notes even with tiered system
+      if (isPersonalCategory) {
+        result.actions = [];
+        console.log('[Analyze] Personal note - no actions');
+      } else {
+        // Extract actions for work notes using the fallback extractor
+        result.actions = ensureActionsExtracted(result.actions || [], cleanedInput);
+        result.actionDetails = result.actions;
+        console.log('[Analyze] Work note - extracted actions:', result.actions?.length || 0);
+      }
+
+      // CRITICAL: Remove invite for non-quick tiers (shouldn't be there anyway)
+      if (tier !== 'quick') {
+        delete result.invite;
+      }
+
+      console.log(`[Analyze] Phase 8.8 - Tiered response (${tier}):`, {
+        title: result.title,
+        heard: result.heard?.substring(0, 50),
+        noticed: result.noticed?.substring(0, 50),
+        question: result.question?.substring(0, 50),
+        actionsCount: result.actions?.length || 0
+      });
+    } else {
+      result = normalizeResponse(result, cleanedInput, isPersonalCategory ? 'personal' : null, shouldExtractActions);
+    }
 
     // Override category to match classification
     result.category = finalCategory;
-    result.noteType = isReflection ? 'personal' : 'productive';
+    result.noteType = isPersonalCategory ? 'personal' : 'productive';
 
     // Phase 7: Include flag for preferences applied
     result.preferencesApplied = hasPersonalization || false;
@@ -251,6 +1008,15 @@ module.exports = async function handler(req, res) {
       }
     }
     result.visualEntities = visualEntities;
+
+    // Phase 8.8 DEBUG: Log final result
+    if (useTieredSystem && tier) {
+      console.log('[Analyze] Phase 8.8 DEBUG - FINAL RESULT KEYS:', Object.keys(result));
+      console.log('[Analyze] Phase 8.8 DEBUG - FINAL heard:', result.heard);
+      console.log('[Analyze] Phase 8.8 DEBUG - FINAL noticed:', result.noticed);
+      console.log('[Analyze] Phase 8.8 DEBUG - FINAL question:', result.question);
+      console.log('[Analyze] Phase 8.8 DEBUG - FINAL tier:', result.tier);
+    }
 
     return res.status(200).json(result);
 
@@ -576,9 +1342,36 @@ This note is from ${userProfile.userName}. When they say "I" or "me", they mean 
  * Phase 5F.2 + Phase 6 + Phase 7 + Visual Learning: Task-focused system prompt with memory context and user preferences
  * Zero tolerance for emotional/poetic language
  */
-function buildTaskSystemPrompt(context, category, preferencesXML = '', hasImage = false) {
+function buildTaskSystemPrompt(context, category, preferencesXML = '', hasImage = false, isFirstNote = false) {
   // Phase 8: Build user profile context
   const userProfileSection = buildUserContext(context.userProfile);
+
+  // First note special handling
+  let firstNoteSection = '';
+  if (isFirstNote) {
+    console.log('[Analyze] First note detected - adding warm welcome context');
+    firstNoteSection = `
+## FIRST NOTE CONTEXT — THIS IS SPECIAL
+
+This is the user's VERY FIRST note to their Digital Twin. Make this response warm and personal.
+
+REQUIRED FOR FIRST NOTE:
+- Title should be welcoming: "First Hello", "Meeting Your Twin", "Your Introduction", "Getting Started", or similar
+- Summary should acknowledge the beginning: "This is the start of your journey with your Twin..."
+- DO NOT use "Brief introduction from someone named..." — that's cold and impersonal
+- This is a RELATIONSHIP beginning, not a database entry
+- Be warm but not sappy — sophisticated and personal
+
+EXAMPLE FIRST NOTE TITLES:
+✅ "First Hello"
+✅ "Meeting Your Twin"
+✅ "Your Introduction"
+✅ "Getting Started Together"
+❌ "Brief introduction from someone named Elroy"
+❌ "Introduction from User"
+❌ "Someone named Elroy"
+`;
+  }
 
   // Phase 6: Build memory context section if known entities exist
   let memorySection = '';
@@ -616,15 +1409,22 @@ function buildTaskSystemPrompt(context, category, preferencesXML = '', hasImage 
         let description;
         if (e.type === 'pet') {
           description = e.relationship
-            ? `User's ${e.relationship} (${e.details || 'pet'}) named ${e.name}`
-            : `The user's ${e.details || 'pet'} named ${e.name}`;
+            ? `Your ${e.relationship} (${e.details || 'pet'}) named ${e.name}`
+            : `Your ${e.details || 'pet'} named ${e.name}`;
         } else if (e.relationship) {
-          description = `User's ${e.relationship} named ${e.name}`;
+          description = `Your ${e.relationship} named ${e.name}`;
         } else {
-          description = `A ${e.type} the user knows: ${e.name}`;
+          description = `${e.name}, a ${e.type} you know`;
         }
 
         return `  <entity ${attrs.join(' ')}>${description}</entity>`;
+      }).join('\n');
+
+      // Phase 10: Build conflict detection facts
+      const conflictFacts = cleanedEntities.map(e => {
+        const fact = e.relationship ? `${e.name}: ${e.relationship}` : `${e.name}: ${e.type}`;
+        const context = e.details ? ` (${e.details})` : '';
+        return `- ${fact}${context}`;
       }).join('\n');
 
       memorySection = `
@@ -638,8 +1438,29 @@ CRITICAL RELATIONSHIP-AWARE INSTRUCTIONS:
 - If type="pet" with relationship, say "your dog Seri" not just "Seri"
 - If verified="true", this was explicitly confirmed by user - ALWAYS use this info
 - Example: "Seri" → "your dog Seri" in actions/summaries
+
+<conflict_detection>
+CHECK FOR CONTRADICTIONS with known information:
+
+KNOWN FACTS:
+${conflictFacts}
+
+CONTRADICTION SIGNALS to watch for:
+- "new job" / "started at" / "left [company]" → job change
+- "broke up" / "ex" / "ended things" → relationship change
+- "moved to" / "new place" / "relocated" → location change
+- "sold my" / "got rid of" / "no longer have" → possession change
+
+If you detect a contradiction between user's NEW input and KNOWN FACTS above, include this in your response:
+<memory_update>
+  <type>supersede</type>
+  <old_fact>previous information</old_fact>
+  <new_fact>new information from current input</new_fact>
+  <entity_name>name of entity being updated</entity_name>
+</memory_update>
+</conflict_detection>
 `;
-      console.log('[Analyze] Memory section added to prompt (with relationships)');
+      console.log('[Analyze] Memory section added to prompt (with relationships + conflict detection)');
     } else {
       console.log('[Analyze] All entities filtered out during cleaning');
     }
@@ -647,81 +1468,102 @@ CRITICAL RELATIONSHIP-AWARE INSTRUCTIONS:
     console.log('[Analyze] No memory section - knownEntities empty or missing');
   }
 
-  return `You are a task extraction system. Output ONLY practical task information.
-${userProfileSection}${memorySection}
+  return `You are an intelligent task extraction system that understands WHY things matter.
+${userProfileSection}${memorySection}${firstNoteSection}
 ${CRITICAL_LANGUAGE_RULE}
-STOP. READ THIS FIRST:
-- DO NOT write anything poetic
-- DO NOT write anything emotional
-- DO NOT analyze feelings
-- DO NOT mention "tenderness", "care", "wellbeing", "relationship"
-- DO NOT be a therapist
 
-You are a TODO LIST, not a therapist.
+## YOUR ROLE
+You extract tasks AND understand their strategic importance. You're not a dumb todo list. You understand context, priorities, and what matters.
 
-INPUT TYPE: ${category === 'work' ? 'work task' : 'personal task'}
+INPUT TYPE: ${category === 'work' ? 'WORK/FUNCTIONAL' : 'PERSONAL TASK'}
 
-EXAMPLE INPUT: "need to call vet for my dog seri"
+## TITLE RULES
+- For WORK: Title should be SPECIFIC to the task/project (e.g., "Q4 Deck for Investors", "Sarah Follow-up")
+- For PERSONAL TASKS: Title should capture the practical goal (e.g., "Vet for Seri", "Mom Birthday Call")
+- 3-6 words maximum
+- Never generic ("Task", "Meeting", "Thing to do")
+
+## SUMMARY RULES
+The summary should show you UNDERSTOOD what matters:
+- Capture the strategic value or practical importance
+- Be concise but insightful (2-3 sentences)
+- Never robotic ("Task recorded", "Noted for future reference")
+- Show you get the context
+
+## EXAMPLE 1: WORK
+INPUT: "Need to finish the investor deck by Friday. Sarah's waiting for it."
 
 CORRECT OUTPUT:
 {
-  "title": "Call Vet for Seri",
-  "cleaned": "Need to call the vet for my dog Seri.",
-  "summary": "Vet appointment needed for Seri.",
+  "title": "Investor Deck for Sarah",
+  "cleaned": "Need to finish the investor deck by Friday. Sarah's waiting for it.",
+  "summary": "High-priority deliverable. Sarah is blocked until this is done.",
   "core": {
-    "topic": "Vet appointment",
-    "emotion": "neutral",
-    "intent": "Schedule vet visit"
+    "topic": "Investor deck deadline",
+    "emotion": "focused",
+    "intent": "Deliver the deck to unblock Sarah"
   },
   "actions": [{
-    "action": "Call vet for Seri",
+    "action": "Finish investor deck",
+    "effort": "deep",
+    "deadline": "Friday",
+    "why": "Sarah is waiting",
+    "future_state": "→ Deck delivered, Sarah unblocked",
+    "waiting_on": "Sarah asked for this",
+    "is_big_task": true
+  }],
+  "category": "work"
+}
+
+## EXAMPLE 2: PERSONAL TASK
+INPUT: "Take Seri to the vet, she hasn't been eating well"
+
+CORRECT OUTPUT:
+{
+  "title": "Vet for Seri",
+  "cleaned": "Take Seri to the vet. She hasn't been eating well.",
+  "summary": "Your dog needs attention. Something's off with her appetite.",
+  "core": {
+    "topic": "Seri's health",
+    "emotion": "concerned",
+    "intent": "Get Seri checked out"
+  },
+  "actions": [{
+    "action": "Schedule vet appointment for Seri",
     "effort": "quick",
-    "why": "Pet needs care",
-    "future_state": "→ Appointment booked"
+    "why": "She's not eating well",
+    "future_state": "→ Seri gets care"
   }],
   "category": "personal"
 }
 
-WRONG OUTPUT (DO NOT DO THIS):
-{
-  "title": "Caring for Seri",
-  "summary": "There's tenderness in how you hold Seri's wellbeing...",  ← WRONG
-  "core": {
-    "intent": "Your care for those who depend on you..."  ← WRONG
-  }
-}
+## BANNED PATTERNS
+Never use these in any output:
+- "Captured for future reference"
+- "User has..."
+- "The user mentioned..."
+- "Worth tracking"
+- "Noted for later"
+- "Important to remember"
+- Anything that sounds like a database log
 
-BANNED WORDS in summary/title/core:
-- tenderness
-- wellbeing
-- care (as emotional concept)
-- relationship
-- hold/holding (metaphorically)
-- weight (of responsibility)
-- those who depend
-- beautiful
-- poetic
-- emotional
-- feeling
-- heart
-
-OUTPUT FORMAT (JSON only):
+## OUTPUT FORMAT (JSON only)
 {
-  "title": "3-5 word practical title",
+  "title": "Specific, practical title (3-6 words)",
   "cleaned": "Polished transcript",
-  "summary": "ONE sentence. What needs to be done. PRACTICAL ONLY.",
+  "summary": "2-3 sentences that show you understood WHY this matters",
   "core": {
     "topic": "2-4 words, the subject",
-    "emotion": "neutral",
-    "intent": "The practical goal"
+    "emotion": "appropriate emotion (focused, concerned, urgent, etc.)",
+    "intent": "What you're trying to accomplish"
   },
   "entities": { "people": [], "dates": [], "places": [] },
-  "actions": [{ "action": "Verb + task", "effort": "quick", "deadline": null, "commitment": null, "waiting_on": null, "is_big_task": false, "why": "Short reason", "future_state": "→ Outcome" }],
+  "actions": [{ "action": "Verb + task", "effort": "quick|medium|deep", "deadline": null, "commitment": null, "waiting_on": null, "is_big_task": false, "why": "Short reason", "future_state": "→ Outcome" }],
   "decision": { "exists": false, "question": null, "options": null },
   "category": "${category === 'work' ? 'work' : 'personal'}"
 }
 
-This is a TODO LIST. Be practical. Be boring. Extract the task.${preferencesXML ? `
+Extract ALL actionable items. Show you understood the context.${preferencesXML ? `
 
 ## PHASE 7: USER PREFERENCES
 The following reflects what this user likes and dislikes in outputs. ADAPT your style accordingly.
@@ -1013,9 +1855,33 @@ Return ONLY valid JSON, no markdown:
  * Build personal system prompt (Phase 4A + Phase 6 + Phase 7 + Phase 8 + Visual Learning)
  * For emotional/reflective notes - warm, insightful, not functional
  */
-function buildPersonalSystemPrompt(context, preferencesXML = '', hasImage = false) {
+function buildPersonalSystemPrompt(context, preferencesXML = '', hasImage = false, isFirstNote = false) {
   // Phase 8: Build user profile context
   const userProfileSection = buildUserContext(context.userProfile);
+
+  // First note special handling
+  let firstNoteSection = '';
+  if (isFirstNote) {
+    console.log('[Analyze] First note (PERSONAL) detected - adding warm welcome context');
+    firstNoteSection = `
+## FIRST NOTE CONTEXT — THIS IS SPECIAL
+
+This is the user's VERY FIRST note to their Digital Twin. This moment is the beginning of a relationship.
+
+REQUIRED FOR FIRST NOTE:
+- Title should be warm and welcoming: "First Hello", "Meeting Your Twin", "The Beginning", "A New Chapter"
+- whatThisReveals should acknowledge the significance: "This is where your journey with your Twin begins..."
+- Be warm, personal, and meaningful — this is a relationship beginning
+- DO NOT be generic or clinical
+
+EXAMPLE FIRST NOTE TITLES:
+✅ "First Hello"
+✅ "The Beginning"
+✅ "Meeting Your Twin"
+❌ "Brief introduction from someone..."
+❌ "User Introduction"
+`;
+  }
 
   // Phase 6: Build memory context section if known entities exist
   let memorySection = '';
@@ -1053,15 +1919,22 @@ function buildPersonalSystemPrompt(context, preferencesXML = '', hasImage = fals
         let description;
         if (e.type === 'pet') {
           description = e.relationship
-            ? `User's ${e.relationship} (${e.details || 'pet'}) named ${e.name}`
-            : `The user's ${e.details || 'pet'} named ${e.name}`;
+            ? `Your ${e.relationship} (${e.details || 'pet'}) named ${e.name}`
+            : `Your ${e.details || 'pet'} named ${e.name}`;
         } else if (e.relationship) {
-          description = `User's ${e.relationship} named ${e.name}`;
+          description = `Your ${e.relationship} named ${e.name}`;
         } else {
-          description = `A ${e.type} the user knows: ${e.name}`;
+          description = `${e.name}, a ${e.type} you know`;
         }
 
         return `  <entity ${attrs.join(' ')}>${description}</entity>`;
+      }).join('\n');
+
+      // Phase 10: Build conflict detection facts
+      const conflictFacts = cleanedEntities.map(e => {
+        const fact = e.relationship ? `${e.name}: ${e.relationship}` : `${e.name}: ${e.type}`;
+        const context = e.details ? ` (${e.details})` : '';
+        return `- ${fact}${context}`;
       }).join('\n');
 
       memorySection = `
@@ -1075,8 +1948,29 @@ CRITICAL MEMORY INSTRUCTION: When the user mentions ANY name from <known_entitie
 - If type="pet", say "your dog Seri" not "Seri" or "they"
 - If verified="true", this was explicitly confirmed by user - ALWAYS use this info
 - This memory is YOUR knowledge of the user's life - USE IT
+
+<conflict_detection>
+CHECK FOR CONTRADICTIONS with known information:
+
+KNOWN FACTS:
+${conflictFacts}
+
+CONTRADICTION SIGNALS to watch for:
+- "new job" / "started at" / "left [company]" → job change
+- "broke up" / "ex" / "ended things" → relationship change
+- "moved to" / "new place" / "relocated" → location change
+- "sold my" / "got rid of" / "no longer have" → possession change
+
+If you detect a contradiction between user's NEW input and KNOWN FACTS above, include this in your response:
+<memory_update>
+  <type>supersede</type>
+  <old_fact>previous information</old_fact>
+  <new_fact>new information from current input</new_fact>
+  <entity_name>name of entity being updated</entity_name>
+</memory_update>
+</conflict_detection>
 `;
-      console.log('[Analyze] PERSONAL memory section created, length:', memorySection.length);
+      console.log('[Analyze] PERSONAL memory section created (with conflict detection), length:', memorySection.length);
     } else {
       console.log('[Analyze] All entities filtered out during cleaning');
     }
@@ -1085,7 +1979,7 @@ CRITICAL MEMORY INSTRUCTION: When the user mentions ANY name from <known_entitie
   }
 
   let prompt = `You are a thoughtful companion helping someone process personal moments, memories, and feelings.
-${userProfileSection}${memorySection}
+${userProfileSection}${memorySection}${firstNoteSection}
 ${CRITICAL_LANGUAGE_RULE}
 CRITICAL: You are a MIRROR, not an advisor. Your job is to reflect what the user shared and help them see it more clearly.
 
@@ -1854,5 +2748,106 @@ Return ONLY valid JSON (no markdown):
   } catch (error) {
     console.error('Refine API error:', error);
     return res.status(500).json({ error: 'Refinement failed' });
+  }
+}
+
+/**
+ * Handle reflect mode - re-analyze with tier upgrade (REFLECT feature)
+ * Combines original content with user's reflection, upgrades tier
+ */
+async function handleReflection(req, res) {
+  const { input, context } = req.body;
+  const { reflection, originalTier, question } = context || {};
+
+  if (!input?.content || !reflection) {
+    return res.status(400).json({ error: 'Missing required fields for reflection' });
+  }
+
+  console.log('[Analyze] REFLECT mode - originalTier:', originalTier, 'reflection:', reflection.substring(0, 50));
+
+  try {
+    const client = new Anthropic({
+      apiKey: process.env.ANTHROPIC_API_KEY
+    });
+
+    // Determine upgraded tier
+    let upgradedTier = 'standard';
+    if (originalTier === 'standard' || originalTier === 'deep') {
+      upgradedTier = 'deep';
+    }
+    console.log('[Analyze] REFLECT - Upgrading from', originalTier, 'to', upgradedTier);
+
+    // Combine original content with reflection
+    const combinedContent = `${input.content}
+
+[User reflected on the question "${question || 'What does this mean to you?'}"]
+"${reflection}"`;
+
+    // Use the tiered system prompt with reflection context
+    const reflectionPrompt = `${UNIFIED_ANALYSIS_PROMPT}
+
+## SPECIAL CONTEXT: USER REFLECTION
+
+The user initially shared a brief thought, then answered your follow-up question.
+This indicates they WANT to go deeper. Provide RICHER insight than the first pass.
+
+Your task:
+1. Connect what they originally said to what they reflected
+2. Find the THREAD between the original note and their reflection
+3. Surface something they might not have seen themselves
+4. The reflection reveals what matters most - honor that
+
+DO NOT just summarize what they said. INTERPRET it.`;
+
+    const userPrompt = buildTieredUserPrompt(combinedContent, upgradedTier, context);
+
+    const message = await client.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 2048,
+      temperature: 0.6,
+      system: reflectionPrompt,
+      messages: [{ role: 'user', content: userPrompt }]
+    });
+
+    const responseText = message.content[0].text.trim();
+    console.log('[Analyze] REFLECT - Raw response:', responseText.substring(0, 300));
+
+    try {
+      // Parse JSON response
+      const jsonMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)```/) || [null, responseText];
+      let jsonStr = jsonMatch[1].trim();
+
+      // Clean up JSON if needed
+      if (!jsonStr.startsWith('{')) {
+        const startIdx = jsonStr.indexOf('{');
+        if (startIdx !== -1) {
+          jsonStr = jsonStr.substring(startIdx);
+        }
+      }
+      if (!jsonStr.endsWith('}')) {
+        const endIdx = jsonStr.lastIndexOf('}');
+        if (endIdx !== -1) {
+          jsonStr = jsonStr.substring(0, endIdx + 1);
+        }
+      }
+
+      const analysis = JSON.parse(jsonStr);
+
+      // Force the upgraded tier
+      analysis.tier = upgradedTier;
+      analysis.upgradedFromReflection = true;
+
+      console.log('[Analyze] REFLECT - Parsed analysis, tier:', analysis.tier, 'heard:', analysis.heard?.substring(0, 50));
+
+      return res.status(200).json(analysis);
+
+    } catch (parseError) {
+      console.error('[Analyze] REFLECT - Failed to parse response:', responseText.substring(0, 500));
+      return res.status(500).json({ error: 'Failed to parse reflection response' });
+    }
+
+  } catch (error) {
+    console.error('[Analyze] REFLECT API error:', error);
+    return res.status(500).json({ error: 'Reflection analysis failed' });
   }
 }

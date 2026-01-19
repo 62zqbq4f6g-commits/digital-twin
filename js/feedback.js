@@ -107,6 +107,14 @@ const Feedback = {
       // Phase 7: Store to Supabase with full output context
       await this.storeToSupabase(note, rating, reason, comment);
 
+      // Phase 10: Sync to user_feedback table via Context
+      if (typeof Context !== 'undefined' && typeof Sync !== 'undefined' && Sync.user?.id) {
+        const feedbackType = rating === 'liked' ? 'approve' : 'reject';
+        const insightType = note.analysis?.noteType || 'general';
+        await Context.recordFeedback(note.id, feedbackType, Sync.user.id, insightType);
+        console.log('[Feedback] ✓ Synced to user_feedback:', feedbackType);
+      }
+
       // Store in quality learning system
       if (typeof QualityLearning !== 'undefined') {
         await QualityLearning.storeFeedback(note, rating, reason, comment);
@@ -357,6 +365,12 @@ const Feedback = {
           edit_type: editType,
           time_to_feedback_ms: timeToFeedbackMs
         });
+
+        // Phase 10: Sync to user_feedback table via Context
+        if (typeof Context !== 'undefined' && user?.id) {
+          await Context.recordFeedback(note.id, 'edit', user.id, `edit_${field}`);
+          console.log('[Feedback] ✓ Edit synced to user_feedback');
+        }
       }
     } catch (error) {
       console.error('[Feedback] Supabase edit storage failed:', error);
