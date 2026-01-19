@@ -1,0 +1,17 @@
+CRITICAL FIX: Feedback not persisting after cache clear
+
+TWO ISSUES:
+
+1. FEEDBACK SYNC: Approved/Rejected lost after cache wipe
+   - note.feedback.rating MUST be included in Supabase sync payload
+   - On app load, if local notes have no feedback but cloud does, restore it
+   - Debug: console.log the sync payload to verify feedback is included
+   - TEST: approve 5 notes → clear cache → reload → all 5 still highlighted
+
+2. OUTPUT QUALITY COUNT: Resets to 1 approved after cache wipe
+   - Count is only reading local data before cloud sync completes
+   - Wait for sync to complete, THEN count feedback
+   - Or: fetch count directly from Supabase
+   - TEST: approve 5 notes → clear cache → reload → shows "5 approved"
+
+Deploy and output FEEDBACK-SYNC-FIXED

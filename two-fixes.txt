@@ -1,0 +1,17 @@
+DESIGN: Vogue minimalist - black/white/gray only.
+
+TWO FIXES:
+
+1. STILL THINKING NOT SHOWING IN THINKING THROUGH:
+   - When user clicks "Still Thinking", note should appear in "Thinking Through" section on TWIN tab
+   - Logic: Show notes where analysis.decision.isDecision=true AND (decision.resolved=false OR decision.status='thinking')
+   - Currently only showing unresolved decisions, not ones marked "Still Thinking"
+   - TEST: click Still Thinking on decision note → go to TWIN tab → note appears in Thinking Through
+
+2. PHOTO UPLOAD BROKEN:
+   - Image capture/upload not working
+   - Debug: check console for errors when posting photo
+   - Verify image processing pipeline still functional
+   - TEST: tap image icon → take/select photo → note creates with image analysis
+
+Deploy and output TWO-FIXES-COMPLETE

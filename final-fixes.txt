@@ -1,0 +1,24 @@
+DESIGN: Vogue minimalist - black/white/gray only.
+
+THREE FIXES:
+
+1. QUESTIONANSWER CLOUD SYNC: Still not surviving cache clear
+   - Debug: Log what's being sent to Supabase
+   - Verify note.questionAnswer is in the sync payload
+   - On app load, if local questionAnswer is empty but cloud has it, restore it
+   - TEST: answer question → clear cache → reload → answer MUST be visible
+
+2. COMMENT INDICATOR: User cannot see which notes have comments
+   - In notes list, show small indicator if note has feedback.comment
+   - In note detail, show saved comment visibly below COMMENT button
+   - Format: "Your comment: [text]" with subtle styling
+   - User should know at a glance which notes they commented on
+
+3. DECISION BUTTON STYLING: Should match Approve/Reject style
+   - Currently: outlined box when selected
+   - Should be: filled/shaded box when selected (like Approve/Reject)
+   - When Still Thinking selected: black background, white text
+   - When Decided selected: black background, white text
+   - Unselected: white background, black text/border
+
+Deploy and output FINAL-FIXES-COMPLETE

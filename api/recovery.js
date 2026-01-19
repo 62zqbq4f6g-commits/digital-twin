@@ -1,5 +1,5 @@
 /**
- * Digital Twin - Recovery Email API
+ * Inscript - Recovery Email API
  * Sends PIN recovery emails via Resend
  */
 
@@ -37,16 +37,16 @@ export default async function handler(req, res) {
 
     if (action === 'forgot') {
       // Forgot PIN email
-      subject = 'Digital Twin — PIN Recovery';
+      subject = 'Inscript — PIN Recovery';
       html = `
         <div style="font-family: 'Playfair Display', Georgia, serif; max-width: 500px; margin: 0 auto; padding: 40px 20px; background: #fff;">
           <div style="text-align: center; margin-bottom: 40px;">
-            <h1 style="font-size: 18px; font-weight: 400; letter-spacing: 0.15em; margin: 0; color: #000;">
-              D I G I T A L
+            <h1 style="font-size: 24px; font-weight: 500; letter-spacing: 0.1em; margin: 0; color: #000;">
+              INSCRIPT
             </h1>
-            <h1 style="font-size: 18px; font-weight: 400; letter-spacing: 0.15em; margin: 8px 0 0 0; color: #000;">
-              T W I N
-            </h1>
+            <p style="font-size: 14px; font-style: italic; margin: 8px 0 0 0; color: #666;">
+              Your mirror in code
+            </p>
           </div>
 
           <div style="border-top: 1px solid #eee; padding-top: 30px;">
@@ -62,7 +62,7 @@ export default async function handler(req, res) {
             <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 30px 0;">
               <p style="font-family: 'Inter', -apple-system, sans-serif; font-size: 14px; color: #666; margin: 0;">
                 <strong>To reset:</strong><br>
-                1. Clear your browser's local storage for Digital Twin<br>
+                1. Clear your browser's local storage for Inscript<br>
                 2. Reload the app and set a new PIN<br>
                 3. Sign in to restore your synced notes
               </p>
@@ -82,7 +82,7 @@ export default async function handler(req, res) {
       `;
     } else {
       // New PIN setup - send recovery key
-      subject = 'Digital Twin — Your Recovery Key';
+      subject = 'Inscript — Your Recovery Key';
       html = `
         <div style="font-family: 'Playfair Display', Georgia, serif; max-width: 500px; margin: 0 auto; padding: 40px 20px; background: #fff;">
           <div style="text-align: center; margin-bottom: 40px;">
@@ -96,7 +96,7 @@ export default async function handler(req, res) {
 
           <div style="border-top: 1px solid #eee; padding-top: 30px;">
             <p style="font-family: 'Inter', -apple-system, sans-serif; font-size: 16px; line-height: 1.6; color: #333; margin: 0 0 20px 0;">
-              Your Digital Twin PIN has been set up. Save this recovery key in a safe place:
+              Your Inscript PIN has been set up. Save this recovery key in a safe place:
             </p>
 
             <div style="background: #000; padding: 24px; text-align: center; margin: 30px 0; border-radius: 8px;">
@@ -128,7 +128,7 @@ export default async function handler(req, res) {
         'Authorization': `Bearer ${RESEND_API_KEY}`
       },
       body: JSON.stringify({
-        from: 'Digital Twin <noreply@resend.dev>',
+        from: 'Inscript <noreply@resend.dev>',
         to: email,
         subject,
         html

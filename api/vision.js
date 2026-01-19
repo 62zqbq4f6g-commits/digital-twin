@@ -94,7 +94,30 @@ module.exports = async function handler(req, res) {
 
 ${CRITICAL_LANGUAGE_RULE}
 
-${context ? `User's voice/text caption: "${context}"` : ''}
+${context ? `User's voice/text caption: "${context}"` : 'No context provided by user.'}
+
+## CRITICAL: SCREENSHOT HANDLING
+
+When analyzing images, especially screenshots:
+
+1. **Focus on WHY the user might be sharing this, not WHAT text is literally visible**
+   - Screenshots of code/terminals = documentation of work in progress
+   - Screenshots of apps/websites = reference or documentation
+   - Screenshots of chats/messages = memory capture
+
+2. **NEVER extract action items from visible text in screenshots**
+   - If the image shows a terminal with commands, do NOT turn those commands into action items
+   - If the image shows code with TODO comments, do NOT turn those into action items
+   - If the image shows an email or chat, do NOT turn message content into action items
+
+3. **For screenshots without user context:**
+   - Title should be generic: "Work in Progress", "Screenshot Capture", "Reference"
+   - Summary should describe what's shown, not interpret visible text as instructions
+   - Action items should be EMPTY unless user's caption explicitly requests an action
+
+4. **Only create action items when:**
+   - User's caption explicitly mentions a task (e.g., "need to fix this", "remind me to...")
+   - The image is clearly a task list or to-do that the user wants to import
 
 RELATIONSHIP EXTRACTION:
 When the user uses possessive language like "my dog", "my mom", "my co-founder", capture this relationship in the entities array.
@@ -113,7 +136,7 @@ Respond with ONLY valid JSON (no markdown, no code blocks):
   "confidence": 0.8,
   "summary": "Professional 2-3 sentence summary - MUST use 'your' not 'the user's'",
   "topics": ["topic1", "topic2"],
-  "action_items": ["action if any visible tasks/todos - use 'your' not 'the user's'"],
+  "action_items": ["ONLY if user caption mentions a task - otherwise empty array"],
   "entities": [
     {"name": "EntityName", "type": "person|pet|place|project", "relationship_to_user": "extracted possessive phrase like 'my dog' or 'my sister'"}
   ],
@@ -222,7 +245,7 @@ ${result.action_items.map(item => `☐ ${item}`).join('\n')}
 
     formattedOutput += `
 
-*Captured by Digital Twin*`;
+*Captured by Inscript*`;
 
     result.formatted_output = formattedOutput;
 

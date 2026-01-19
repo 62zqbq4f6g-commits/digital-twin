@@ -1,5 +1,5 @@
 /**
- * Digital Twin - Settings Page
+ * Inscript - Settings Page
  * Handles all account, security, and data settings
  */
 
@@ -48,6 +48,46 @@ window.Settings = {
             <button class="settings-btn btn-secondary" onclick="Settings.lockApp()">
               Lock App
             </button>
+          </section>
+
+          <section class="settings-section settings-privacy">
+            <h3 class="settings-section-title">Privacy & Security</h3>
+
+            <div class="privacy-info">
+              <div class="privacy-item">
+                <span class="privacy-check">\u2713</span>
+                <span>Encrypted at rest and in transit</span>
+              </div>
+              <div class="privacy-item">
+                <span class="privacy-check">\u2713</span>
+                <span>Protected by row-level security</span>
+              </div>
+              <div class="privacy-item">
+                <span class="privacy-check">\u2713</span>
+                <span>Never used for AI model training</span>
+              </div>
+              <div class="privacy-item">
+                <span class="privacy-check">\u2713</span>
+                <span>Never sold or shared with third parties</span>
+              </div>
+              <div class="privacy-item">
+                <span class="privacy-check">\u2713</span>
+                <span>Permanently deletable at any time</span>
+              </div>
+            </div>
+
+            <div class="privacy-details">
+              <h4>How AI analysis works</h4>
+              <p>Your notes are processed by our AI to generate reflections.
+              Under our AI provider's enterprise terms, your content is not
+              used for training. After processing, only the insights remain.</p>
+            </div>
+
+            <div class="privacy-actions">
+              <button class="settings-btn btn-secondary" onclick="Settings.exportData()">
+                Export my data
+              </button>
+            </div>
           </section>
 
           <section class="settings-section">
@@ -314,6 +354,64 @@ window.Settings = {
       console.error('[Settings] Delete failed:', error);
       if (typeof UI !== 'undefined' && UI.showError) {
         UI.showError('Could not delete all data. Please try again.');
+      }
+    }
+  },
+
+  /**
+   * Export all user data as JSON
+   */
+  async exportData() {
+    console.log('[Settings] Exporting user data');
+
+    try {
+      // Get all notes from local DB
+      const notes = await DB.getAllNotes();
+
+      // Get twin profile
+      const twinProfile = await DB.loadTwinProfile();
+
+      // Get onboarding data if available
+      let onboardingData = null;
+      if (Sync.supabase && Sync.user) {
+        const { data } = await Sync.supabase
+          .from('onboarding_data')
+          .select('*')
+          .eq('user_id', Sync.user.id)
+          .single();
+        onboardingData = data;
+      }
+
+      // Build export object
+      const exportObj = {
+        exportDate: new Date().toISOString(),
+        version: window.APP_VERSION || '8.0.0',
+        notes: notes,
+        twinProfile: twinProfile,
+        onboardingData: onboardingData
+      };
+
+      // Create download
+      const json = JSON.stringify(exportObj, null, 2);
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+
+      const date = new Date().toISOString().slice(0, 10);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `inscript-export-${date}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      if (typeof UI !== 'undefined' && UI.showSuccess) {
+        UI.showSuccess('Data exported successfully.');
+      }
+    } catch (error) {
+      console.error('[Settings] Export failed:', error);
+      if (typeof UI !== 'undefined' && UI.showError) {
+        UI.showError('Could not export data. Please try again.');
       }
     }
   },

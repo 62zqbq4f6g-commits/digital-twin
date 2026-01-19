@@ -1,0 +1,32 @@
+DESIGN: Vogue minimalist - clean, elegant, typography-forward, black/white/gray only.
+
+FIXES:
+
+1. OUTPUT QUALITY LABELS: In Twin tab
+   - Change "liked" to "approved"
+   - Change "disliked" to "rejected"
+   - Fix count - should show ALL approved notes, not just 1
+
+2. ANSWER CLOUD SYNC: questionAnswer must survive cache clear
+   - When answer submitted, save to Supabase immediately
+   - On app load, restore questionAnswer from cloud
+   - Verify note.questionAnswer is included in sync payload
+   - Test: answer question, clear cache, reload - answer must show
+
+3. COMMENT STORAGE: Ensure comment is stored and synced
+   - Save to note.feedback.comment in IndexedDB
+   - Sync to Supabase
+   - Restore on app load
+   - This data will be used for learning
+
+4. DECISION TOGGLE: Allow deselecting both buttons
+   - If Decided is selected, clicking Decided again = deselect (no selection)
+   - If Still Thinking is selected, clicking it again = deselect
+   - User can have NO selection (neither button highlighted)
+   - Remove toast messages "Decision made" / "Decision opened" - just toggle silently
+
+5. TWIN TAB TEXT: Update header text
+   - Change "Your Twin" to "Your Living Script"
+   - Change "Learning who you are from your notes" to "a mirror in code" in lowercase
+
+Deploy and output UX-V3-COMPLETE

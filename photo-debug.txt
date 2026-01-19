@@ -1,0 +1,31 @@
+PHOTO UPLOAD BROKEN - API Error: Unknown error
+
+DEBUG AND FIX:
+
+1. In the image/vision API call, log the FULL error response:
+   - console.log('[Camera] Full error:', JSON.stringify(error))
+   - console.log('[Camera] Response status:', response.status)
+   - console.log('[Camera] Response body:', await response.text())
+
+2. Check api/ folder for vision endpoint - does it exist?
+   - If not, create /api/vision.js for image analysis
+
+3. Verify the Claude Vision API call format:
+   - Model: claude-sonnet-4-20250514
+   - Content type must include image block with base64 data
+   - Correct format:
+     messages: [{
+       role: "user", 
+       content: [
+         { type: "image", source: { type: "base64", media_type: "image/jpeg", data: base64Data }},
+         { type: "text", text: "Analyze this image..." }
+       ]
+     }]
+
+4. Check if image is resized before upload (max 1MB recommended)
+
+5. Return meaningful error messages to UI
+
+TEST: photo upload creates note with image analysis
+
+Deploy and output PHOTO-DEBUG-COMPLETE

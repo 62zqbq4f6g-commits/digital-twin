@@ -1,5 +1,5 @@
 /**
- * Digital Twin - Cloud Sync Module
+ * Inscript - Cloud Sync Module
  * Handles Supabase sync with end-to-end encryption
  * Phase 5F: Added tombstone system to prevent deleted note resurrection
  */
@@ -128,11 +128,6 @@ const Sync = {
           await this.verifyUserOwnership(session.user.id);
           this.user = session.user;
 
-          // Migrate legacy PIN to user-specific keys
-          if (typeof PIN !== 'undefined' && PIN.migratePINToUser) {
-            PIN.migratePINToUser(session.user.id);
-          }
-
           this.startSync();
           this.updateSyncStatus('connected');
           this.updateAuthUI();
@@ -176,14 +171,8 @@ const Sync = {
 
     if (error) throw error;
 
-    // If user is immediately available (no email confirmation), migrate PIN
     if (data.user) {
       this.user = data.user;
-
-      // Migrate legacy PIN to user-specific keys
-      if (typeof PIN !== 'undefined' && PIN.migratePINToUser) {
-        PIN.migratePINToUser(data.user.id);
-      }
     }
 
     return data;
@@ -203,46 +192,25 @@ const Sync = {
     if (error) throw error;
     this.user = data.user;
 
-    // Migrate legacy PIN to user-specific keys
-    if (typeof PIN !== 'undefined' && PIN.migratePINToUser) {
-      PIN.migratePINToUser(data.user.id);
-    }
-
     this.startSync();
     return data;
   },
 
   /**
    * Sign out - CRITICAL: Clear ALL local data to prevent data leakage
-   * BUT preserve user-specific PIN keys (so users can sign back in)
    */
   async signOut() {
     if (!this.supabase) return;
 
-    console.log('[Sync] Signing out - clearing ALL local data (preserving PIN keys)');
+    console.log('[Sync] Signing out - clearing ALL local data');
 
     // Stop sync first
     this.stopSync();
-
-    // Preserve PIN keys (they're user-specific and needed for re-login)
-    const pinKeys = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && key.startsWith('dt_pin_')) {
-        pinKeys.push({ key, value: localStorage.getItem(key) });
-      }
-    }
 
     // Clear ALL localStorage
     const keyCount = localStorage.length;
     localStorage.clear();
     console.log('[Sync] Cleared ALL localStorage:', keyCount, 'keys removed');
-
-    // Restore PIN keys
-    pinKeys.forEach(({ key, value }) => {
-      localStorage.setItem(key, value);
-    });
-    console.log('[Sync] Restored', pinKeys.length, 'PIN keys');
 
     // Clear IndexedDB (notes database)
     try {
@@ -287,26 +255,10 @@ const Sync = {
     if (storedUserId && storedUserId !== currentUserId) {
       console.log('[Sync] USER CHANGED - clearing all local data to prevent data leakage');
 
-      // Preserve PIN keys (they're user-specific and needed for re-login)
-      const pinKeys = [];
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && key.startsWith('dt_pin_')) {
-          pinKeys.push({ key, value: localStorage.getItem(key) });
-        }
-      }
-
-      // CRITICAL: Clear ALL localStorage including Supabase tokens
-      // The current session is already in memory, so we can safely clear everything
+      // CRITICAL: Clear ALL localStorage
       const keyCount = localStorage.length;
       localStorage.clear();
       console.log('[Sync] Cleared ALL localStorage:', keyCount, 'keys removed');
-
-      // Restore PIN keys
-      pinKeys.forEach(({ key, value }) => {
-        localStorage.setItem(key, value);
-      });
-      console.log('[Sync] Restored', pinKeys.length, 'PIN keys');
 
       // Clear IndexedDB (notes database)
       try {
@@ -403,7 +355,7 @@ const Sync = {
    * Perform sync now
    */
   async syncNow() {
-    if (!this.user || !PIN.encryptionKey || this.isSyncing) return;
+    if (!this.user || !Auth.encryptionKey || this.isSyncing) return;
 
     this.isSyncing = true;
     this.updateSyncStatus('syncing');
@@ -495,7 +447,7 @@ const Sync = {
 
       try {
         // Encrypt note before upload
-        const encrypted = await PIN.encrypt(note);
+        const encrypted = await Auth.encrypt(note);
 
         // Upsert to Supabase
         const { error } = await this.supabase
@@ -566,7 +518,9 @@ const Sync = {
 
       try {
         // Decrypt
-        const decrypted = await PIN.decrypt(remoteNote.encrypted_data);
+        console.log('[Sync] Attempting to decrypt note:', remoteNote.id);
+        const decrypted = await Auth.decrypt(remoteNote.encrypted_data);
+        console.log('[Sync] Decrypted note:', decrypted.id, 'title:', decrypted.extracted?.title?.substring(0, 30));
         decrypted._syncStatus = 'synced';
         decrypted._localChanges = false;
 
@@ -576,17 +530,19 @@ const Sync = {
         if (!localNote) {
           // New note from cloud
           await DB.saveNote(decrypted, { fromSync: true });
-          console.log('[Sync] Pulled new note from cloud:', decrypted.id, 'questionAnswer:', !!decrypted.questionAnswer, 'feedback.rating:', decrypted.feedback?.rating);
+          console.log('[Sync] Saved new note from cloud:', decrypted.id);
         } else {
           // Check if remote is newer
           const localUpdated = localNote.timestamps?.updated_at || localNote.timestamps?.created_at;
           if (new Date(remoteNote.updated_at) > new Date(localUpdated)) {
             await DB.saveNote(decrypted, { fromSync: true });
-            console.log('[Sync] Updated note from cloud:', decrypted.id, 'questionAnswer:', !!decrypted.questionAnswer, 'feedback.rating:', decrypted.feedback?.rating);
+            console.log('[Sync] Updated note from cloud:', decrypted.id);
           }
         }
       } catch (error) {
-        console.error('Pull error for note:', remoteNote.id, error);
+        console.error('[Sync] DECRYPT FAILED for note:', remoteNote.id, error.message);
+        // Note: Decryption will fail for notes encrypted with old PIN-based key
+        // These notes cannot be recovered without the original PIN
       }
     }
   },

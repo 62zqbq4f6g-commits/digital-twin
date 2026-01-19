@@ -4,9 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#000000">
-  <meta name="description" content="roxthebox - AI-powered second brain for voice and text notes">
+  <meta name="description" content="Inscript — The first AI that actually remembers you. Not just your notes — your world.">
+  <meta name="application-name" content="Inscript">
+  <meta property="og:title" content="Inscript — Your mirror in code">
+  <meta property="og:description" content="The first AI that actually remembers you.">
 
-  <title>roxthebox</title>
+  <title>Inscript — Your mirror in code</title>
 
   <!-- PWA Manifest -->
   <link rel="manifest" href="manifest.json">
@@ -18,24 +21,88 @@
   <!-- Google Fonts - Vogue Aesthetic -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400&family=Playfair+Display:wght@400;500;600&display=swap" rel="stylesheet">
 
   <!-- Styles -->
-  <link rel="stylesheet" href="css/styles.css?v=542">
+  <link rel="stylesheet" href="css/styles.css?v=804">
+  <link rel="stylesheet" href="css/design-system.css?v=804">
 </head>
 <body>
-  <!-- PIN Lock Screen (shown before app) -->
-  <div id="pin-screen" class="hidden"></div>
+  <!-- Loading Overlay -->
+  <div id="loading-overlay" class="loading-overlay">
+    <div class="loading-content">
+      <div class="loading-icon">
+        <svg class="loading-spinner" viewBox="0 0 50 50">
+          <circle cx="25" cy="25" r="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <p class="loading-text" id="loading-text">sitting with this...</p>
+    </div>
+  </div>
+
+  <!-- Auth Screen (shown before app) -->
+  <div id="auth-screen" class="auth-container hidden">
+    <div class="auth-card">
+      <!-- Brand -->
+      <div class="auth-brand">
+        <h1 class="auth-logo">INSCRIPT</h1>
+        <p class="auth-tagline">Your mirror in code</p>
+      </div>
+
+      <!-- Sign In Form (default) -->
+      <div id="auth-signin-form" class="auth-form-wrapper">
+        <form class="auth-form" onsubmit="return false;">
+          <div class="auth-field">
+            <label class="auth-label" for="auth-signin-email">Email</label>
+            <input type="email" id="auth-signin-email" class="auth-input" placeholder="you@example.com" autocomplete="email">
+          </div>
+
+          <div class="auth-field">
+            <label class="auth-label" for="auth-signin-password">Password</label>
+            <input type="password" id="auth-signin-password" class="auth-input" placeholder="Enter password" autocomplete="current-password">
+          </div>
+
+          <p id="auth-signin-error" class="auth-error hidden"></p>
+
+          <button type="submit" id="auth-signin-btn" class="auth-btn">Sign in</button>
+        </form>
+
+        <p class="auth-footer">
+          New here? <button id="show-signup-btn" class="auth-link">Create account</button>
+        </p>
+      </div>
+
+      <!-- Sign Up Form -->
+      <div id="auth-signup-form" class="auth-form-wrapper hidden">
+        <form class="auth-form" onsubmit="return false;">
+          <div class="auth-field">
+            <label class="auth-label" for="auth-signup-email">Email</label>
+            <input type="email" id="auth-signup-email" class="auth-input" placeholder="you@example.com" autocomplete="email">
+          </div>
+
+          <div class="auth-field">
+            <label class="auth-label" for="auth-signup-password">Password</label>
+            <input type="password" id="auth-signup-password" class="auth-input" placeholder="Min 6 characters" autocomplete="new-password">
+          </div>
+
+          <p id="auth-signup-error" class="auth-error hidden"></p>
+
+          <button type="submit" id="auth-signup-btn" class="auth-btn">Begin</button>
+        </form>
+
+        <p class="auth-footer">
+          Have an account? <button id="show-signin-btn" class="auth-link">Sign in</button>
+        </p>
+      </div>
+    </div>
+  </div>
 
   <!-- Main App Container -->
   <div id="app">
     <!-- Header -->
     <header class="header">
-      <h1 class="header-title brand-logo">roxthebox</h1>
+      <h1 class="header-title brand-logo">INSCRIPT</h1>
       <div class="header-buttons">
-        <button class="header-lock-btn" id="header-lock-btn" onclick="UI.lockApp()" aria-label="Lock App" title="Lock App">
-          <span>🔒</span>
-        </button>
         <button class="header-settings-btn" id="header-settings-btn" aria-label="Settings">
           <span>⚙</span>
         </button>
@@ -70,6 +137,12 @@
                 class="text-input"
                 placeholder="What's on your mind?"
                 rows="1"
+                autocomplete="off"
+                autocorrect="off"
+                autocapitalize="off"
+                spellcheck="false"
+                data-lpignore="true"
+                data-form-type="other"
               ></textarea>
               <button id="submit-btn" class="submit-btn" aria-label="Submit note">
                 <span class="submit-icon">→</span>
@@ -153,6 +226,7 @@
             id="notes-search-input"
             class="notes-search-input"
             placeholder="Search notes..."
+            autocomplete="off"
           >
         </div>
 
@@ -177,30 +251,24 @@
 
       <!-- Twin Screen -->
       <section id="screen-twin" class="screen hidden">
-        <div class="twin-header">
-          <h2 class="twin-title">the living script</h2>
-          <p class="twin-subtitle">a mirror in code</p>
+        <header class="brand-header" style="margin-bottom: var(--space-6); margin-top: var(--space-4);">
+          <h2 class="brand-title">Your mirror in code</h2>
+          <p class="brand-tagline">your mirror in code</p>
+        </header>
+
+        <!-- Phase 9: About You Section (populated by UIProfile) -->
+        <div id="about-me-section">
+          <!-- Populated by UIProfile.renderAboutYouSection() -->
         </div>
 
-        <!-- Phase 8: About Me Section -->
-        <div class="about-me-section" id="about-me-section">
-          <h3>About You</h3>
-          <div class="about-me-content">
-            <div class="profile-field">
-              <label>Your Name</label>
-              <input type="text" id="profile-name" placeholder="What should I call you?">
-            </div>
-            <div class="profile-field">
-              <label>About You</label>
-              <textarea id="profile-about" placeholder="Tell me about yourself..."></textarea>
-            </div>
-            <div class="profile-field">
-              <label>Quick Descriptors</label>
-              <input type="text" id="profile-descriptors" placeholder="founder, dog owner, Singapore-based">
-              <small>Comma-separated traits</small>
-            </div>
-            <button id="save-profile" class="btn-primary">Save</button>
-          </div>
+        <!-- Phase 9: Your Preferences Section (unlocks after 5 notes) -->
+        <div id="preferences-section">
+          <!-- Populated by UIProfile.renderPreferencesSection() -->
+        </div>
+
+        <!-- Phase 9: Your World Section (entities) -->
+        <div id="your-world-section">
+          <!-- Populated by Entities.renderYourWorldSection() -->
         </div>
 
         <!-- Phase 8: What I've Learned Section -->
@@ -328,15 +396,6 @@
           </div>
         </div>
 
-        <!-- Security Section -->
-        <div class="settings-section">
-          <h2 class="settings-heading">Security</h2>
-          <button id="change-pin-btn" class="settings-btn">
-            <span>Change PIN</span>
-            <span class="settings-btn-desc">Update your 6-digit PIN</span>
-          </button>
-        </div>
-
         <div class="settings-section">
           <h2 class="settings-heading">Insights</h2>
           <button id="digest-btn" class="digest-trigger-btn" onclick="Digest.generate()">
@@ -365,7 +424,7 @@
         </div>
 
         <div class="settings-section settings-version">
-          <p class="settings-version-text">roxthebox v<span id="app-version">5.3.0</span></p>
+          <p class="settings-version-text">Inscript v<span id="app-version">5.3.0</span></p>
         </div>
       </section>
 
@@ -433,7 +492,7 @@
       <div class="auth-container">
         <!-- Header -->
         <div class="auth-header">
-          <span class="auth-brand brand-logo">roxthebox</span>
+          <span class="auth-brand brand-logo">Inscript</span>
         </div>
 
         <!-- Close button -->
@@ -441,11 +500,6 @@
 
         <!-- Sign In Form (default) -->
         <div id="auth-signin" class="auth-form">
-          <div class="auth-content">
-            <h2 class="auth-title">Welcome Back</h2>
-            <p class="auth-subtitle">Sign in to sync your notes</p>
-          </div>
-
           <div class="auth-fields">
             <div class="auth-field">
               <label class="auth-label" for="signin-email">Email</label>
@@ -468,11 +522,6 @@
 
         <!-- Sign Up Form -->
         <div id="auth-signup" class="auth-form hidden">
-          <div class="auth-content">
-            <h2 class="auth-title">Create Account</h2>
-            <p class="auth-subtitle">Start syncing across devices</p>
-          </div>
-
           <div class="auth-fields">
             <div class="auth-field">
               <label class="auth-label" for="signup-email">Email</label>
@@ -490,7 +539,7 @@
 
           <p id="signup-error" class="auth-error hidden"></p>
 
-          <button id="signup-submit" class="auth-submit">Create Account</button>
+          <button id="signup-submit" class="auth-submit">Begin</button>
 
           <p class="auth-switch">
             Have an account? <button id="show-signin" class="auth-switch-btn">Sign in</button>
@@ -526,36 +575,45 @@
   <!-- Supabase Client -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-  <!-- Scripts (v3.3.0 cache bust) -->
-  <script src="js/db.js?v=510"></script>
-  <script src="js/classifier.js?v=510"></script>
-  <script src="js/extractor.js?v=510"></script>
-  <script src="js/refiner.js?v=510"></script>
-  <script src="js/app.js?v=510"></script>
-  <script src="js/ui.js?v=541"></script>
-  <script src="js/voice.js?v=510"></script>
-  <script src="js/camera.js?v=510"></script>
-  <script src="js/digest.js?v=510"></script>
-  <script src="js/pin.js?v=536"></script>
-  <script src="js/sync.js?v=536"></script>
-  <script src="js/entity-memory.js?v=540"></script>
-  <script src="js/user-profile.js?v=516"></script>
-  <script src="js/twin-profile.js?v=535"></script>
-  <script src="js/entity-extractor.js?v=524"></script>
-  <script src="js/belief-extractor.js?v=525"></script>
-  <script src="js/pattern-detector.js?v=510"></script>
-  <script src="js/twin-engine.js?v=524"></script>
-  <script src="js/twin-ui.js?v=516"></script>
-  <script src="js/quality-learning.js?v=510"></script>
-  <script src="js/analyzer.js?v=540"></script>
-  <script src="js/output-generator.js?v=510"></script>
-  <script src="js/feedback.js?v=510"></script>
-  <script src="js/decision-tracker.js?v=510"></script>
-  <script src="js/actions-ui.js?v=516"></script>
-  <script src="js/follow-up.js?v=510"></script>
-  <script src="js/nudge-tracker.js?v=510"></script>
-  <script src="js/onboarding.js?v=530"></script>
-  <script src="js/settings.js?v=530"></script>
+  <!-- Scripts (v6.0.6 cache bust) -->
+  <script src="js/db.js?v=700"></script>
+  <script src="js/classifier.js?v=700"></script>
+  <script src="js/extractor.js?v=700"></script>
+  <script src="js/refiner.js?v=700"></script>
+  <script src="js/app.js?v=700"></script>
+  <script src="js/ui.js?v=792"></script>
+  <script src="js/ui-chat.js?v=790"></script>
+  <script src="js/ui-camera.js?v=790"></script>
+  <script src="js/ui-entities.js?v=790"></script>
+  <script src="js/voice.js?v=700"></script>
+  <script src="js/camera.js?v=700"></script>
+  <script src="js/digest.js?v=700"></script>
+  <script src="js/sync.js?v=700"></script>
+  <script src="js/auth.js?v=700"></script>
+  <script src="js/entity-memory.js?v=700"></script>
+  <script src="js/user-profile.js?v=700"></script>
+  <script src="js/twin-profile.js?v=700"></script>
+  <script src="js/entity-extractor.js?v=700"></script>
+  <script src="js/belief-extractor.js?v=700"></script>
+  <script src="js/pattern-detector.js?v=700"></script>
+  <script src="js/twin-engine.js?v=700"></script>
+  <script src="js/twin-ui.js?v=700"></script>
+  <script src="js/quality-learning.js?v=700"></script>
+  <script src="js/analyzer.js?v=700"></script>
+  <script src="js/analysis-validator.js?v=700"></script>
+  <script src="js/tier-detector.js?v=700"></script>
+  <script src="js/output-generator.js?v=700"></script>
+  <script src="js/feedback.js?v=700"></script>
+  <script src="js/decision-tracker.js?v=700"></script>
+  <script src="js/actions-ui.js?v=700"></script>
+  <script src="js/follow-up.js?v=700"></script>
+  <script src="js/nudge-tracker.js?v=700"></script>
+  <script src="js/onboarding.js?v=792"></script>
+  <script src="js/ui-profile.js?v=700"></script>
+  <script src="js/entities.js?v=700"></script>
+  <script src="js/embeddings.js?v=770"></script>
+  <script src="js/context.js?v=700"></script>
+  <script src="js/settings.js?v=700"></script>
   <script>
     // Environment variables - loaded from API
     window.ENV = {
@@ -587,7 +645,7 @@
       });
     }
 
-    console.log('[App] Version: 5.2.0 (no SW)');
+    console.log('[App] Version: 7.0.0');
 
     // Main initialization - runs immediately
     (async function init() {
@@ -610,16 +668,11 @@
         await new Promise(resolve => document.addEventListener('DOMContentLoaded', resolve));
       }
 
-      // STEP 3: Initialize Sync FIRST to restore session (needed for user-specific PIN keys)
-      await Sync.init();
-      console.log('[Init] Sync initialized, user:', Sync.user?.email || 'none');
+      // STEP 3: Setup Auth authenticated handler
+      Auth.onAuthenticated = async function() {
+        console.log('[Init] onAuthenticated called, initializing App...');
 
-      // STEP 4: Setup PIN unlock handler
-      const originalOnUnlock = PIN.onUnlock;
-      PIN.onUnlock = async function() {
-        console.log('[Init] onUnlock called, initializing App...');
-
-        // Wrap App.init in timeout to prevent hang
+        // Initialize database FIRST
         try {
           const initPromise = App.init();
           const timeoutPromise = new Promise((_, reject) =>
@@ -629,52 +682,76 @@
           console.log('[Init] App.init complete, DB.notes count:', DB.notes?.length || 0);
         } catch (e) {
           console.warn('[Init] App.init issue:', e.message);
-          // Continue anyway - DB might already be initialized
+        }
+
+        // CRITICAL: Pull notes from cloud BEFORE checking onboarding
+        // This ensures existing users see their notes on new devices
+        if (typeof Sync !== 'undefined' && Sync.isAuthenticated()) {
+          console.log('[Init] Pulling notes from cloud...');
+          try {
+            // Force full sync by clearing last sync time
+            localStorage.removeItem('dt_last_sync');
+            await Sync.syncNow();
+            console.log('[Init] Cloud sync complete, DB.notes count:', DB.notes?.length || 0);
+          } catch (e) {
+            console.warn('[Init] Cloud sync failed:', e.message);
+          }
         }
 
         // Check for onboarding (new users with no notes)
+        // NOW we have cloud data in local DB
         console.log('[Init] Checking onboarding, Sync.user:', Sync.user?.email || 'none');
         if (typeof Onboarding !== 'undefined') {
-          const shouldShow = Onboarding.shouldShow();
+          const shouldShow = await Onboarding.shouldShow();
           console.log('[Init] Onboarding.shouldShow():', shouldShow);
           if (shouldShow) {
             console.log('[App] New user detected, starting onboarding');
             Onboarding.start();
-            return; // Stop here, onboarding will handle the rest
+            return;
           } else {
-            // Now UI can check auth state correctly
             UI.init();
           }
         } else {
           console.log('[Init] Onboarding module not found');
-          // Now UI can check auth state correctly
           UI.init();
         }
 
         Voice.init();
         Camera.init();
-        // Phase 8: Initialize UserProfile after sync (needs Supabase)
         if (typeof UserProfile !== 'undefined') {
           await UserProfile.init();
         }
-        // Initialize Twin Engine
         await TwinEngine.init();
         TwinUI.init();
         Feedback.init();
-        // Phase 4C: Initialize Actions UI
         ActionsUI.init();
-        // Phase 8: Check for follow-ups after a delay (don't interrupt initial load)
         setTimeout(async () => {
           if (typeof FollowUp !== 'undefined') {
             await FollowUp.checkPendingFollowUps();
           }
         }, 3000);
-        originalOnUnlock.call(this);
       };
 
-      // STEP 5: Show PIN screen (now with user context from Sync)
-      await PIN.init();
+      // STEP 4: Check authentication
+      const isAuthenticated = await Auth.init();
+
+      if (isAuthenticated) {
+        // Already logged in - start the app
+        console.log('[Init] Already authenticated, starting app...');
+        Auth.hideAuthScreen();
+        await Auth.onAuthenticated();
+      } else {
+        // Show auth screen
+        console.log('[Init] Not authenticated, showing auth screen...');
+        Auth.showAuthScreen();
+        Auth.attachAuthListeners();
+      }
     })();
   </script>
+
+  <!-- Phase 9.1: Feedback Toast -->
+  <div class="feedback-toast" id="feedback-toast">
+    <span class="feedback-toast__text"></span>
+  </div>
 </body>
 </html>

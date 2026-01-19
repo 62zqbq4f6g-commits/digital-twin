@@ -1,0 +1,129 @@
+// Digital Twin Service Worker
+const APP_VERSION = '5.1.9';
+const CACHE_NAME = `digital-twin-v${APP_VERSION}`;
+
+const ASSETS_TO_CACHE = [
+  '/',
+  '/index.html',
+  '/manifest.json',
+  '/css/styles.css',
+  '/js/db.js',
+  '/js/classifier.js',
+  '/js/extractor.js',
+  '/js/refiner.js',
+  '/js/app.js',
+  '/js/ui.js',
+  '/js/voice.js',
+  '/js/camera.js',
+  '/js/digest.js',
+  '/js/pin.js',
+  '/js/sync.js',
+  '/js/entity-memory.js',
+  '/js/user-profile.js',
+  '/js/quality-learning.js',
+  '/js/feedback.js',
+  '/js/follow-up.js',
+  '/js/nudge-tracker.js',
+  '/assets/icon-192.png',
+  '/assets/icon-512.png'
+];
+
+// Install event - cache assets and force immediate activation
+self.addEventListener('install', (event) => {
+  console.log(`[SW ${APP_VERSION}] Installing...`);
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then((cache) => {
+        console.log(`[SW ${APP_VERSION}] Caching assets`);
+        return cache.addAll(ASSETS_TO_CACHE);
+      })
+      .then(() => {
+        console.log(`[SW ${APP_VERSION}] Installed, skipping wait`);
+        return self.skipWaiting();
+      })
+  );
+});
+
+// Activate event - clean ALL old caches and claim clients immediately
+self.addEventListener('activate', (event) => {
+  console.log(`[SW ${APP_VERSION}] Activating...`);
+  event.waitUntil(
+    caches.keys()
+      .then((cacheNames) => {
+        return Promise.all(
+          cacheNames.map((cacheName) => {
+            if (cacheName !== CACHE_NAME) {
+              console.log(`[SW ${APP_VERSION}] Deleting old cache:`, cacheName);
+              return caches.delete(cacheName);
+            }
+          })
+        );
+      })
+      .then(() => {
+        console.log(`[SW ${APP_VERSION}] Activated, claiming clients`);
+        return self.clients.claim();
+      })
+  );
+});
+
+// Fetch event - Network-first for HTML/JS/CSS, cache-first for assets
+self.addEventListener('fetch', (event) => {
+  const url = new URL(event.request.url);
+
+  // Network-first for same-origin HTML, JS, CSS (ensures fresh code)
+  if (url.origin === self.location.origin &&
+      (event.request.destination === 'document' ||
+       url.pathname.endsWith('.js') ||
+       url.pathname.endsWith('.css') ||
+       url.pathname === '/')) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          // Cache the fresh response
+          if (response && response.status === 200) {
+            const responseToCache = response.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseToCache);
+            });
+          }
+          return response;
+        })
+        .catch(() => {
+          // Offline fallback to cache
+          return caches.match(event.request);
+        })
+    );
+    return;
+  }
+
+  // Cache-first for other assets (images, fonts, etc.)
+  event.respondWith(
+    caches.match(event.request)
+      .then((cachedResponse) => {
+        if (cachedResponse) {
+          return cachedResponse;
+        }
+        return fetch(event.request)
+          .then((response) => {
+            if (!response || response.status !== 200 || response.type !== 'basic') {
+              return response;
+            }
+            const responseToCache = response.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseToCache);
+            });
+            return response;
+          })
+          .catch(() => {
+            return caches.match('/index.html');
+          });
+      })
+  );
+});
+
+// Message handler for version requests
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'GET_VERSION') {
+    event.ports[0].postMessage({ version: APP_VERSION });
+  }
+});

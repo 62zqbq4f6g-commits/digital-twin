@@ -1,5 +1,5 @@
 /**
- * Digital Twin - Extractor Module
+ * Inscript - Extractor Module
  * Extract metadata following rules from CLAUDE.md section 8
  */
 

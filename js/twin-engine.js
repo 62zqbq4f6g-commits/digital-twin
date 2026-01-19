@@ -101,6 +101,61 @@ const TwinEngine = {
       if (entities.topics?.length > 0) {
         updates.knowledge = this.mergeKnowledge(profile.knowledge || {}, entities.topics);
       }
+
+      // Phase 10: Sync entities to user_entities table
+      if (typeof Entities !== 'undefined' && typeof Sync !== 'undefined' && Sync.user?.id) {
+        const entitiesArray = [];
+        // Helper to convert sentiment string to numeric
+        const sentimentToNumeric = (sentiment) => {
+          if (typeof sentiment === 'number') return sentiment;
+          const map = { 'positive': 0.7, 'negative': -0.7, 'neutral': 0, 'mixed': 0.1 };
+          return map[sentiment?.toLowerCase()] ?? null;
+        };
+        // Convert people to array format
+        if (Array.isArray(entities.people)) {
+          entities.people.forEach(person => {
+            if (person && person.name) {
+              entitiesArray.push({
+                name: person.name,
+                type: 'person',
+                context: text.substring(0, 200),
+                sentiment: sentimentToNumeric(person.sentiment)
+              });
+            }
+          });
+        }
+        // Convert projects to array format
+        if (Array.isArray(entities.projects)) {
+          entities.projects.forEach(project => {
+            if (project && project.name) {
+              entitiesArray.push({
+                name: project.name,
+                type: 'project',
+                context: text.substring(0, 200)
+              });
+            }
+          });
+        }
+        // Convert companies to array format
+        if (Array.isArray(entities.companies)) {
+          entities.companies.forEach(company => {
+            if (company && company.name) {
+              entitiesArray.push({
+                name: company.name,
+                type: 'company',
+                context: text.substring(0, 200)
+              });
+            }
+          });
+        }
+
+        if (entitiesArray.length > 0) {
+          console.log('[TwinEngine] Syncing', entitiesArray.length, 'entities to user_entities');
+          Entities.processExtractedEntities(entitiesArray, Sync.user.id, text).catch(err => {
+            console.warn('[TwinEngine] Entity sync to user_entities failed:', err);
+          });
+        }
+      }
     }
 
     // Merge beliefs

@@ -1,0 +1,33 @@
+DESIGN: Vogue minimalist - clean, elegant, typography-forward, black/white/gray only.
+
+CRITICAL FIXES:
+
+1. CLOUD SYNC FOR FEEDBACK: Approve/Reject must restore after cache clear
+   - Save feedback to Supabase immediately on click
+   - On app load, if local empty, fetch feedback from cloud
+   - Test: approve note, clear cache, reload - approval should show
+
+2. ANSWER NOT SAVING: When user answers a question via ANSWER button:
+   - Save to note.questionAnswer in IndexedDB AND Supabase
+   - Display saved answer below the question
+   - Persist across cache clears
+   - Show "Your answer:" with the saved text
+
+3. BUTTON CLARIFICATION:
+   - ANSWER button = respond to AI question (already exists, just fix persistence)
+   - COMMENT button = add a comment/note about the rating (like a review note)
+   - Both should work independently
+
+4. DETECTING PATTERNS ANIMATION: When button shows "Detecting patterns..."
+   - Add animated ellipsis: "Detecting patterns" → "Detecting patterns." → "Detecting patterns.." → "Detecting patterns..."
+   - Or add a subtle pulse/spinner
+   - User must feel progress is happening
+
+5. DECISION TOGGLE FIX: Still Thinking / Decided buttons
+   - Should ALWAYS be toggleable
+   - Clicking Decided once = selected, click again = deselected
+   - User can switch between Still Thinking and Decided freely
+   - Never lock the user out of changing their mind
+   - Visually highlight current selection only
+
+Deploy and output UX-V2-COMPLETE

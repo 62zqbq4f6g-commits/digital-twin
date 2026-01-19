@@ -1,5 +1,5 @@
 /**
- * Digital Twin - Voice Input Module
+ * Inscript - Voice Input Module
  * Uses Web Speech API for voice-to-text
  */
 
@@ -54,30 +54,58 @@ const Voice = {
 
   /**
    * Set up SpeechRecognition instance
+   * Safari-compatible: detects browser and adjusts settings
    */
   setupRecognition() {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     this.recognition = new SpeechRecognition();
 
+    // Detect Safari (uses webkit prefix)
+    const isSafari = !window.SpeechRecognition && window.webkitSpeechRecognition;
+    console.log('[Voice] Browser detection - Safari:', isSafari);
+
     // Configuration
-    this.recognition.continuous = true;
+    // Safari note: continuous mode may not work well on mobile Safari
+    this.recognition.continuous = !isSafari; // Disable continuous for Safari
     this.recognition.interimResults = true;
     this.recognition.lang = 'en-US';
 
+    // Safari fix: If not continuous, we need to restart on end
+    this.isSafari = isSafari;
+
     // Event handlers
     this.recognition.onstart = () => {
+      console.log('[Voice] Recognition started');
       this.onRecordingStart();
     };
 
     this.recognition.onend = () => {
-      this.onRecordingEnd();
+      console.log('[Voice] Recognition ended, isRecording:', this.isRecording);
+      // Safari fix: If still recording but recognition ended, restart
+      if (this.isSafari && this.isRecording && this.transcript) {
+        console.log('[Voice] Safari: Recognition ended with transcript, populating input');
+        this.isRecording = false;
+        this.onRecordingEnd();
+      } else if (this.isSafari && this.isRecording) {
+        console.log('[Voice] Safari: Restarting recognition');
+        try {
+          this.recognition.start();
+        } catch (e) {
+          console.warn('[Voice] Safari restart failed:', e);
+          this.onRecordingEnd();
+        }
+      } else {
+        this.onRecordingEnd();
+      }
     };
 
     this.recognition.onresult = (event) => {
+      console.log('[Voice] Got result event');
       this.onResult(event);
     };
 
     this.recognition.onerror = (event) => {
+      console.error('[Voice] Error:', event.error);
       this.onError(event);
     };
   },
@@ -201,26 +229,106 @@ const Voice = {
   },
 
   /**
+   * Phase 11.5: Auto-punctuate voice transcript
+   * Adds capitalization and basic punctuation for cleaner text
+   * Conservative approach: only applies safe transformations
+   * @param {string} text - Raw transcript from speech recognition
+   * @returns {string} - Punctuated transcript
+   */
+  autoPunctuate(text) {
+    if (!text || !text.trim()) return text;
+
+    let result = text.trim();
+
+    // 1. Fix common contractions (Web Speech API sometimes splits them)
+    result = result.replace(/\bi m\b/gi, "I'm");
+    result = result.replace(/\bdon t\b/gi, "don't");
+    result = result.replace(/\bwon t\b/gi, "won't");
+    result = result.replace(/\bcan t\b/gi, "can't");
+    result = result.replace(/\bisn t\b/gi, "isn't");
+    result = result.replace(/\baren t\b/gi, "aren't");
+    result = result.replace(/\bdoesn t\b/gi, "doesn't");
+    result = result.replace(/\bdidn t\b/gi, "didn't");
+    result = result.replace(/\bwasn t\b/gi, "wasn't");
+    result = result.replace(/\bweren t\b/gi, "weren't");
+    result = result.replace(/\bhaven t\b/gi, "haven't");
+    result = result.replace(/\bhasn t\b/gi, "hasn't");
+    result = result.replace(/\bit s\b/gi, "it's");
+    result = result.replace(/\bthat s\b/gi, "that's");
+    result = result.replace(/\bwhat s\b/gi, "what's");
+    result = result.replace(/\bhere s\b/gi, "here's");
+    result = result.replace(/\bthere s\b/gi, "there's");
+    result = result.replace(/\blet s\b/gi, "let's");
+    result = result.replace(/\bi ve\b/gi, "I've");
+    result = result.replace(/\bi d\b/gi, "I'd");
+    result = result.replace(/\bi ll\b/gi, "I'll");
+    result = result.replace(/\byou re\b/gi, "you're");
+    result = result.replace(/\bwe re\b/gi, "we're");
+    result = result.replace(/\bthey re\b/gi, "they're");
+    result = result.replace(/\bwould ve\b/gi, "would've");
+    result = result.replace(/\bcould ve\b/gi, "could've");
+    result = result.replace(/\bshould ve\b/gi, "should've");
+
+    // 2. Ensure standalone "I" is always capitalized
+    result = result.replace(/\bi\b/g, 'I');
+
+    // 3. Capitalize first letter
+    result = result.charAt(0).toUpperCase() + result.slice(1);
+
+    // 4. Clean up multiple spaces
+    result = result.replace(/\s+/g, ' ');
+
+    // 5. Add period at end if no punctuation exists
+    if (!/[.!?]$/.test(result)) {
+      result += '.';
+    }
+
+    // 6. Capitalize after existing periods
+    result = result.replace(/\.\s+([a-z])/g, (match, letter) => '. ' + letter.toUpperCase());
+
+    console.log('[Voice] Auto-punctuated:', result.substring(0, 80));
+    return result;
+  },
+
+  /**
    * Phase 4.7: Populate input field with transcript
    * User can edit before sending
+   * Safari-compatible: dispatches input event after setting value
    */
   populateInputWithTranscript(transcript) {
     const input = document.getElementById('notes-quick-input') || this.textInput;
 
+    // Phase 11.5: Apply auto-punctuation
+    const punctuatedTranscript = this.autoPunctuate(transcript);
+    console.log('[Voice] Safari fix: populating input with transcript:', punctuatedTranscript?.substring(0, 50));
+
     if (input) {
-      input.value = transcript;
+      // Set the value with punctuated transcript
+      input.value = punctuatedTranscript;
       input.disabled = false;
+
+      // Safari fix: Dispatch input event to notify any listeners
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+
+      // Safari fix: Also dispatch change event for good measure
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+
+      // Focus and move cursor to end
       input.focus();
 
-      // Move cursor to end
-      input.setSelectionRange(input.value.length, input.value.length);
+      // Safari fix: Use setTimeout to ensure focus works on mobile Safari
+      setTimeout(() => {
+        input.setSelectionRange(input.value.length, input.value.length);
+      }, 100);
 
-      console.log('Transcript populated in input:', transcript.substring(0, 50) + '...');
+      console.log('[Voice] Input value set to:', input.value?.substring(0, 50));
+    } else {
+      console.error('[Voice] No input element found!');
     }
 
-    // Store voice data in case we need it when sending
+    // Store voice data in case we need it when sending (use punctuated version)
     window.pendingVoiceData = {
-      transcript: transcript,
+      transcript: punctuatedTranscript,
       type: 'voice',
       timestamp: Date.now()
     };

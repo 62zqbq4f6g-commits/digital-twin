@@ -1,5 +1,3 @@
 {
-  "hooks": {
-    "stop": ".claude/stop-hook.sh"
-  }
+  "completionFile": ".ralph-complete"
 }

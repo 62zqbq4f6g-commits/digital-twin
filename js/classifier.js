@@ -1,5 +1,5 @@
 /**
- * Digital Twin - Classifier Module
+ * Inscript - Classifier Module
  * 4-category classification using keywords from CLAUDE.md section 5
  */
 

@@ -478,26 +478,38 @@ const EntityMemory = {
     try {
       if (!supabase || !userId || !entity.name) return;
 
-      // Check if entity exists
+      const entityType = entity.type || 'person';
+
+      // Check if entity exists (case-insensitive match)
       const { data: existing } = await supabase
         .from('user_entities')
-        .select('id, mention_count')
+        .select('id, mention_count, context_notes')
         .eq('user_id', userId)
-        .eq('name', entity.name)
+        .ilike('name', entity.name)
+        .eq('entity_type', entityType)
+        .eq('status', 'active')
         .maybeSingle();
 
       if (existing) {
         // Update existing entity
+        const newMentionCount = (existing.mention_count || 0) + 1;
+        const existingNotes = existing.context_notes || [];
+        const newContextNotes = entity.context
+          ? [...existingNotes, entity.context].slice(-10)
+          : existingNotes;
+
         await supabase
           .from('user_entities')
           .update({
-            mention_count: (existing.mention_count || 0) + 1,
+            mention_count: newMentionCount,
             last_mentioned_at: new Date().toISOString(),
-            last_accessed_at: new Date().toISOString()
+            last_accessed_at: new Date().toISOString(),
+            context_notes: newContextNotes,
+            updated_at: new Date().toISOString()
           })
           .eq('id', existing.id);
 
-        console.log('[EntityMemory] ✓ Updated user_entities:', entity.name);
+        console.log(`[EntityMemory] ✓ Updated user_entities: ${entity.name} (mention_count: ${newMentionCount})`);
       } else {
         // Insert new entity
         const { error } = await supabase
@@ -505,8 +517,8 @@ const EntityMemory = {
           .insert({
             user_id: userId,
             name: entity.name,
-            entity_type: entity.type || 'person',
-            context: entity.context || null,
+            entity_type: entityType,
+            context_notes: entity.context ? [entity.context] : [],
             mention_count: 1,
             status: 'active',
             first_mentioned_at: new Date().toISOString(),
@@ -723,13 +735,70 @@ const EntityMemory = {
 
   /**
    * Get entities formatted for context injection
+   * Phase 10.1: Now also fetches from user_entities for accurate mention_count and context_notes
    * @returns {Object} Formatted context
    */
   async getContextForAnalysis() {
     const entities = await this.loadEntities();
 
-    if (entities.length === 0) {
+    // Phase 10.1: Fetch from user_entities for accurate mention counts and context
+    let userEntitiesMap = new Map();
+    try {
+      if (typeof Sync !== 'undefined' && Sync.supabase && Sync.user?.id) {
+        const { data: userEntities, error } = await Sync.supabase
+          .from('user_entities')
+          .select('name, entity_type, mention_count, context_notes, relationship, status')
+          .eq('user_id', Sync.user.id)
+          .eq('status', 'active')
+          .order('mention_count', { ascending: false });
+
+        if (!error && userEntities) {
+          userEntities.forEach(ue => {
+            userEntitiesMap.set(ue.name.toLowerCase(), {
+              mention_count: ue.mention_count || 1,
+              context_notes: ue.context_notes || [],
+              relationship: ue.relationship,
+              entity_type: ue.entity_type
+            });
+          });
+          console.log('[EntityMemory] Phase 10.1 - Loaded', userEntitiesMap.size, 'entities from user_entities');
+        }
+      }
+    } catch (err) {
+      console.warn('[EntityMemory] Phase 10.1 - Failed to load user_entities:', err.message);
+    }
+
+    // Helper to get mention count from user_entities (Phase 10.1)
+    const getMentionData = (name) => {
+      const data = userEntitiesMap.get(name.toLowerCase());
+      return {
+        mention_count: data?.mention_count || 1,
+        context_notes: data?.context_notes || []
+      };
+    };
+
+    if (entities.length === 0 && userEntitiesMap.size === 0) {
       return { knownEntities: [] };
+    }
+
+    // Phase 10.1: If no entities from old table but have user_entities, use those directly
+    if (entities.length === 0 && userEntitiesMap.size > 0) {
+      const knownEntities = [];
+      userEntitiesMap.forEach((data, nameLower) => {
+        // Find original casing from the map (not available, use title case)
+        const name = nameLower.charAt(0).toUpperCase() + nameLower.slice(1);
+        knownEntities.push({
+          name: name,
+          type: data.entity_type || 'person',
+          details: data.context_notes?.slice(-2).join(' | ') || null,
+          relationship: data.relationship || null,
+          userCorrected: false,
+          mentionCount: data.mention_count,
+          context_notes: data.context_notes
+        });
+      });
+      console.log('[EntityMemory] Phase 10.1 - Built knownEntities from user_entities only:', knownEntities.length);
+      return { knownEntities, summary: '' };
     }
 
     // Group by type
@@ -750,13 +819,15 @@ const EntityMemory = {
         details += `. Visual: ${pet.metadata.visual_descriptions[0]}`;
       }
 
+      const mentionData = getMentionData(pet.name);
       knownEntities.push({
         name: pet.name,
         type: 'pet',
         details: details,
         relationship: pet.relationship_to_user || 'user\'s pet',
         userCorrected: pet.user_corrected || false,
-        mentionCount: pet.metadata?.mention_count || 1
+        mentionCount: mentionData.mention_count,
+        context_notes: mentionData.context_notes
       });
     });
 
@@ -768,13 +839,15 @@ const EntityMemory = {
         details = details ? `${details}. Visual: ${visual}` : `Visual: ${visual}`;
       }
 
+      const mentionData = getMentionData(person.name);
       knownEntities.push({
         name: person.name,
         type: 'person',
         details: details,
         relationship: person.relationship_to_user || null,
         userCorrected: person.user_corrected || false,
-        mentionCount: person.metadata?.mention_count || 1
+        mentionCount: mentionData.mention_count,
+        context_notes: mentionData.context_notes
       });
     });
 
@@ -786,25 +859,49 @@ const EntityMemory = {
         details = details ? `${details}. Visual: ${visual}` : `Visual: ${visual}`;
       }
 
+      const mentionData = getMentionData(place.name);
       knownEntities.push({
         name: place.name,
         type: 'place',
         details: details,
         relationship: place.relationship_to_user || null,
-        userCorrected: place.user_corrected || false
+        userCorrected: place.user_corrected || false,
+        mentionCount: mentionData.mention_count,
+        context_notes: mentionData.context_notes
       });
     });
 
     grouped.projects.forEach(project => {
+      const mentionData = getMentionData(project.name);
       knownEntities.push({
         name: project.name,
         type: 'project',
         details: project.metadata?.context || null,
         relationship: project.relationship_to_user || null,
-        userCorrected: project.user_corrected || false
+        userCorrected: project.user_corrected || false,
+        mentionCount: mentionData.mention_count,
+        context_notes: mentionData.context_notes
       });
     });
 
+    // Phase 10.1: Add entities from user_entities that aren't in the old entities table
+    const existingNames = new Set(knownEntities.map(e => e.name.toLowerCase()));
+    userEntitiesMap.forEach((data, nameLower) => {
+      if (!existingNames.has(nameLower)) {
+        const name = nameLower.charAt(0).toUpperCase() + nameLower.slice(1);
+        knownEntities.push({
+          name: name,
+          type: data.entity_type || 'person',
+          details: data.context_notes?.slice(-2).join(' | ') || null,
+          relationship: data.relationship || null,
+          userCorrected: false,
+          mentionCount: data.mention_count,
+          context_notes: data.context_notes
+        });
+      }
+    });
+
+    console.log('[EntityMemory] Phase 10.1 - Final knownEntities count:', knownEntities.length);
     return {
       knownEntities,
       summary: this.generateMemorySummary(grouped)

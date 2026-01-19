@@ -1,5 +1,5 @@
 /**
- * Digital Twin - Camera/Image Capture Handler
+ * Inscript - Camera/Image Capture Handler
  * Handles image selection, preview, and Vision API processing
  */
 
@@ -323,7 +323,27 @@ const Camera = {
     }
 
     const contextInput = document.getElementById('image-context');
-    const context = contextInput?.value || '';
+    let context = contextInput?.value || '';
+
+    // If no context provided, prompt user for it
+    // This prevents the app from over-analyzing screenshots literally
+    if (!context.trim()) {
+      const userContext = prompt(
+        "What's this image about?\n\n" +
+        "(Without context, screenshots may be analyzed literally. " +
+        "Add a brief note like 'progress on project X' or 'working on feature Y')"
+      );
+
+      if (userContext === null) {
+        // User cancelled
+        return;
+      }
+
+      context = userContext.trim();
+      if (contextInput && context) {
+        contextInput.value = context;
+      }
+    }
 
     UI.showProcessing('Analyzing image...');
 

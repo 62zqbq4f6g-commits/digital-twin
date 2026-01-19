@@ -232,8 +232,8 @@ body {
 .brand-logo {
   font-family: var(--font-sans);
   font-weight: 300;
-  letter-spacing: 0.15em;
-  text-transform: lowercase;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
 /* ==========================================================================
@@ -1116,15 +1116,17 @@ body {
   background-color: var(--color-gray-100);
 }
 
+/* Phase 11.3: Editorial lowercase category */
 .note-detail-category {
   display: flex;
   align-items: center;
   gap: var(--space-xs);
-  font-size: var(--text-micro);
-  font-weight: var(--weight-medium);
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-wide);
-  color: var(--color-gray-600);
+  font-family: 'Inter', var(--font-sans);
+  font-size: 0.75rem;
+  font-weight: 400;
+  text-transform: lowercase;
+  letter-spacing: 0.08em;
+  color: var(--color-gray-400);
 }
 
 /* Note Detail Content - Phase 4.1 Generous Spacing */
@@ -1134,14 +1136,15 @@ body {
   padding-bottom: calc(80px + var(--space-xl));
 }
 
+/* Phase 11.3: Editorial note detail typography */
 .note-detail-title {
   margin: 0;
-  font-family: var(--font-sans);
-  font-size: 1.5rem;
-  font-weight: 600;
-  letter-spacing: -0.02em;
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 1.625rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
   color: var(--color-black);
-  line-height: 1.3;
+  line-height: 1.25;
 }
 
 /* Horizontal rule after title */
@@ -1156,9 +1159,11 @@ body {
 
 .note-detail-timestamp {
   margin: var(--space-md) 0 var(--space-xl) 0;
-  font-family: var(--font-sans);
+  font-family: 'Inter', var(--font-sans);
   font-size: 0.8125rem;
-  color: var(--color-gray-500);
+  font-weight: 300;
+  letter-spacing: 0.02em;
+  color: var(--color-gray-400);
 }
 
 .note-detail-body {
@@ -1234,15 +1239,18 @@ body {
   z-index: 10;
 }
 
+/* Phase 11.3: Editorial lowercase buttons */
 .note-detail-btn {
   flex: 1;
   padding: var(--space-sm) var(--space-md);
   border: var(--border-thin);
   border-radius: var(--radius-md);
   background-color: var(--color-white);
-  font-family: var(--font-sans);
-  font-size: var(--text-caption);
-  font-weight: var(--weight-medium);
+  font-family: 'Inter', var(--font-sans);
+  font-size: 0.8125rem;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  text-transform: lowercase;
   color: var(--color-black);
   cursor: pointer;
   transition: var(--transition-fast);
@@ -1653,38 +1661,9 @@ body {
 }
 
 /* ==========================================================================
-   Processing Overlay
+   Processing Overlay - MOVED TO BOTTOM OF FILE (Phase 6.0.6)
+   See ".processing-overlay" near end of file for mobile-optimized styles
    ========================================================================== */
-
-.processing-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(255, 255, 255, 0.95);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.processing-spinner {
-  width: 40px;
-  height: 40px;
-  border: 2px solid var(--color-gray-100);
-  border-top-color: var(--color-black);
-  border-radius: 50%;
-  animation: spinner-spin 0.8s linear infinite;
-}
-
-@keyframes spinner-spin {
-  to { transform: rotate(360deg); }
-}
-
-.processing-text {
-  margin-top: var(--space-md);
-  font-size: var(--text-body);
-  color: var(--color-gray-600);
-}
 
 /* ==========================================================================
    Digest Styles
@@ -2283,6 +2262,34 @@ body {
 }
 
 /* ==========================================================================
+   Auth Screen - Full page authentication (no PIN)
+   ========================================================================== */
+
+.auth-screen {
+  position: fixed;
+  inset: 0;
+  background: var(--color-white);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow-y: auto;
+}
+
+.auth-screen.hidden {
+  display: none;
+}
+
+.auth-tagline {
+  font-family: var(--font-sans);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-light);
+  color: var(--color-gray-400);
+  margin: var(--space-xs) 0 0 0;
+  letter-spacing: var(--tracking-wide);
+}
+
+/* ==========================================================================
    Auth Modal - Vogue Minimalist
    ========================================================================== */
 
@@ -2362,21 +2369,15 @@ body {
   margin-bottom: var(--space-xl);
 }
 
-.auth-title {
-  font-family: var(--font-serif);
-  font-size: var(--text-headline);
-  font-weight: 400;
-  margin: 0 0 var(--space-sm) 0;
-  color: var(--color-black);
-  letter-spacing: var(--tracking-tight);
+/* Legacy - hidden */
+.auth-title,
+.auth-subtitle {
+  display: none;
 }
 
-.auth-subtitle {
-  font-family: var(--font-sans);
-  font-size: var(--text-body);
-  font-weight: var(--weight-light);
-  color: var(--color-gray-500);
-  margin: 0;
+/* Phase 9.5: Auth headline hidden for elegant minimal design */
+.auth-modal .auth-headline {
+  display: none;
 }
 
 /* Form fields */
@@ -4150,17 +4151,18 @@ body {
   margin-bottom: var(--space-xl);
 }
 
+/* Phase 11.3: Editorial lowercase headers */
 .note-section-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-family: var(--font-sans);
-  font-size: 0.6875rem;
-  font-weight: 500;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--color-gray-500);
-  margin-bottom: var(--space-sm);
+  font-family: 'Inter', var(--font-sans);
+  font-size: 0.75rem;
+  font-weight: 400;
+  letter-spacing: 0.12em;
+  text-transform: lowercase;
+  color: var(--color-gray-400);
+  margin-bottom: var(--space-md);
 }
 
 /* Phase 5A.6: Edit button - Editorial but visible */
@@ -4959,6 +4961,88 @@ body {
   line-height: 1.6;
 }
 
+/* ==========================================================================
+   What You Shared Section - Original content display
+   ========================================================================== */
+
+.note-original-content {
+  font-family: var(--font-sans);
+  font-size: 0.9375rem;
+  font-style: italic;
+  color: var(--color-gray-600);
+  padding: 1rem 1.25rem;
+  background: var(--color-gray-50);
+  border-left: 3px solid var(--color-black);
+  margin: 0.5rem 0;
+  line-height: 1.6;
+}
+
+/* ==========================================================================
+   Inline Reflection Input - Modern send-style design
+   ========================================================================== */
+
+.reflection-input-container {
+  position: relative;
+  margin: 1.25rem 0;
+}
+
+.reflection-textarea {
+  width: 100%;
+  min-height: 80px;
+  padding: 1rem;
+  padding-right: 5rem; /* space for button */
+  font-family: var(--font-sans);
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  border: 1px solid var(--color-gray-200);
+  border-radius: 8px;
+  resize: none;
+  box-sizing: border-box;
+  transition: border-color 0.2s ease;
+}
+
+.reflection-textarea:focus {
+  outline: none;
+  border-color: var(--color-black);
+}
+
+.reflection-textarea::placeholder {
+  color: var(--color-gray-400);
+  font-style: italic;
+}
+
+.reflection-submit-btn {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  background: var(--color-black);
+  color: var(--color-white);
+  border: none;
+  padding: 0.5rem 1rem;
+  font-family: var(--font-sans);
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+  border-radius: 4px;
+}
+
+.reflection-submit-btn:hover {
+  opacity: 0.85;
+}
+
+.reflection-submit-btn:disabled {
+  background: var(--color-gray-300);
+  cursor: not-allowed;
+}
+
+/* Hide old invite section */
+.invite-section {
+  display: none !important;
+}
+
 .edit-answer-link {
   display: inline-block;
   margin-top: 0.5rem;
@@ -4973,6 +5057,59 @@ body {
 
 .edit-answer-link:hover {
   color: var(--color-black);
+}
+
+/* ============================================
+   Phase 9.2: Inline Question Response Input
+   ============================================ */
+
+.note-question__response {
+  display: flex;
+  gap: var(--space-2, 0.5rem);
+  margin-top: var(--space-3, 0.75rem);
+}
+
+.note-question__input {
+  flex: 1;
+  font: 400 0.875rem/1.4 'Inter', sans-serif;
+  border: 1px solid var(--ink-200, #E5E5E5);
+  padding: var(--space-3, 0.75rem);
+  background: var(--paper-pure, #FFFFFF);
+  border-radius: 0;
+  box-sizing: border-box;
+}
+
+.note-question__input:focus {
+  outline: none;
+  border-color: var(--ink-400, #999999);
+}
+
+.note-question__input::placeholder {
+  color: var(--ink-300, #CCCCCC);
+}
+
+.note-question__submit {
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  background: var(--ink-900, #000000);
+  color: var(--paper-pure, #FFFFFF);
+  border: none;
+  font-size: 1.25rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.15s ease;
+}
+
+.note-question__submit:hover {
+  opacity: 0.85;
+}
+
+.note-question__submit:disabled {
+  background: var(--ink-300, #CCCCCC);
+  cursor: not-allowed;
 }
 
 /* ============================================
@@ -5318,12 +5455,12 @@ body {
   padding: var(--space-md) 0;
 }
 
-/* A question to sit with - reflective, gentle */
+/* A question to sit with - reflective, gentle (Phase 11.1: Cormorant Garamond) */
 .personal-question {
-  font-family: var(--font-sans);
-  font-size: 0.9375rem;
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 1.125rem;
   font-style: italic;
-  line-height: 1.6;
+  line-height: 1.5;
   color: var(--color-black);
   padding: var(--space-sm) 0;
   border-left: 2px solid var(--color-gray-200);
@@ -5350,6 +5487,44 @@ body {
 .personal-reflect-btn:hover {
   color: var(--color-black);
   border-color: var(--color-black);
+}
+
+/* Phase 11.1: Editorial Typography for AI Voice sections */
+/* What I Heard - uses Cormorant Garamond for AI voice */
+.personal-heard {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 1.125rem;
+  line-height: 1.7;
+  color: var(--color-black);
+  padding: var(--space-sm) 0;
+}
+
+/* What I Noticed - slightly smaller, softer */
+.personal-noticed {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--color-gray-700);
+  padding: var(--space-sm) 0;
+}
+
+/* A Possibility (hidden assumption) */
+.personal-assumption {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 1rem;
+  font-style: italic;
+  line-height: 1.6;
+  color: var(--color-gray-600);
+  padding: var(--space-sm) 0;
+}
+
+/* Something to Try (experiment) */
+.personal-experiment {
+  font-family: var(--font-sans);
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: var(--color-black);
+  padding: var(--space-sm) 0;
 }
 
 /* Memory tags section */
@@ -5458,15 +5633,15 @@ body {
   flex-shrink: 0;
 }
 
-/* Chat sheet header */
+/* Phase 11.4: Editorial chat sheet header - lowercase */
 .chat-sheet-header {
   text-align: center;
-  font-family: var(--font-sans);
+  font-family: 'Inter', var(--font-sans);
   font-size: 0.6875rem;
-  font-weight: var(--weight-medium);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--color-gray-500);
+  font-weight: 400;
+  letter-spacing: 0.12em;
+  text-transform: lowercase;
+  color: var(--color-gray-400);
   padding-bottom: var(--space-md);
   border-bottom: 1px solid var(--color-gray-100);
   flex-shrink: 0;
@@ -5487,11 +5662,15 @@ body {
   color: var(--color-gray-500);
 }
 
+/* Phase 11.4: Editorial AI voice - Cormorant Garamond */
 .chat-welcome p {
-  font-family: var(--font-sans);
-  font-size: 0.9375rem;
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 1.125rem;
+  font-weight: 400;
+  font-style: italic;
   margin: 0;
-  line-height: 1.6;
+  line-height: 1.5;
+  color: var(--color-gray-600);
 }
 
 /* Chat messages */
@@ -5518,11 +5697,16 @@ body {
   border-bottom-right-radius: 4px;
 }
 
+/* Phase 11.4: Editorial AI voice - Cormorant Garamond */
 .assistant-message .chat-message-content {
   background: var(--color-gray-50);
-  color: var(--color-black);
+  color: var(--color-gray-700);
   margin-right: 15%;
   border-bottom-left-radius: 4px;
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 1.0625rem;
+  font-style: italic;
+  line-height: 1.5;
 }
 
 /* Typing indicator */
@@ -5562,8 +5746,10 @@ body {
   box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05);
 }
 
+/* Phase 11.4: Editorial lowercase placeholder */
 .chat-input::placeholder {
   color: var(--color-gray-400);
+  text-transform: lowercase;
 }
 
 /* Send button - circular with arrow */
@@ -6258,6 +6444,114 @@ body {
   }
 }
 
+/* ─────────────────────────────────────────
+   Swipe-to-Delete Actions
+   Vogue minimalist: subtle, clean, no shadows
+   ───────────────────────────────────────── */
+
+.action-swipe-container {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+}
+
+.action-main-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  background: var(--color-white);
+  position: relative;
+  z-index: 1;
+  transition: transform 0.2s ease-out;
+}
+
+.action-delete-btn {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 80px;
+  background: transparent;
+  border: none;
+  color: #EF4444;
+  font-family: var(--font-sans);
+  font-size: 0.8rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.action-group-item.swiped .action-delete-btn {
+  opacity: 1;
+}
+
+.action-delete-btn:hover {
+  background: rgba(239, 68, 68, 0.05);
+}
+
+.action-delete-btn:active {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+/* ─────────────────────────────────────────
+   Toast Notification
+   Vogue minimalist: black on white, no shadows
+   ───────────────────────────────────────── */
+
+.actions-toast {
+  position: fixed;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--color-black);
+  color: var(--color-white);
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  opacity: 0;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  z-index: 9999;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.actions-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+  pointer-events: auto;
+}
+
+.toast-message {
+  flex: 1;
+}
+
+.toast-undo-btn {
+  background: transparent;
+  border: none;
+  color: var(--color-white);
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+  transition: opacity 0.15s ease;
+}
+
+.toast-undo-btn:hover {
+  opacity: 0.8;
+}
+
 /* Show more button */
 .show-more-btn {
   display: block;
@@ -6610,18 +6904,23 @@ body {
   justify-content: center;
 }
 
-/* Phase 4.5.6: Processing overlay - Vogue editorial */
+/* Phase 6.0.6: Processing overlay - Mobile-optimized full screen */
 .processing-overlay {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(255, 255, 255, 0.96);
-  z-index: 9999;
+  background: rgba(255, 255, 255, 0.98);
+  z-index: 99999; /* Above everything including modals */
   display: flex;
   align-items: center;
   justify-content: center;
+  /* Prevent interaction with content behind */
+  touch-action: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .processing-content {
@@ -6629,13 +6928,41 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 1.5rem;
+  padding: 2rem;
 }
 
-/* Animated line - editorial minimal */
+/* Spinner - prominent and visible on mobile */
+.processing-spinner {
+  width: 48px;
+  height: 48px;
+  border: 3px solid var(--color-gray-100, #f0f0f0);
+  border-top-color: var(--color-black, #000);
+  border-radius: 50%;
+  animation: processingSpinAnimation 0.9s linear infinite;
+}
+
+@keyframes processingSpinAnimation {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Phase 11.2: Editorial processing text - Cormorant Garamond italic */
+.processing-text {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 1.25rem;
+  font-weight: 400;
+  font-style: italic;
+  letter-spacing: 0.01em;
+  color: var(--color-gray-700, #333);
+  text-align: center;
+  max-width: 240px;
+}
+
+/* Legacy animated line (for backwards compat) */
 .processing-line {
   width: 60px;
-  height: 1px;
-  background: var(--color-black);
+  height: 2px;
+  background: var(--color-black, #000);
   animation: lineExpand 1.2s ease-in-out infinite;
 }
 
@@ -6650,27 +6977,7 @@ body {
   }
 }
 
-/* Processing text - serif italic */
-.processing-text {
-  font-family: var(--font-serif);
-  font-size: 0.9rem;
-  font-style: italic;
-  font-weight: 400;
-  letter-spacing: 0.1em;
-  color: var(--color-gray-600);
-  text-transform: lowercase;
-}
-
-/* Legacy spinner for backwards compat */
-.processing-spinner {
-  width: 36px;
-  height: 36px;
-  border: 3px solid #e5e5e5;
-  border-top-color: #000;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
+/* Legacy spin animation */
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
@@ -6934,6 +7241,65 @@ body {
 
 @keyframes onboarding-fill {
   to { width: 100%; }
+}
+
+/* Processing Screen - "Your Twin is learning..." */
+.onboarding-processing {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.onboarding-processing-content {
+  text-align: center;
+}
+
+.processing-dot {
+  width: 8px;
+  height: 8px;
+  background: #000000;
+  border-radius: 50%;
+  margin: 0 auto 20px;
+  animation: processing-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes processing-pulse {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.1); }
+}
+
+.processing-text {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 1.25rem;
+  font-weight: 400;
+  font-style: italic;
+  color: #000000;
+  margin: 0;
+  letter-spacing: 0.01em;
+}
+
+.processing-checkmark {
+  width: 32px;
+  height: 32px;
+  margin: 0 auto 16px;
+  font-size: 24px;
+  color: #000000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: checkmark-appear 0.3s ease-out;
+}
+
+@keyframes checkmark-appear {
+  0% { opacity: 0; transform: scale(0.8); }
+  100% { opacity: 1; transform: scale(1); }
 }
 
 /* ==================== */
@@ -7222,4 +7588,693 @@ body {
 .settings-pin-input:focus {
   outline: none;
   border-color: var(--color-black);
+}
+
+/* ==========================================================================
+   PHASE 9.1 - Editorial Design System Refinements
+   "Vogue minimalist editorial" — like a high-end magazine
+   ========================================================================== */
+
+/* -------------------------------------------------------------------------
+   Design Tokens - Editorial Color Palette
+   ------------------------------------------------------------------------- */
+:root {
+  /* Ink — Text and UI (editorial blacks) */
+  --ink-900: #0d0d0d;
+  --ink-800: #1a1a1a;
+  --ink-600: #4a4a4a;
+  --ink-400: #8a8a8a;
+  --ink-300: #a0a0a0;
+  --ink-200: #c4c4c4;
+  --ink-100: #e8e8e8;
+  --ink-50: #f5f5f5;
+
+  /* Paper — Backgrounds */
+  --paper: #fafafa;
+  --paper-warm: #faf9f7;
+  --paper-pure: #ffffff;
+
+  /* Category colors (muted) */
+  --category-work: rgba(212, 196, 168, 0.3);
+  --category-personal: rgba(196, 212, 216, 0.3);
+  --category-ideas: rgba(216, 212, 196, 0.3);
+
+  /* Spacing scale */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-8: 3rem;
+
+  /* Animation */
+  --ease-out: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --duration-fast: 150ms;
+  --duration-normal: 200ms;
+  --duration-slow: 300ms;
+}
+
+/* -------------------------------------------------------------------------
+   A1: Mobile Viewport Fix - Onboarding Screens
+   ------------------------------------------------------------------------- */
+.onboarding-screen {
+  min-height: 100vh;
+  min-height: 100dvh; /* iOS Safari dynamic viewport */
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-6) var(--space-5) var(--space-8);
+  padding-bottom: calc(var(--space-8) + env(safe-area-inset-bottom));
+  background: var(--paper-pure);
+  box-sizing: border-box;
+}
+
+.onboarding-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-5);
+  flex-shrink: 0;
+}
+
+.onboarding-back {
+  font: 400 0.875rem/1.4 var(--font-sans);
+  color: var(--ink-600);
+  background: none;
+  border: none;
+  padding: var(--space-2) 0;
+  cursor: pointer;
+  transition: color var(--duration-fast) ease;
+}
+
+.onboarding-back:hover {
+  color: var(--ink-900);
+}
+
+.onboarding-progress {
+  font: 500 0.6875rem/1.4 var(--font-sans);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ink-400);
+}
+
+.onboarding-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  max-width: 480px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.onboarding-footer {
+  padding-top: var(--space-6);
+  flex-shrink: 0;
+  max-width: 480px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* -------------------------------------------------------------------------
+   B1: Welcome Screen - Editorial Typography
+   ------------------------------------------------------------------------- */
+.onboarding-welcome {
+  text-align: center;
+  justify-content: center;
+}
+
+.onboarding-welcome__title {
+  font: 600 2.75rem/1.1 var(--font-serif);
+  color: var(--ink-900);
+  margin: 0 0 var(--space-3) 0;
+  opacity: 0;
+  animation: fadeInUp 0.6s var(--ease-out) forwards;
+}
+
+.onboarding-welcome__subtitle {
+  font: 400 1rem/1.5 var(--font-sans);
+  color: var(--ink-400);
+  letter-spacing: 0.02em;
+  margin: 0;
+  opacity: 0;
+  animation: fadeInUp 0.6s var(--ease-out) 0.15s forwards;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Stagger animations */
+.animate-in { opacity: 0; animation: fadeInUp 0.5s var(--ease-out) forwards; }
+.stagger-1 { animation-delay: 0s; }
+.stagger-2 { animation-delay: 0.15s; }
+.stagger-3 { animation-delay: 0.3s; }
+.stagger-4 { animation-delay: 0.45s; }
+
+/* -------------------------------------------------------------------------
+   B2: Name Screen - Elegant Input
+   ------------------------------------------------------------------------- */
+.label-new {
+  font: 500 0.6875rem/1.4 var(--font-sans);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ink-400);
+  display: block;
+  margin-bottom: var(--space-3);
+}
+
+.input-new {
+  font: 400 1.25rem/1.4 var(--font-sans);
+  color: var(--ink-800);
+  border: none;
+  border-bottom: 1px solid var(--ink-200);
+  padding: var(--space-3) 0;
+  background: transparent;
+  width: 100%;
+  transition: border-color var(--duration-normal) ease;
+  border-radius: 0;
+  -webkit-appearance: none;
+}
+
+.input-new:focus {
+  outline: none;
+  border-bottom-color: var(--ink-800);
+}
+
+.input-new::placeholder {
+  color: var(--ink-300);
+  font-style: italic;
+}
+
+.field-group {
+  margin-bottom: var(--space-5);
+}
+
+/* -------------------------------------------------------------------------
+   Primary Button - Editorial Style
+   ------------------------------------------------------------------------- */
+.btn-primary-new {
+  font: 500 0.6875rem/1.4 var(--font-sans);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  background: var(--ink-900);
+  color: var(--paper-pure);
+  padding: var(--space-4) var(--space-5);
+  border: none;
+  border-radius: 0;
+  cursor: pointer;
+  transition: opacity var(--duration-normal) ease;
+  -webkit-appearance: none;
+}
+
+.btn-primary-new:hover {
+  opacity: 0.85;
+}
+
+.btn-primary-new:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-full {
+  width: 100%;
+  display: block;
+}
+
+/* -------------------------------------------------------------------------
+   B3: Role Screen - Multi-select Option Cards
+   ------------------------------------------------------------------------- */
+.role-options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.option-card {
+  border: 1px solid var(--ink-200);
+  border-left-width: 4px;
+  border-left-color: transparent;
+  padding: var(--space-4) var(--space-5);
+  cursor: pointer;
+  /* Phase 9.2: Faster transitions for instant feel */
+  transition: border-color 0.1s ease, background-color 0.1s ease;
+  background: transparent;
+  text-align: left;
+}
+
+.option-card:hover {
+  background: var(--ink-50);
+  border-left-color: var(--ink-300);
+}
+
+/* Phase 9.2: Inverted selection state - black background, white text */
+.option-card--selected {
+  background: var(--ink-900) !important;
+  border-color: var(--ink-900) !important;
+  border-left-width: 4px;
+}
+
+.option-card--selected .option-card__title {
+  color: var(--paper-pure);
+  font-weight: 600;
+}
+
+.option-card--selected .option-card__subtitle {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.option-card__title {
+  font: 500 1.125rem/1.3 var(--font-serif);
+  color: var(--ink-900);
+  margin-bottom: var(--space-1);
+}
+
+.option-card__subtitle {
+  font: 400 0.8125rem/1.4 var(--font-sans);
+  color: var(--ink-400);
+}
+
+/* -------------------------------------------------------------------------
+   B4: Goals Screen - Selection Pills
+   ------------------------------------------------------------------------- */
+.goal-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.goal-pill {
+  font: 400 0.875rem/1.4 var(--font-sans);
+  color: var(--ink-600);
+  background: transparent;
+  border: 1px solid var(--ink-200);
+  padding: var(--space-3) var(--space-4);
+  cursor: pointer;
+  /* Phase 9.2: Instant transitions */
+  transition: background-color 0.1s ease, border-color 0.1s ease, color 0.1s ease;
+  border-radius: 0;
+}
+
+.goal-pill:hover {
+  background: var(--ink-50);
+  border-color: var(--ink-400);
+}
+
+/* Phase 9.2: More prominent selected state */
+.goal-pill--selected {
+  background: var(--ink-900) !important;
+  color: var(--paper-pure) !important;
+  border-color: var(--ink-900) !important;
+  font-weight: 500;
+}
+
+.onboarding-error {
+  font: 400 0.8125rem/1.4 var(--font-sans);
+  color: #8b2d2d;
+  margin-top: var(--space-3);
+}
+
+/* Helper classes */
+.text-caption {
+  font: 400 0.8125rem/1.4 var(--font-sans);
+}
+
+.text-muted {
+  color: var(--ink-400);
+}
+
+.mb-4 {
+  margin-bottom: var(--space-4);
+}
+
+/* -------------------------------------------------------------------------
+   C1-C5: Twin Tab - Card-based Editorial Layout
+   ------------------------------------------------------------------------- */
+.twin-tab-content {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-4);
+  padding-bottom: 120px;
+}
+
+.twin-header-editorial {
+  text-align: center;
+  margin-bottom: var(--space-8);
+}
+
+.twin-header-editorial__title {
+  font: 600 2rem/1.2 var(--font-serif);
+  color: var(--ink-900);
+  margin: 0 0 var(--space-2) 0;
+}
+
+.twin-header-editorial__subtitle {
+  font: 400 0.875rem/1.4 var(--font-sans);
+  color: var(--ink-400);
+  margin: 0;
+}
+
+/* Twin Cards */
+.twin-card {
+  background: var(--paper-pure);
+  border: 1px solid var(--ink-100);
+  margin-bottom: var(--space-5);
+  padding: var(--space-5);
+}
+
+.twin-card__header {
+  font: 500 0.6875rem/1.4 var(--font-sans);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ink-400);
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--ink-100);
+}
+
+.twin-card__content {
+  /* Content container */
+}
+
+/* Profile Fields */
+.profile-field {
+  margin-bottom: var(--space-4);
+}
+
+.profile-field:last-child {
+  margin-bottom: 0;
+}
+
+.profile-field__label {
+  font: 500 0.6875rem/1.4 var(--font-sans);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-400);
+  margin-bottom: var(--space-1);
+}
+
+.profile-field__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.profile-field__value {
+  font: 400 1rem/1.5 var(--font-sans);
+  color: var(--ink-800);
+  flex: 1;
+}
+
+.profile-field__value--empty {
+  color: var(--ink-400);
+  font-style: italic;
+}
+
+.profile-field__edit {
+  font: 400 0.75rem/1 var(--font-sans);
+  color: var(--ink-400);
+  background: none;
+  border: none;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.profile-field__edit:hover {
+  color: var(--ink-600);
+}
+
+/* C4: Stats Display */
+.stats-row {
+  display: flex;
+  gap: var(--space-6);
+  margin-bottom: var(--space-4);
+}
+
+.stat-editorial {
+  text-align: center;
+}
+
+.stat-editorial__value {
+  font: 500 1.75rem/1.2 var(--font-serif);
+  color: var(--ink-900);
+  display: block;
+}
+
+.stat-editorial__label {
+  font: 400 0.75rem/1.4 var(--font-sans);
+  color: var(--ink-400);
+  text-transform: lowercase;
+}
+
+.category-breakdown {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.category-tag {
+  font: 400 0.75rem/1.4 var(--font-sans);
+  color: var(--ink-600);
+  padding: var(--space-1) var(--space-2);
+  border-radius: 2px;
+}
+
+.category-tag--work { background: var(--category-work); }
+.category-tag--personal { background: var(--category-personal); }
+.category-tag--ideas { background: var(--category-ideas); }
+
+/* C5: Confidence Display */
+.confidence-display {
+  padding: var(--space-4) 0;
+}
+
+.confidence-display__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: var(--space-2);
+}
+
+.confidence-display__label {
+  font: 500 0.8125rem/1.4 var(--font-sans);
+  color: var(--ink-600);
+}
+
+.confidence-display__value {
+  font: 500 1.25rem/1.2 var(--font-serif);
+  color: var(--ink-900);
+}
+
+.confidence-display__bar {
+  height: 4px;
+  background: var(--ink-100);
+  margin-bottom: var(--space-2);
+}
+
+.confidence-display__fill {
+  height: 100%;
+  background: var(--ink-900);
+  transition: width 0.3s ease;
+}
+
+.confidence-display__text {
+  font: 400 0.8125rem/1.4 var(--font-sans);
+  color: var(--ink-400);
+  font-style: italic;
+  margin: 0;
+}
+
+/* Empty states */
+.twin-empty-editorial {
+  font: 400 0.875rem/1.5 var(--font-sans);
+  color: var(--ink-400);
+  font-style: italic;
+  margin: 0;
+}
+
+/* -------------------------------------------------------------------------
+   D: Feedback Toast
+   ------------------------------------------------------------------------- */
+.feedback-toast {
+  position: fixed;
+  bottom: calc(80px + env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--ink-900);
+  color: var(--paper-pure);
+  font: 400 0.8125rem/1.4 var(--font-sans);
+  padding: var(--space-3) var(--space-5);
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+  z-index: 1000;
+  white-space: nowrap;
+}
+
+.feedback-toast--visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* -------------------------------------------------------------------------
+   E: Modal Refinement
+   ------------------------------------------------------------------------- */
+.modal-overlay-new {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: var(--space-4);
+}
+
+.modal-new {
+  background: var(--paper-pure);
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+.modal-new__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-5);
+}
+
+.modal-new__title {
+  font: 500 0.6875rem/1.4 var(--font-sans);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ink-400);
+  margin: 0;
+}
+
+.modal-new__close {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  color: var(--ink-300);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.modal-new__close:hover {
+  color: var(--ink-600);
+}
+
+.modal-new__body {
+  padding: 0 var(--space-5) var(--space-5);
+}
+
+.modal-new__footer {
+  padding: var(--space-4) var(--space-5) var(--space-5);
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+
+/* Modal input styling */
+.modal-input {
+  font: 400 1rem/1.4 var(--font-sans);
+  color: var(--ink-800);
+  border: 1px solid var(--ink-200);
+  padding: var(--space-3) var(--space-4);
+  background: transparent;
+  width: 100%;
+  transition: border-color var(--duration-normal) ease;
+  border-radius: 0;
+  -webkit-appearance: none;
+  box-sizing: border-box;
+}
+
+.modal-input:focus {
+  outline: none;
+  border-color: var(--ink-800);
+}
+
+/* -------------------------------------------------------------------------
+   A2: First Note Prompt Screen
+   ------------------------------------------------------------------------- */
+.first-note-screen {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: var(--space-6) var(--space-5);
+  padding-bottom: calc(var(--space-8) + env(safe-area-inset-bottom));
+  background: var(--paper-pure);
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.first-note__prompt {
+  font: 500 1.5rem/1.3 var(--font-serif);
+  color: var(--ink-900);
+  margin: 0 0 var(--space-2) 0;
+  text-align: center;
+}
+
+.first-note__subtext {
+  font: 400 0.875rem/1.5 var(--font-sans);
+  color: var(--ink-400);
+  margin: 0 0 var(--space-6) 0;
+  text-align: center;
+}
+
+.first-note__input {
+  font: 400 1rem/1.5 var(--font-sans);
+  color: var(--ink-800);
+  border: 1px solid var(--ink-200);
+  padding: var(--space-4);
+  background: transparent;
+  width: 100%;
+  min-height: 120px;
+  resize: none;
+  margin-bottom: var(--space-5);
+  box-sizing: border-box;
+  border-radius: 0;
+  -webkit-appearance: none;
+}
+
+.first-note__input:focus {
+  outline: none;
+  border-color: var(--ink-800);
+}
+
+.first-note__input::placeholder {
+  color: var(--ink-300);
+  font-style: italic;
+}
+
+/* -------------------------------------------------------------------------
+   Processing Spinner (for onboarding)
+   ------------------------------------------------------------------------- */
+@keyframes processingSpinAnimation {
+  to { transform: rotate(360deg); }
 }

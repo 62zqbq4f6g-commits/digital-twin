@@ -1,0 +1,852 @@
+/**
+ * Phase 9: Profile UI for TWIN Tab
+ * Displays user profile, preferences, and edit modals
+ */
+
+window.UIProfile = {
+  // Cached profile data
+  profile: null,
+  noteCount: 0,
+
+  // Tone options
+  TONE_OPTIONS: [
+    { value: 'DIRECT', title: 'Direct and efficient', subtitle: 'Get to the point, no fluff' },
+    { value: 'WARM', title: 'Warm and supportive', subtitle: 'Gentle, encouraging' },
+    { value: 'CHALLENGING', title: 'Challenge me', subtitle: 'Push back, ask hard questions' },
+    { value: 'ADAPTIVE', title: 'Let it adapt', subtitle: 'Match my energy each time' }
+  ],
+
+  /**
+   * Initialize profile UI
+   */
+  async init() {
+    await this.loadProfile();
+  },
+
+  /**
+   * Load profile from Supabase
+   */
+  async loadProfile() {
+    if (!Sync.supabase || !Sync.user) {
+      console.log('[UIProfile] No Supabase user');
+      return null;
+    }
+
+    try {
+      // Get profile
+      const { data: profile, error } = await Sync.supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('user_id', Sync.user.id)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        console.warn('[UIProfile] Error loading profile:', error.message);
+        return null;
+      }
+
+      this.profile = profile;
+
+      // Get note count for preferences unlock
+      const { count } = await Sync.supabase
+        .from('notes')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', Sync.user.id)
+        .is('deleted_at', null);
+
+      this.noteCount = count || 0;
+
+      // Check if preferences should be unlocked
+      if (this.noteCount >= 5 && this.profile && !this.profile.preferences_unlocked_at) {
+        await Sync.supabase
+          .from('user_profiles')
+          .update({ preferences_unlocked_at: new Date().toISOString() })
+          .eq('user_id', Sync.user.id);
+        this.profile.preferences_unlocked_at = new Date().toISOString();
+      }
+
+      console.log('[UIProfile] Profile loaded:', this.profile?.name, 'notes:', this.noteCount);
+      return this.profile;
+
+    } catch (err) {
+      console.warn('[UIProfile] Failed to load profile:', err.message);
+      return null;
+    }
+  },
+
+  /**
+   * Render the About You section - Card-based editorial layout
+   */
+  renderAboutYouSection() {
+    if (!this.profile) {
+      return `
+        <section class="twin-card">
+          <h2 class="twin-card__header">About You</h2>
+          <div class="twin-card__content">
+            <p class="twin-empty-editorial">Complete onboarding to set up your profile</p>
+          </div>
+        </section>
+      `;
+    }
+
+    const roleLabel = this.formatRoleType(this.profile.role_types || this.profile.role_type);
+    const goalsLabel = this.formatGoals(this.profile.goals);
+
+    return `
+      <section class="twin-card">
+        <h2 class="twin-card__header">About You</h2>
+        <div class="twin-card__content">
+          <div class="profile-field">
+            <div class="profile-field__label">Your Name</div>
+            <div class="profile-field__row">
+              <span class="profile-field__value">${this.escapeHtml(this.profile.name)}</span>
+              <button class="profile-field__edit" onclick="UIProfile.openEditModal('name')">Edit</button>
+            </div>
+          </div>
+
+          <div class="profile-field">
+            <div class="profile-field__label">Describe Your Days</div>
+            <div class="profile-field__row">
+              <span class="profile-field__value">${roleLabel}</span>
+              <button class="profile-field__edit" onclick="UIProfile.openEditModal('role')">Edit</button>
+            </div>
+          </div>
+
+          <div class="profile-field">
+            <div class="profile-field__label">You're Here To</div>
+            <div class="profile-field__row">
+              <span class="profile-field__value">${goalsLabel}</span>
+              <button class="profile-field__edit" onclick="UIProfile.openEditModal('goals')">Edit</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    `;
+  },
+
+  /**
+   * Render the Preferences section (unlocks after 5 notes) - Card-based layout
+   */
+  renderPreferencesSection() {
+    const isUnlocked = this.noteCount >= 5;
+
+    if (!isUnlocked) {
+      return `
+        <section class="twin-card">
+          <h2 class="twin-card__header">Your Preferences</h2>
+          <div class="twin-card__content" style="text-align: center; padding: var(--space-4) 0;">
+            <div style="font-size: 1.5rem; margin-bottom: var(--space-2);">🔒</div>
+            <p class="twin-empty-editorial">Unlocks after 5 notes</p>
+            <p style="font: 400 0.75rem/1.4 var(--font-sans); color: var(--ink-400); margin-top: var(--space-2);">
+              You have ${this.noteCount} note${this.noteCount !== 1 ? 's' : ''}
+            </p>
+          </div>
+        </section>
+      `;
+    }
+
+    const toneLabel = this.profile?.tone ? this.formatTone(this.profile.tone) : 'Not set';
+    const contextPreview = this.profile?.life_context
+      ? this.truncate(this.profile.life_context, 50)
+      : 'Not set';
+    const keyPeopleCount = 0; // Will be fetched from user_key_people
+    const boundariesCount = this.profile?.boundaries?.length || 0;
+
+    return `
+      <section class="twin-card">
+        <h2 class="twin-card__header">Your Preferences</h2>
+        <div class="twin-card__content">
+          <div class="profile-field">
+            <div class="profile-field__label">How I Speak to You</div>
+            <div class="profile-field__row">
+              <span class="profile-field__value ${!this.profile?.tone ? 'profile-field__value--empty' : ''}">${toneLabel}</span>
+              <button class="profile-field__edit" onclick="UIProfile.openEditModal('tone')">${this.profile?.tone ? 'Edit' : 'Add'}</button>
+            </div>
+          </div>
+
+          <div class="profile-field">
+            <div class="profile-field__label">What's On Your Plate</div>
+            <div class="profile-field__row">
+              <span class="profile-field__value ${!this.profile?.life_context ? 'profile-field__value--empty' : ''}">${contextPreview}</span>
+              <button class="profile-field__edit" onclick="UIProfile.openEditModal('context')">${this.profile?.life_context ? 'Edit' : 'Add'}</button>
+            </div>
+          </div>
+
+          <div class="profile-field">
+            <div class="profile-field__label">Key People</div>
+            <div class="profile-field__row">
+              <span class="profile-field__value" id="key-people-count">${keyPeopleCount} people</span>
+              <button class="profile-field__edit" onclick="UIProfile.openEditModal('people')">Edit</button>
+            </div>
+          </div>
+
+          <div class="profile-field">
+            <div class="profile-field__label">Topics to Avoid</div>
+            <div class="profile-field__row">
+              <span class="profile-field__value ${boundariesCount === 0 ? 'profile-field__value--empty' : ''}">${boundariesCount === 0 ? 'None set' : boundariesCount + ' topics'}</span>
+              <button class="profile-field__edit" onclick="UIProfile.openEditModal('boundaries')">${boundariesCount === 0 ? 'Add' : 'Edit'}</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    `;
+  },
+
+  /**
+   * Open edit modal for a specific field
+   */
+  openEditModal(field) {
+    const modalFunctions = {
+      'name': () => this.showNameModal(),
+      'role': () => this.showRoleModal(),
+      'goals': () => this.showGoalsModal(),
+      'tone': () => this.showToneModal(),
+      'context': () => this.showContextModal(),
+      'people': () => this.showPeopleModal(),
+      'boundaries': () => this.showBoundariesModal()
+    };
+
+    if (modalFunctions[field]) {
+      modalFunctions[field]();
+    }
+  },
+
+  /**
+   * Show modal overlay
+   */
+  showModal(title, bodyHtml, footerHtml = '') {
+    // Remove existing modal
+    this.closeModal();
+
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay-new';
+    overlay.id = 'profile-modal-overlay';
+    overlay.onclick = (e) => {
+      if (e.target === overlay) this.closeModal();
+    };
+
+    overlay.innerHTML = `
+      <div class="modal-new">
+        <div class="modal-new__header">
+          <h3 class="modal-new__title">${title}</h3>
+          <button class="modal-new__close" onclick="UIProfile.closeModal()">×</button>
+        </div>
+        <div class="modal-new__body">
+          ${bodyHtml}
+        </div>
+        ${footerHtml ? `<div class="modal-new__footer">${footerHtml}</div>` : ''}
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    // Trigger animation
+    requestAnimationFrame(() => {
+      overlay.classList.add('modal-overlay-new--visible');
+    });
+  },
+
+  /**
+   * Close modal
+   */
+  closeModal() {
+    const overlay = document.getElementById('profile-modal-overlay');
+    if (overlay) {
+      overlay.classList.remove('modal-overlay-new--visible');
+      setTimeout(() => overlay.remove(), 200);
+    }
+  },
+
+  /**
+   * Name edit modal
+   */
+  showNameModal() {
+    const body = `
+      <div class="field-group">
+        <input
+          type="text"
+          id="modal-name-input"
+          class="input-new"
+          value="${this.escapeHtml(this.profile?.name || '')}"
+          placeholder="Your name"
+          autofocus
+        >
+      </div>
+    `;
+
+    const footer = `
+      <button class="btn-primary-new" onclick="UIProfile.saveName()">SAVE</button>
+    `;
+
+    this.showModal('YOUR NAME', body, footer);
+    setTimeout(() => document.getElementById('modal-name-input')?.focus(), 100);
+  },
+
+  async saveName() {
+    const input = document.getElementById('modal-name-input');
+    const value = input?.value.trim();
+
+    if (!value) return;
+
+    try {
+      await Sync.supabase
+        .from('user_profiles')
+        .update({ name: value })
+        .eq('user_id', Sync.user.id);
+
+      this.profile.name = value;
+      this.closeModal();
+      this.refreshProfileDisplay();
+      console.log('[UIProfile] Name saved:', value);
+    } catch (err) {
+      console.error('[UIProfile] Failed to save name:', err);
+    }
+  },
+
+  /**
+   * Role edit modal - Multi-select (1-3)
+   */
+  showRoleModal() {
+    // Initialize selected roles from profile (prefer role_types array, fallback to legacy role_type)
+    const roleData = this.profile?.role_types || this.profile?.role_type;
+    const currentRoles = Array.isArray(roleData)
+      ? [...roleData]
+      : roleData ? [roleData] : [];
+    this._selectedRoles = currentRoles;
+
+    const options = Onboarding.ROLE_OPTIONS.map(opt => {
+      const isSelected = currentRoles.includes(opt.value);
+      return `
+        <button class="selection-option ${isSelected ? 'selected' : ''}"
+             data-value="${opt.value}"
+             onclick="UIProfile.toggleRoleOption('${opt.value}', this)">
+          <span class="selection-title">${opt.title}</span>
+          <span class="selection-subtitle">${opt.subtitle}</span>
+        </button>
+      `;
+    }).join('');
+
+    const body = `
+      <p class="modal-hint" style="color: var(--ink-400); margin-bottom: var(--space-4);">Select 1–3 that fit</p>
+      <div class="selection-list">${options}</div>
+      <p class="modal-error" id="role-modal-error" style="display: none; color: var(--ink-400); margin-top: var(--space-3);">Maximum 3 selections</p>
+    `;
+    const footer = `<button class="btn-primary" id="role-save-btn" onclick="UIProfile.saveRole()" ${currentRoles.length > 0 ? '' : 'disabled'}>Save</button>`;
+
+    this.showModal('What describes your days?', body, footer);
+  },
+
+  toggleRoleOption(value, element) {
+    const idx = this._selectedRoles.indexOf(value);
+    const errorEl = document.getElementById('role-modal-error');
+    const saveBtn = document.getElementById('role-save-btn');
+
+    if (idx > -1) {
+      // Deselect
+      this._selectedRoles.splice(idx, 1);
+      element.classList.remove('selected');
+    } else {
+      // Select (max 3)
+      if (this._selectedRoles.length >= 3) {
+        if (errorEl) {
+          errorEl.style.display = 'block';
+          setTimeout(() => { errorEl.style.display = 'none'; }, 2000);
+        }
+        return;
+      }
+      this._selectedRoles.push(value);
+      element.classList.add('selected');
+    }
+
+    if (errorEl) errorEl.style.display = 'none';
+    if (saveBtn) saveBtn.disabled = this._selectedRoles.length === 0;
+    console.log('[UIProfile] Roles selected:', this._selectedRoles);
+  },
+
+  async saveRole() {
+    if (!this._selectedRoles || this._selectedRoles.length === 0) return;
+
+    // Phase 9.2: Show loading state
+    console.log('[Loading] Showing: Updating...');
+    window.showProcessingOverlay?.('Updating...');
+
+    try {
+      await Sync.supabase
+        .from('user_profiles')
+        .update({
+          role_type: this._selectedRoles[0], // Primary role (backwards compat)
+          role_types: this._selectedRoles  // All selected roles
+        })
+        .eq('user_id', Sync.user.id);
+
+      this.profile.role_types = this._selectedRoles;
+      this.profile.role_type = this._selectedRoles[0];
+      this.closeModal();
+      this.refreshProfileDisplay();
+      console.log('[UIProfile] Roles saved:', this._selectedRoles);
+    } catch (err) {
+      console.error('[UIProfile] Failed to save roles:', err);
+    } finally {
+      console.log('[Loading] Hiding');
+      window.hideProcessingOverlay?.();
+    }
+  },
+
+  /**
+   * Goals edit modal - Allow 1-5 selections
+   */
+  showGoalsModal() {
+    const pills = Onboarding.GOAL_OPTIONS.map(opt => {
+      const isSelected = this.profile?.goals?.includes(opt.value);
+      return `
+        <div class="goal-pill ${isSelected ? 'goal-pill--selected' : ''}"
+             onclick="UIProfile.toggleGoalOption('${opt.value}', this)">
+          ${opt.label}
+        </div>
+      `;
+    }).join('');
+
+    const body = `
+      <p class="text-caption text-muted" style="margin-bottom: var(--space-4);">Select what resonates</p>
+      <div class="goal-grid">${pills}</div>
+      <p class="onboarding-error" id="modal-goals-error" style="display: none;"></p>
+    `;
+    const footer = `<button class="btn-primary-new" onclick="UIProfile.saveGoals()">SAVE</button>`;
+
+    this.showModal('WHAT BRINGS YOU HERE?', body, footer);
+    this._selectedGoals = [...(this.profile?.goals || [])];
+  },
+
+  toggleGoalOption(value, element) {
+    const idx = this._selectedGoals.indexOf(value);
+    const errorEl = document.getElementById('modal-goals-error');
+
+    if (idx > -1) {
+      this._selectedGoals.splice(idx, 1);
+      element.classList.remove('goal-pill--selected');
+    } else {
+      if (this._selectedGoals.length >= 5) {
+        errorEl.textContent = 'Maximum 5 selections';
+        errorEl.style.display = 'block';
+        setTimeout(() => { errorEl.style.display = 'none'; }, 2000);
+        return;
+      }
+      this._selectedGoals.push(value);
+      element.classList.add('goal-pill--selected');
+    }
+    errorEl.style.display = 'none';
+  },
+
+  async saveGoals() {
+    if (this._selectedGoals.length === 0) return;
+
+    // Phase 9.2: Show loading state
+    console.log('[Loading] Showing: Updating...');
+    window.showProcessingOverlay?.('Updating...');
+
+    try {
+      await Sync.supabase
+        .from('user_profiles')
+        .update({ goals: this._selectedGoals })
+        .eq('user_id', Sync.user.id);
+
+      this.profile.goals = this._selectedGoals;
+      this.closeModal();
+      this.refreshProfileDisplay();
+      console.log('[UIProfile] Goals saved:', this._selectedGoals);
+    } catch (err) {
+      console.error('[UIProfile] Failed to save goals:', err);
+    } finally {
+      console.log('[Loading] Hiding');
+      window.hideProcessingOverlay?.();
+    }
+  },
+
+  /**
+   * Tone edit modal
+   */
+  showToneModal() {
+    const options = this.TONE_OPTIONS.map(opt => {
+      const isSelected = this.profile?.tone === opt.value;
+      return `
+        <div class="option-card ${isSelected ? 'option-card--selected' : ''}"
+             onclick="UIProfile.selectToneOption('${opt.value}', this)">
+          <div class="option-card__title">${opt.title}</div>
+          <div class="option-card__subtitle">${opt.subtitle}</div>
+        </div>
+      `;
+    }).join('');
+
+    const body = `<div class="role-options">${options}</div>`;
+    const footer = `<button class="btn-primary-new" onclick="UIProfile.saveTone()">SAVE</button>`;
+
+    this.showModal('HOW SHOULD I SPEAK TO YOU?', body, footer);
+    this._selectedTone = this.profile?.tone;
+  },
+
+  selectToneOption(value, element) {
+    document.querySelectorAll('.option-card').forEach(card => {
+      card.classList.remove('option-card--selected');
+    });
+    element.classList.add('option-card--selected');
+    this._selectedTone = value;
+  },
+
+  async saveTone() {
+    if (!this._selectedTone) return;
+
+    // Phase 9.2: Show loading state
+    console.log('[Loading] Showing: Updating...');
+    window.showProcessingOverlay?.('Updating...');
+
+    try {
+      await Sync.supabase
+        .from('user_profiles')
+        .update({ tone: this._selectedTone })
+        .eq('user_id', Sync.user.id);
+
+      this.profile.tone = this._selectedTone;
+      this.closeModal();
+      this.refreshProfileDisplay();
+      console.log('[UIProfile] Tone saved:', this._selectedTone);
+    } catch (err) {
+      console.error('[UIProfile] Failed to save tone:', err);
+    } finally {
+      console.log('[Loading] Hiding');
+      window.hideProcessingOverlay?.();
+    }
+  },
+
+  /**
+   * Life context edit modal
+   */
+  showContextModal() {
+    const currentValue = this.profile?.life_context || '';
+    const body = `
+      <p class="modal-new__subtitle">A sentence about what you're navigating right now</p>
+      <div class="field-group">
+        <textarea
+          id="modal-context-input"
+          class="textarea-new"
+          placeholder="Raising a seed round while trying to be present for my family..."
+          maxlength="200"
+        >${this.escapeHtml(currentValue)}</textarea>
+        <div class="char-count"><span id="context-char-count">${currentValue.length}</span> / 200</div>
+      </div>
+    `;
+    const footer = `<button class="btn-primary-new" onclick="UIProfile.saveContext()">SAVE</button>`;
+
+    this.showModal("WHAT'S ON YOUR PLATE?", body, footer);
+
+    // Setup char counter
+    const textarea = document.getElementById('modal-context-input');
+    const counter = document.getElementById('context-char-count');
+    textarea.addEventListener('input', () => {
+      counter.textContent = textarea.value.length;
+    });
+    textarea.focus();
+  },
+
+  async saveContext() {
+    const textarea = document.getElementById('modal-context-input');
+    const value = textarea?.value.trim();
+
+    try {
+      await Sync.supabase
+        .from('user_profiles')
+        .update({ life_context: value || null })
+        .eq('user_id', Sync.user.id);
+
+      this.profile.life_context = value || null;
+      this.closeModal();
+      this.refreshProfileDisplay();
+      console.log('[UIProfile] Context saved');
+    } catch (err) {
+      console.error('[UIProfile] Failed to save context:', err);
+    }
+  },
+
+  /**
+   * Key people edit modal
+   */
+  async showPeopleModal() {
+    // Fetch key people from database
+    let keyPeople = [];
+    try {
+      const { data } = await Sync.supabase
+        .from('user_key_people')
+        .select('*')
+        .eq('user_id', Sync.user.id)
+        .order('created_at', { ascending: false });
+      keyPeople = data || [];
+    } catch (err) {
+      console.warn('[UIProfile] Failed to load key people:', err);
+    }
+
+    const peopleList = keyPeople.length > 0
+      ? keyPeople.map(p => `
+          <div class="entity-item" data-person-id="${p.id}">
+            <div class="entity-item__name">${this.escapeHtml(p.name)}</div>
+            <div class="entity-item__meta">
+              <span>${this.escapeHtml(p.relationship)}</span>
+              <button class="entity-item__edit" onclick="UIProfile.removePerson('${p.id}')">×</button>
+            </div>
+          </div>
+        `).join('')
+      : '<p class="entity-empty">No key people added yet</p>';
+
+    const body = `
+      <p class="modal-new__subtitle">People your Twin should know about</p>
+      <div class="entity-list" id="people-list">
+        ${peopleList}
+      </div>
+      <div class="mt-4">
+        <button class="btn-text-new" onclick="UIProfile.showAddPersonForm()">+ Add person</button>
+        <div id="add-person-form" style="display: none; margin-top: var(--space-3);">
+          <div class="field-group">
+            <input type="text" id="new-person-name" class="input-new" placeholder="Name">
+          </div>
+          <div class="field-group">
+            <input type="text" id="new-person-relationship" class="input-new" placeholder="Relationship (e.g., cofounder, friend)">
+          </div>
+          <div style="display: flex; gap: var(--space-2);">
+            <button class="btn-secondary-new" onclick="UIProfile.hideAddPersonForm()">Cancel</button>
+            <button class="btn-primary-new" onclick="UIProfile.addPerson()">Add</button>
+          </div>
+        </div>
+      </div>
+    `;
+    const footer = `<button class="btn-primary-new" onclick="UIProfile.closeModal()">DONE</button>`;
+
+    this.showModal('KEY PEOPLE', body, footer);
+  },
+
+  showAddPersonForm() {
+    document.getElementById('add-person-form').style.display = 'block';
+    document.getElementById('new-person-name').focus();
+  },
+
+  hideAddPersonForm() {
+    document.getElementById('add-person-form').style.display = 'none';
+    document.getElementById('new-person-name').value = '';
+    document.getElementById('new-person-relationship').value = '';
+  },
+
+  async addPerson() {
+    const name = document.getElementById('new-person-name').value.trim();
+    const relationship = document.getElementById('new-person-relationship').value.trim();
+
+    if (!name || !relationship) return;
+
+    try {
+      const { data, error } = await Sync.supabase
+        .from('user_key_people')
+        .insert({
+          user_id: Sync.user.id,
+          name: name,
+          relationship: relationship,
+          added_via: 'profile'
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Re-render modal
+      this.showPeopleModal();
+      this.refreshProfileDisplay();
+      console.log('[UIProfile] Person added:', name);
+    } catch (err) {
+      console.error('[UIProfile] Failed to add person:', err);
+    }
+  },
+
+  async removePerson(personId) {
+    try {
+      await Sync.supabase
+        .from('user_key_people')
+        .delete()
+        .eq('id', personId)
+        .eq('user_id', Sync.user.id);
+
+      // Re-render modal
+      this.showPeopleModal();
+      this.refreshProfileDisplay();
+      console.log('[UIProfile] Person removed:', personId);
+    } catch (err) {
+      console.error('[UIProfile] Failed to remove person:', err);
+    }
+  },
+
+  /**
+   * Boundaries edit modal
+   */
+  showBoundariesModal() {
+    const boundaries = this.profile?.boundaries || [];
+    const tags = boundaries.map(b => `
+      <span class="tag-pill">
+        ${this.escapeHtml(b)}
+        <button class="tag-pill__remove" onclick="UIProfile.removeBoundary('${this.escapeHtml(b)}')">×</button>
+      </span>
+    `).join('');
+
+    const body = `
+      <p class="modal-new__subtitle">Your Twin won't probe these topics</p>
+      <div id="boundaries-tags" style="display: flex; flex-wrap: wrap; gap: var(--space-2); margin-bottom: var(--space-4);">
+        ${tags || '<span class="text-caption text-muted">No topics added</span>'}
+      </div>
+      <div style="display: flex; gap: var(--space-2);">
+        <input type="text" id="new-boundary-input" class="input-new" placeholder="Add topic..." style="flex: 1;">
+        <button class="btn-secondary-new" onclick="UIProfile.addBoundary()">+</button>
+      </div>
+    `;
+    const footer = `<button class="btn-primary-new" onclick="UIProfile.closeModal()">DONE</button>`;
+
+    this.showModal('TOPICS TO AVOID', body, footer);
+
+    // Enter key to add
+    document.getElementById('new-boundary-input').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') this.addBoundary();
+    });
+  },
+
+  async addBoundary() {
+    const input = document.getElementById('new-boundary-input');
+    const value = input.value.trim();
+
+    if (!value) return;
+
+    const boundaries = this.profile?.boundaries || [];
+    if (boundaries.includes(value)) {
+      input.value = '';
+      return;
+    }
+
+    boundaries.push(value);
+
+    try {
+      await Sync.supabase
+        .from('user_profiles')
+        .update({ boundaries: boundaries })
+        .eq('user_id', Sync.user.id);
+
+      this.profile.boundaries = boundaries;
+      this.showBoundariesModal();
+      this.refreshProfileDisplay();
+      console.log('[UIProfile] Boundary added:', value);
+    } catch (err) {
+      console.error('[UIProfile] Failed to add boundary:', err);
+    }
+  },
+
+  async removeBoundary(value) {
+    const boundaries = (this.profile?.boundaries || []).filter(b => b !== value);
+
+    try {
+      await Sync.supabase
+        .from('user_profiles')
+        .update({ boundaries: boundaries })
+        .eq('user_id', Sync.user.id);
+
+      this.profile.boundaries = boundaries;
+      this.showBoundariesModal();
+      this.refreshProfileDisplay();
+      console.log('[UIProfile] Boundary removed:', value);
+    } catch (err) {
+      console.error('[UIProfile] Failed to remove boundary:', err);
+    }
+  },
+
+  /**
+   * Refresh profile display in TWIN tab
+   */
+  refreshProfileDisplay() {
+    const aboutSection = document.getElementById('about-me-section');
+    if (aboutSection) {
+      aboutSection.innerHTML = this.renderAboutYouSection();
+    }
+
+    // Also refresh preferences if it exists
+    const prefsSection = document.getElementById('preferences-section');
+    if (prefsSection) {
+      prefsSection.innerHTML = this.renderPreferencesSection();
+    }
+
+    // Update key people count
+    this.updateKeyPeopleCount();
+  },
+
+  async updateKeyPeopleCount() {
+    try {
+      const { count } = await Sync.supabase
+        .from('user_key_people')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', Sync.user.id);
+
+      const countEl = document.getElementById('key-people-count');
+      if (countEl) {
+        countEl.textContent = `${count || 0} people`;
+      }
+    } catch (err) {
+      console.warn('[UIProfile] Failed to update people count:', err);
+    }
+  },
+
+  // Helper functions
+  formatRoleType(roleType) {
+    const labels = {
+      'BUILDING': 'Building something',
+      'LEADING': 'Leading others',
+      'MAKING': 'Deep in the work',
+      'LEARNING': 'Learning & exploring',
+      'JUGGLING': 'Juggling multiple things',
+      'TRANSITIONING': 'Between chapters'
+    };
+    // Handle array of roles (multi-select)
+    if (Array.isArray(roleType)) {
+      if (roleType.length === 0) return 'Not set';
+      return roleType.map(r => labels[r] || r).join(', ');
+    }
+    // Handle single role (legacy)
+    return labels[roleType] || roleType || 'Not set';
+  },
+
+  formatGoals(goals) {
+    if (!goals || goals.length === 0) return 'Not set';
+    const labels = {
+      'DECISIONS': 'Think through decisions',
+      'PROCESS': 'Process what happened',
+      'ORGANIZE': 'Stay on top of things',
+      'SELF_UNDERSTANDING': 'Understand myself better',
+      'REMEMBER': 'Remember what matters',
+      'EXPLORING': 'Just exploring'
+    };
+    return goals.map(g => labels[g] || g).join(', ');
+  },
+
+  formatTone(tone) {
+    const labels = {
+      'DIRECT': 'Direct and efficient',
+      'WARM': 'Warm and supportive',
+      'CHALLENGING': 'Challenge me',
+      'ADAPTIVE': 'Adaptive'
+    };
+    return labels[tone] || tone;
+  },
+
+  truncate(str, maxLen) {
+    if (!str) return '';
+    if (str.length <= maxLen) return str;
+    return str.substring(0, maxLen) + '...';
+  },
+
+  escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+};

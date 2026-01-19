@@ -7,6 +7,88 @@
  */
 
 const Anthropic = require('@anthropic-ai/sdk');
+const { createClient } = require('@supabase/supabase-js');
+
+// Initialize Supabase client for fetching user context
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
+let supabase = null;
+
+if (supabaseUrl && supabaseServiceKey) {
+  supabase = createClient(supabaseUrl, supabaseServiceKey);
+}
+
+/**
+ * Phase 11: Fetch user's onboarding data for personalization
+ * This is CRITICAL for the core value prop - the AI must know who the user is
+ */
+async function getUserOnboardingContext(userId) {
+  if (!supabase || !userId) {
+    console.log('[Analyze] No supabase or userId - skipping onboarding context');
+    return null;
+  }
+
+  try {
+    const { data: onboarding, error } = await supabase
+      .from('onboarding_data')
+      .select('name, life_seasons, mental_focus, depth_question, depth_answer, seeded_people')
+      .eq('user_id', userId)
+      .single();
+
+    if (error) {
+      console.log('[Analyze] Error fetching onboarding data:', error.message);
+      return null;
+    }
+
+    console.log('[Analyze] Fetched onboarding data for user:', onboarding?.name || 'unknown');
+    return onboarding;
+  } catch (err) {
+    console.error('[Analyze] Exception fetching onboarding:', err);
+    return null;
+  }
+}
+
+/**
+ * Phase 11: Build personalization context string from onboarding data
+ * This gets injected into the Claude prompt so the AI knows the user
+ */
+function buildOnboardingContextPrompt(onboarding) {
+  if (!onboarding) return '';
+
+  let context = `<user_context>\n`;
+
+  // User's name - CRITICAL for personalization
+  if (onboarding.name) {
+    context += `User's name: ${onboarding.name}\n`;
+  }
+
+  // Life season - what phase they're in
+  if (onboarding.life_seasons?.length > 0) {
+    context += `Life season: ${onboarding.life_seasons.join(', ')}\n`;
+  }
+
+  // What's weighing on them
+  if (onboarding.mental_focus?.length > 0) {
+    context += `Currently focused on: ${onboarding.mental_focus.join(', ')}\n`;
+  }
+
+  // Their depth answer - important personal context
+  if (onboarding.depth_answer) {
+    context += `Shared context: "${onboarding.depth_answer}"\n`;
+  }
+
+  // Known people from onboarding - CRITICAL for entity recognition
+  if (onboarding.seeded_people?.length > 0) {
+    context += `\nPeople in their world:\n`;
+    onboarding.seeded_people.forEach(person => {
+      const relationship = person.context || person.relationship || '';
+      context += `- ${person.name}${relationship ? ` (${relationship})` : ''}\n`;
+    });
+  }
+
+  context += `</user_context>`;
+  return context;
+}
 
 // Visual entity extraction instruction (added to prompt when image present)
 // CRITICAL LANGUAGE RULE - Enforces second-person language in all outputs
@@ -82,6 +164,155 @@ EXAMPLES:
 
 This rule applies to: title, summary, actions, core.intent, and ALL text output.
 `;
+
+// Phase 10.1: Build pattern awareness prompt for frequently mentioned entities
+function buildPatternAwarenessPrompt(entities) {
+  if (!entities || entities.length === 0) return '';
+
+  // Find frequently mentioned entities (3+ mentions)
+  const frequent = entities.filter(e => (e.mention_count || e.mentionCount || 1) >= 3);
+
+  if (frequent.length === 0) return '';
+
+  return `
+<pattern_awareness>
+IMPORTANT: The user has mentioned these people/things multiple times. Acknowledge patterns naturally.
+
+${frequent.map(e => `- ${e.name}: mentioned ${e.mention_count || e.mentionCount} times
+  Recent context: ${Array.isArray(e.context_notes) ? e.context_notes.slice(-2).join(' | ') : e.context || 'N/A'}`).join('\n')}
+
+When responding:
+- If relevant, acknowledge you've noticed this person/topic comes up often
+- Reference previous context naturally: "Last time you mentioned [name], you said..."
+- For 3+ mentions: "You've been thinking about [name] a lot lately"
+- For 5+ mentions: "[name] seems important to you - they keep coming up"
+- Don't be creepy. Be a thoughtful friend who remembers.
+</pattern_awareness>
+`;
+}
+
+// ═══════════════════════════════════════════
+// PHASE 10.2: Proactive Relevance Functions
+// ═══════════════════════════════════════════
+
+/**
+ * Build relationship context for known entities
+ * @param {Array} relationships - Array of entity relationships
+ * @param {Array} entities - Known entities
+ * @returns {string} Formatted relationship context for prompt
+ */
+function buildRelationshipContext(relationships, entities) {
+  if (!relationships || relationships.length === 0) return '';
+
+  const relationshipLines = relationships.map(r => {
+    const subjectEntity = entities?.find(e =>
+      e.name?.toLowerCase() === r.subject_name?.toLowerCase()
+    );
+    const objectEntity = entities?.find(e =>
+      e.name?.toLowerCase() === r.object_name?.toLowerCase()
+    );
+
+    // Format: "Sarah works_at Stripe (high confidence)"
+    const confidence = r.confidence >= 0.8 ? 'high' : r.confidence >= 0.5 ? 'medium' : 'low';
+    return `  - ${r.subject_name} ${r.predicate.replace(/_/g, ' ')} ${r.object_name} (${confidence} confidence)`;
+  }).join('\n');
+
+  return `
+<relationship_graph>
+KNOWN RELATIONSHIPS between entities in your world:
+${relationshipLines}
+
+USE these relationships when responding:
+- If discussing Sarah and you know "Sarah works_at Stripe", reference it naturally
+- Update superseded relationships if new info contradicts (e.g., "Sarah left Stripe" → mark old as superseded)
+- Suggest connections: "This reminds me - didn't Sarah work with John at Stripe?"
+</relationship_graph>
+`;
+}
+
+/**
+ * Build proactive context by surfacing related entities by topic
+ * @param {string} noteText - The note text being analyzed
+ * @param {Array} entities - All known entities with topics
+ * @returns {string} Proactive context section for prompt
+ */
+function buildProactiveContext(noteText, entities) {
+  if (!noteText || !entities || entities.length === 0) return '';
+
+  // Extract topics from current note
+  const noteTopics = extractTopicsFromText(noteText);
+  if (noteTopics.length === 0) return '';
+
+  // Find entities with overlapping topics
+  const relatedEntities = [];
+  for (const entity of entities) {
+    if (!entity.topics || entity.topics.length === 0) continue;
+
+    const overlappingTopics = entity.topics.filter(t => noteTopics.includes(t));
+    if (overlappingTopics.length > 0) {
+      relatedEntities.push({
+        name: entity.name,
+        type: entity.entity_type,
+        topics: overlappingTopics,
+        summary: entity.summary
+      });
+    }
+  }
+
+  if (relatedEntities.length === 0) return '';
+
+  const relatedLines = relatedEntities.slice(0, 5).map(e => {
+    const topicStr = e.topics.join(', ');
+    return `  - ${e.name} (${e.type}): also tagged with [${topicStr}]${e.summary ? ` - ${e.summary.substring(0, 80)}` : ''}`;
+  }).join('\n');
+
+  return `
+<proactive_connections>
+RELATED ENTITIES you might want to mention:
+${relatedLines}
+
+Based on the topics in this note, these people/things might be relevant.
+If naturally fitting, suggest connections:
+- "This reminds me - you've mentioned [name] before in similar contexts"
+- "Have you considered involving [name]? They're connected to this topic."
+Don't force it. Only mention if genuinely relevant.
+</proactive_connections>
+`;
+}
+
+/**
+ * Extract topics from note text (simple keyword matching)
+ * @param {string} text - Note text
+ * @returns {Array} Extracted topics
+ */
+function extractTopicsFromText(text) {
+  if (!text) return [];
+
+  const topicKeywords = {
+    'startup': ['startup', 'founder', 'founding', 'venture', 'seed', 'series', 'pitch'],
+    'ai': ['ai', 'artificial intelligence', 'machine learning', 'ml', 'llm', 'gpt', 'claude'],
+    'engineering': ['code', 'coding', 'engineering', 'developer', 'software', 'tech', 'programming', 'bug'],
+    'design': ['design', 'designer', 'ui', 'ux', 'user experience', 'figma', 'mockup'],
+    'business': ['business', 'revenue', 'growth', 'strategy', 'market', 'sales'],
+    'product': ['product', 'feature', 'roadmap', 'launch', 'release', 'ship'],
+    'investment': ['investor', 'investment', 'funding', 'raise', 'valuation', 'deck'],
+    'health': ['health', 'fitness', 'workout', 'diet', 'wellness', 'doctor'],
+    'travel': ['travel', 'trip', 'vacation', 'flight', 'hotel', 'airport'],
+    'family': ['family', 'kids', 'children', 'parents', 'wife', 'husband', 'mom', 'dad'],
+    'work': ['work', 'job', 'office', 'meeting', 'project', 'deadline', 'client']
+  };
+
+  const textLower = text.toLowerCase();
+  const foundTopics = [];
+
+  for (const [topic, keywords] of Object.entries(topicKeywords)) {
+    if (keywords.some(kw => textLower.includes(kw))) {
+      foundTopics.push(topic);
+    }
+  }
+
+  return foundTopics;
+}
 
 const VISUAL_ENTITY_INSTRUCTION = `
 If this note contains an image with visible people, pets, or identifiable places/objects, extract visual descriptions.
@@ -321,7 +552,7 @@ function detectTier(input) {
 /**
  * Phase 8.8: UNIFIED ANALYSIS PROMPT
  */
-const UNIFIED_ANALYSIS_PROMPT = `You are the user's Digital Twin—a perceptive, warm AI that helps them understand themselves.
+const UNIFIED_ANALYSIS_PROMPT = `You are Inscript—a perceptive, warm AI that helps the user understand themselves.
 
 ## CRITICAL RULES — VIOLATION CAUSES REJECTION
 
@@ -330,6 +561,17 @@ const UNIFIED_ANALYSIS_PROMPT = `You are the user's Digital Twin—a perceptive,
 3. "noticed" MUST be NON-OBVIOUS insight, NOT a summary or restatement
 4. "hidden_assumption" MUST use hypothesis language (might/could/wonder) AND end with "?"
 5. Titles must be 2-4 evocative words. NEVER use: strategy, planning, development, assessment, management, analysis, optimization, framework, implementation
+
+## PERSONALIZATION — USE THE USER CONTEXT
+
+If you receive a <user_context> block, use it naturally:
+- Use the user's NAME occasionally (not every response, but when it feels natural)
+- When they mention someone from "People in their world", ACKNOWLEDGE THE RELATIONSHIP
+  - Example: If Marcus is listed as "close friend", say "Marcus—your close friend" or "that's a lot to navigate with someone you're close to like Marcus"
+- Connect to their LIFE SEASON when relevant
+  - Example: If they're "Building something new", you might say "Building something new means these crossroads come with the territory"
+- Don't force it—only use context when it genuinely adds depth
+- NEVER say "based on my records" or "according to what you told me"—just KNOW it naturally, like a friend would
 
 ## RESPONSE FORMAT
 
@@ -688,12 +930,29 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { input, context = {}, mode, noteType, preferencesXML, hasPersonalization, hasImage, isFirstNote } = req.body;
+  const { input, context = {}, mode, noteType, preferencesXML, hasPersonalization, hasImage, isFirstNote, userId } = req.body;
   console.log('[Analyze] Received knownEntities:', JSON.stringify(context.knownEntities || []));
   console.log('[Analyze] Phase 7 - hasPersonalization:', hasPersonalization, 'preferencesXML length:', preferencesXML?.length || 0);
   console.log('[Analyze] Phase 8 - userProfile:', context.userProfile ? `${context.userProfile.userName}` : 'none');
   console.log('[Analyze] Visual Learning - hasImage:', hasImage || false);
   console.log('[Analyze] First Note Detection - isFirstNote:', isFirstNote || false);
+  console.log('[Analyze] Phase 11 - userId:', userId || 'not provided');
+
+  // ═══════════════════════════════════════════
+  // PHASE 11: FETCH ONBOARDING CONTEXT
+  // This is CRITICAL for personalization
+  // ═══════════════════════════════════════════
+  let onboardingContext = '';
+  if (userId) {
+    const onboarding = await getUserOnboardingContext(userId);
+    if (onboarding) {
+      onboardingContext = buildOnboardingContextPrompt(onboarding);
+      console.log('[Analyze] Phase 11 - Built onboarding context:', onboardingContext.substring(0, 200));
+      // Inject into context for downstream use
+      context.personalizationContext = onboardingContext;
+      context.onboardingData = onboarding;
+    }
+  }
 
   // Handle refine mode (Phase 3c)
   if (mode === 'refine') {
@@ -1353,7 +1612,7 @@ function buildTaskSystemPrompt(context, category, preferencesXML = '', hasImage 
     firstNoteSection = `
 ## FIRST NOTE CONTEXT — THIS IS SPECIAL
 
-This is the user's VERY FIRST note to their Digital Twin. Make this response warm and personal.
+This is the user's VERY FIRST note to their Inscript. Make this response warm and personal.
 
 REQUIRED FOR FIRST NOTE:
 - Title should be welcoming: "First Hello", "Meeting Your Twin", "Your Introduction", "Getting Started", or similar
@@ -1375,7 +1634,11 @@ EXAMPLE FIRST NOTE TITLES:
 
   // Phase 6: Build memory context section if known entities exist
   let memorySection = '';
+  // Phase 10.2: Extract relationships for proactive relevance
+  const knownRelationships = context.knownRelationships || [];
+  const text = context.text || context.input || '';
   console.log('[Analyze] buildTaskSystemPrompt - knownEntities count:', context.knownEntities?.length || 0);
+  console.log('[Analyze] buildTaskSystemPrompt - knownRelationships count:', knownRelationships.length);
   console.log('[Analyze] buildTaskSystemPrompt - preferencesXML length:', preferencesXML?.length || 0);
   console.log('[Analyze] buildTaskSystemPrompt - userProfile:', context.userProfile?.userName || 'none');
 
@@ -1459,8 +1722,12 @@ If you detect a contradiction between user's NEW input and KNOWN FACTS above, in
   <entity_name>name of entity being updated</entity_name>
 </memory_update>
 </conflict_detection>
+
+${buildPatternAwarenessPrompt(cleanedEntities)}
+${buildRelationshipContext(knownRelationships, cleanedEntities)}
+${buildProactiveContext(text, cleanedEntities)}
 `;
-      console.log('[Analyze] Memory section added to prompt (with relationships + conflict detection)');
+      console.log('[Analyze] Memory section added to prompt (with relationships + conflict detection + pattern awareness + Phase 10.2 proactive relevance)');
     } else {
       console.log('[Analyze] All entities filtered out during cleaning');
     }
@@ -1866,7 +2133,7 @@ function buildPersonalSystemPrompt(context, preferencesXML = '', hasImage = fals
     firstNoteSection = `
 ## FIRST NOTE CONTEXT — THIS IS SPECIAL
 
-This is the user's VERY FIRST note to their Digital Twin. This moment is the beginning of a relationship.
+This is the user's VERY FIRST note to their Inscript. This moment is the beginning of a relationship.
 
 REQUIRED FOR FIRST NOTE:
 - Title should be warm and welcoming: "First Hello", "Meeting Your Twin", "The Beginning", "A New Chapter"
@@ -1885,7 +2152,11 @@ EXAMPLE FIRST NOTE TITLES:
 
   // Phase 6: Build memory context section if known entities exist
   let memorySection = '';
+  // Phase 10.2: Extract relationships for proactive relevance
+  const knownRelationships = context.knownRelationships || [];
+  const text = context.text || context.input || '';
   console.log('[Analyze] buildPersonalSystemPrompt - knownEntities count:', context.knownEntities?.length || 0);
+  console.log('[Analyze] buildPersonalSystemPrompt - knownRelationships count:', knownRelationships.length);
   console.log('[Analyze] buildPersonalSystemPrompt - preferencesXML length:', preferencesXML?.length || 0);
   console.log('[Analyze] buildPersonalSystemPrompt - userProfile:', context.userProfile?.userName || 'none');
 
@@ -1969,8 +2240,12 @@ If you detect a contradiction between user's NEW input and KNOWN FACTS above, in
   <entity_name>name of entity being updated</entity_name>
 </memory_update>
 </conflict_detection>
+
+${buildPatternAwarenessPrompt(cleanedEntities)}
+${buildRelationshipContext(knownRelationships, cleanedEntities)}
+${buildProactiveContext(text, cleanedEntities)}
 `;
-      console.log('[Analyze] PERSONAL memory section created (with conflict detection), length:', memorySection.length);
+      console.log('[Analyze] PERSONAL memory section created (with conflict detection + pattern awareness + Phase 10.2 proactive relevance), length:', memorySection.length);
     } else {
       console.log('[Analyze] All entities filtered out during cleaning');
     }

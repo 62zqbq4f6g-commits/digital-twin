@@ -1,11 +1,20 @@
 /**
- * Digital Twin - Main Application Controller
+ * Inscript - Main Application Controller
  * Connects: input → classifier → extractor → refiner → storage
  */
 
 // App version - displayed in console on load
-const APP_VERSION = '5.3.0';
-console.log('[App] Version:', APP_VERSION);
+const APP_VERSION = '8.0.0';
+console.log('[App] Inscript v' + APP_VERSION);
+// Phase 11: Inscript rebrand, 7-screen onboarding, privacy settings, design system update
+// Phase 10.9: UI modularization - split chat, camera, entity editor into separate modules
+// Phase 10.6-10.8: Complete Mem0 Parity - cross-memory reasoning, importance classification, automatic forgetting
+// Phase 10.3-10.5: Intelligent Memory Layer - semantic search (pgvector), LLM entity extraction, LLM memory compression
+// Phase 10.2: Mem0-quality memory - conflict detection without re-extraction, relationship graphs, memory consolidation, proactive relevance
+// Phase 10.1: Pattern awareness prompts + entity conflict detection/superseding
+// Phase 9.5: Auth screens editorial refinement - "sign in" / "begin" lowercase headlines
+// Phase 9.4: Bug fixes - role multi-select, search autocomplete, typography Option C, editorial loading messages
+// Phase 9.3: Complete design overhaul - editorial branding, loading overlay, unified buttons
 
 const App = {
   /**
@@ -15,6 +24,8 @@ const App = {
    * @returns {Promise<Object>} Saved note with ID
    */
   async processNote(rawText, inputType) {
+    console.log('[App.processNote] START - rawText:', rawText?.substring(0, 100), 'type:', inputType);
+
     // 1. VALIDATE - Empty/whitespace input shows error
     if (!rawText || typeof rawText !== 'string' || rawText.trim() === '') {
       UI.showToast('Please enter some text');
@@ -22,6 +33,7 @@ const App = {
     }
 
     const text = rawText.trim();
+    console.log('[App.processNote] Trimmed text:', text.substring(0, 100));
 
     try {
       // Show processing state
@@ -29,12 +41,15 @@ const App = {
 
       // 2. CLASSIFY - Determine category
       const classification = Classifier.classify(text);
+      console.log('[App.processNote] Classification:', classification);
 
       // 3. EXTRACT - Get metadata
       const extracted = Extractor.extract(text);
+      console.log('[App.processNote] Extracted title:', extracted.title);
 
       // 4. REFINE - Generate professional output (async - calls AI API)
       const refined = await Refiner.refine(text, classification, extracted, inputType);
+      console.log('[App.processNote] Refined title:', refined.title);
 
       // 4a. ANALYZE - Smart analysis for Summary/Insight/Question (Phase 3a)
       let analysis = null;
@@ -44,6 +59,12 @@ const App = {
             content: text,
             type: inputType
           });
+          // Phase 8.8 DEBUG: Log analysis response
+          console.log('[App] Phase 8.8 - Analysis response keys:', Object.keys(analysis || {}));
+          console.log('[App] Phase 8.8 - analysis.tier:', analysis?.tier);
+          console.log('[App] Phase 8.8 - analysis.heard:', analysis?.heard);
+          console.log('[App] Phase 8.8 - analysis.noticed:', analysis?.noticed);
+          console.log('[App] Phase 8.8 - analysis.experiment:', analysis?.experiment);
         } catch (e) {
           console.warn('[App] Smart analysis unavailable:', e.message);
         }
@@ -51,15 +72,25 @@ const App = {
 
       // 5. BUILD NOTE OBJECT - Full schema from CLAUDE.md 6.2
       const note = this.buildNoteObject(text, inputType, classification, extracted, refined, analysis);
+      console.log('[App.processNote] Built note - title:', note.extracted?.title, 'raw_text:', note.input?.raw_text?.substring(0, 50));
+      // Phase 8.8 DEBUG: Log what's being saved in analysis section
+      console.log('[App] Phase 8.8 - note.analysis keys:', Object.keys(note.analysis || {}));
+      console.log('[App] Phase 8.8 - note.analysis.tier:', note.analysis?.tier);
+      console.log('[App] Phase 8.8 - note.analysis.heard:', note.analysis?.heard);
+      console.log('[App] Phase 8.8 - note.analysis.noticed:', note.analysis?.noticed);
 
       // 6. SAVE - Store in IndexedDB
       const savedNote = await DB.saveNote(note);
+      console.log('[App.processNote] Saved note ID:', savedNote.id);
 
       // Show success feedback
       UI.showToast('Note saved!');
 
       // Update recent notes on capture screen
       this.updateRecentNotes();
+
+      // A4: Dispatch note-saved event for TWIN tab data refresh
+      window.dispatchEvent(new CustomEvent('note-saved', { detail: { noteId: savedNote.id } }));
 
       // 7. PROCESS FOR TWIN - Analyze in background (non-blocking)
       if (typeof TwinEngine !== 'undefined') {
@@ -70,6 +101,41 @@ const App = {
       if (analysis?.entities && typeof EntityMemory !== 'undefined') {
         EntityMemory.storeEntities(analysis.entities, savedNote.id, text).catch(err => {
           console.warn('[App] Entity storage failed:', err);
+        });
+      }
+
+      // 9. PHASE 9: Process entities for user_entities table
+      if (analysis?.entities && typeof Entities !== 'undefined' && Sync?.user?.id) {
+        // Convert entities object { people: [], dates: [], places: [] } to flat array
+        const entitiesArray = [];
+        if (Array.isArray(analysis.entities.people)) {
+          analysis.entities.people.forEach(name => {
+            if (name) entitiesArray.push({ name, type: 'person', context: text.substring(0, 200) });
+          });
+        }
+        if (Array.isArray(analysis.entities.dates)) {
+          analysis.entities.dates.forEach(date => {
+            if (date) entitiesArray.push({ name: date, type: 'date', context: text.substring(0, 200) });
+          });
+        }
+        if (Array.isArray(analysis.entities.places)) {
+          analysis.entities.places.forEach(place => {
+            if (place) entitiesArray.push({ name: place, type: 'place', context: text.substring(0, 200) });
+          });
+        }
+
+        if (entitiesArray.length > 0) {
+          console.log('[App] Processing', entitiesArray.length, 'entities for user_entities');
+          Entities.processExtractedEntities(entitiesArray, Sync.user.id, text).catch(err => {
+            console.warn('[App] Phase 9 entity processing failed:', err);
+          });
+        }
+      }
+
+      // 10. PHASE 9: Increment note count in learning profile
+      if (typeof Context !== 'undefined' && Sync?.user?.id) {
+        Context.incrementNoteCount(Sync.user.id).catch(err => {
+          console.warn('[App] Phase 9 note count increment failed:', err);
         });
       }
 
@@ -162,7 +228,18 @@ const App = {
       voice: analysis.voice || {},
       entities: analysis.entities || {},
       decision: analysis.decision || { isDecision: false },
-      confidence: analysis.confidence || 0.5
+      confidence: analysis.confidence || 0.5,
+      // Phase 8.8: Tiered response fields
+      tier: analysis.tier || null,
+      heard: analysis.heard || null,
+      noticed: analysis.noticed || null,
+      hidden_assumption: analysis.hidden_assumption || null,
+      experiment: analysis.experiment || null,
+      invite: analysis.invite || null,
+      noteType: analysis.noteType || null,
+      whatThisReveals: analysis.whatThisReveals || null,
+      questionToSitWith: analysis.questionToSitWith || null,
+      memoryTags: analysis.memoryTags || []
     } : null;
 
     // Complete note object matching CLAUDE.md 6.2 schema

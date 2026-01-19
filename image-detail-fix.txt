@@ -1,0 +1,40 @@
+DESIGN: Vogue minimalist - black/white/gray only.
+
+FIX: Image not showing inside note detail
+
+ISSUE: Thumbnail shows in notes list, but image not visible when clicking into note detail.
+
+FIX:
+1. In note detail view (ui.js), add image display at TOP of note content
+2. Check for note.imageData OR note.input?.image_thumbnail (legacy)
+3. Display BEFORE the "ORIGINAL" or "Description" section
+
+PLACEMENT (top to bottom):
+- Category badge (PERSONAL/WORK/IDEAS)
+- Title
+- Date/time
+- **IMAGE HERE** (if exists)
+- ORIGINAL or Description section
+- Summary
+- Insight
+- etc...
+
+STYLING:
+- width: 100%
+- max-height: 300px
+- object-fit: cover
+- border-radius: 2px
+- margin-bottom: 1.5rem
+- border: 1px solid var(--color-gray-200)
+
+CODE HINT:
+Look for where note detail HTML is built (likely renderNoteDetail or similar function in ui.js)
+Add image element early in the output, checking:
+  const imageData = note.imageData || note.input?.image_thumbnail;
+  if (imageData) {
+    // render <img src="data:image/jpeg;base64,${imageData}" ... />
+  }
+
+TEST: Click into note with image → image visible at top of detail
+
+Deploy and output IMAGE-DETAIL-FIXED

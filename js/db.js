@@ -1,5 +1,5 @@
 /**
- * Digital Twin - IndexedDB Database Layer
+ * Inscript - IndexedDB Database Layer
  * Following schema from CLAUDE.md section 6
  */
 

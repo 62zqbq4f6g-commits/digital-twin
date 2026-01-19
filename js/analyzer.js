@@ -228,6 +228,10 @@ const Analyzer = {
 
     try {
       // Try API first
+      // Phase 11: Get current user ID for personalization
+      const currentUserId = Sync.user?.id || null;
+      console.log('[Analyzer] Phase 11 - Sending userId:', currentUserId);
+
       const response = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -245,7 +249,9 @@ const Analyzer = {
           // Visual Learning: Flag if image present
           hasImage: hasImage,
           // First note special handling
-          isFirstNote: isFirstNote
+          isFirstNote: isFirstNote,
+          // Phase 11: User ID for onboarding context
+          userId: currentUserId
         })
       });
 

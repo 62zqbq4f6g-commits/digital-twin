@@ -1,0 +1,9 @@
+2026/01/14-23:51:51.032 d95e1 Reusing MANIFEST /Users/airoxthebox/Projects/digital-twin/~/chrome-debug-profile/Default/Local Storage/leveldb/MANIFEST-000001
+2026/01/14-23:51:51.033 d95e1 Recovering log #3
+2026/01/14-23:51:51.033 d95e1 Reusing old log /Users/airoxthebox/Projects/digital-twin/~/chrome-debug-profile/Default/Local Storage/leveldb/000003.log 
+2026/01/14-23:53:31.983 d95e4 Level-0 table #5: started
+2026/01/14-23:53:31.997 d95e4 Level-0 table #5: 68302 bytes OK
+2026/01/14-23:53:32.000 d95e4 Delete type=0 #3
+2026/01/14-23:53:55.393 d95e1 Level-0 table #7: started
+2026/01/14-23:53:55.397 d95e1 Level-0 table #7: 38544 bytes OK
+2026/01/14-23:53:55.399 d95e1 Delete type=0 #4

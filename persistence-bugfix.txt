@@ -1,0 +1,20 @@
+DESIGN: Vogue minimalist - clean, elegant, typography-forward, black/white/gray only, no clutter.
+
+Data persistence bugs to fix:
+
+1. TOAST DELAY: showToast appears 3-5s late. Should be instant. Check if await is blocking it.
+
+2. FEEDBACK NOT PERSISTING: When user clicks Approve/Reject, it should:
+   - Save immediately to note.feedback in IndexedDB
+   - Show visually which button was selected (highlight or checkmark)
+   - Persist across page reloads
+
+3. COMMENT NOT WORKING: Comment button should open input, save to note.questionAnswer, persist across sessions
+
+4. PATTERNS NOT PERSISTING: Profile patterns should load from database on app start, not require rebuild every time
+
+5. Check cloud sync is working - data should survive cache clears
+
+Test: Approve a note, refresh page, button should still show as selected.
+
+Deploy and output PERSISTENCE-FIXED

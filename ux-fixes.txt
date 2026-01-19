@@ -1,0 +1,33 @@
+DESIGN: Vogue minimalist - clean, elegant, typography-forward, black/white/gray only.
+
+FIXES NEEDED:
+
+1. CLOUD SYNC CRITICAL: All user data must sync to Supabase and reload after cache clear:
+   - Notes, feedback, comments, patterns, decisions
+   - On app start, fetch from cloud if local is empty
+   - Test: clear cache, reload, all data should restore
+
+2. REBUILD PROFILE UX: Show elegant loading state during pattern detection:
+   - Button changes to "Analyzing..." with subtle animation
+   - Show progress: "Analyzing 15 of 23 notes..."
+   - Disable button while processing
+   - Smooth transition when patterns appear
+
+3. DECISION STATE NOT SAVING: When user clicks Still Thinking or Decided:
+   - Save to note.analysis.decision.resolved (true/false)
+   - Save note.analysis.decision.resolvedAt timestamp
+   - Visually show which was selected (highlight the active button)
+   - Persist across refresh
+   - If Decided, remove from Thinking Through section
+
+4. ACTION CHECKBOXES: When user checks an action item:
+   - Save checked state to note.analysis.actionsCompleted array
+   - Persist across refresh
+   - Show checked state on reload
+
+5. LOGO: Replace "Digital Twin" header with "roxthebox" in lowercase
+   - Use elegant minimalist font (Inter 300 weight or similar)
+   - Letter-spacing: 0.15em
+   - Contemporary fashion brand aesthetic
+
+Deploy and output UX-FIXES-COMPLETE

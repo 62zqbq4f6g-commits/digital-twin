@@ -1,5 +1,5 @@
 /**
- * Digital Twin - PIN Lock & Encryption Module
+ * Inscript - PIN Lock & Encryption Module
  * Handles app security with 6-digit PIN and AES-256-GCM encryption
  */
 
@@ -182,8 +182,7 @@ const PIN = {
     screen.innerHTML = `
       <div class="pin-container">
         <div class="pin-header">
-          <span class="pin-brand">D I G I T A L</span>
-          <span class="pin-brand">T W I N</span>
+          <span class="pin-brand">Your mirror in code</span>
         </div>
 
         <div class="pin-content">
@@ -312,13 +311,12 @@ const PIN = {
     return `
       <div class="pin-container">
         <div class="pin-header">
-          <span class="pin-brand">D I G I T A L</span>
-          <span class="pin-brand">T W I N</span>
+          <span class="pin-brand">Your mirror in code</span>
         </div>
 
         <div class="pin-content">
           <h2 class="pin-title">Welcome</h2>
-          <p class="pin-subtitle">Your AI-powered second brain</p>
+          <p class="pin-subtitle">your mirror in code</p>
         </div>
 
         <div class="pin-welcome-buttons">
@@ -353,8 +351,7 @@ const PIN = {
     screen.innerHTML = `
       <div class="pin-container">
         <div class="pin-header">
-          <span class="pin-brand">D I G I T A L</span>
-          <span class="pin-brand">T W I N</span>
+          <span class="pin-brand">Your mirror in code</span>
         </div>
 
         <div class="pin-content">
@@ -412,14 +409,22 @@ const PIN = {
         await Sync.signIn(email, password);
         console.log('[PIN] Signed in successfully');
 
-        // Fetch salt from cloud
+        // Fetch salt AND pin_hash from cloud
         const cloudSalt = await Sync.fetchSalt();
+        const cloudPinHash = await Sync.fetchPinHash();
 
         if (cloudSalt) {
           console.log('[PIN] Found cloud salt, storing locally');
           localStorage.setItem(this.SALT_KEY, cloudSalt);
           this.cloudSaltFetched = true;
-          // Show existing user PIN entry (verify by decryption)
+
+          if (cloudPinHash) {
+            console.log('[PIN] Found cloud PIN hash, storing locally');
+            localStorage.setItem(this.HASH_KEY, cloudPinHash);
+            this.cloudPinHashFetched = true;
+          }
+
+          // Show existing user PIN entry (verify by hash or decryption)
           this.showExistingUserPINScreen();
         } else {
           console.log('[PIN] No cloud salt found - new account, show setup');
@@ -451,13 +456,11 @@ const PIN = {
     screen.innerHTML = `
       <div class="pin-container">
         <div class="pin-header">
-          <span class="pin-brand">D I G I T A L</span>
-          <span class="pin-brand">T W I N</span>
+          <span class="pin-brand">Your mirror in code</span>
         </div>
 
         <div class="pin-content">
-          <h2 class="pin-title">Create Account</h2>
-          <p class="pin-subtitle">Sign up to sync across devices</p>
+          <h2 class="pin-title pin-editorial">begin</h2>
 
           <div class="pin-form">
             <input type="email" id="signup-email" class="pin-input" placeholder="Email" autocomplete="email" />
@@ -468,7 +471,7 @@ const PIN = {
 
         <div class="pin-form-buttons">
           <button class="pin-welcome-btn pin-welcome-btn-primary" id="btn-signup">
-            Create Account
+            Begin
           </button>
           <button class="pin-welcome-btn pin-welcome-btn-secondary" id="btn-skip">
             Skip for Now
@@ -517,14 +520,20 @@ const PIN = {
         await Sync.signUp(email, password);
         console.log('[PIN] Signed up successfully');
 
-        // Upload salt to cloud (only if authenticated)
+        // Upload salt AND pin_hash to cloud (only if authenticated)
         if (this.pendingSaltUpload && Sync.user && Sync.isAuthenticated()) {
           console.log('[PIN] Uploading salt to cloud...');
           try {
             await Sync.saveSalt(this.pendingSaltUpload);
             console.log('[PIN] Salt uploaded successfully');
+            // Also upload PIN hash for cross-device verification
+            if (this.pendingHashUpload) {
+              await Sync.savePinHash(this.pendingHashUpload);
+              console.log('[PIN] PIN hash uploaded successfully');
+              this.pendingHashUpload = null;
+            }
           } catch (saltError) {
-            console.warn('[PIN] Could not upload salt to cloud:', saltError.message);
+            console.warn('[PIN] Could not upload salt/hash to cloud:', saltError.message);
             // Salt stays local, will sync on next sign-in
           }
           this.pendingSaltUpload = null;
@@ -539,7 +548,7 @@ const PIN = {
         errorEl.textContent = error.message || 'Sign up failed';
         errorEl.classList.remove('hidden');
         signUpBtn.disabled = false;
-        signUpBtn.textContent = 'Create Account';
+        signUpBtn.textContent = 'Begin';
       }
     });
 
@@ -566,8 +575,7 @@ const PIN = {
     screen.innerHTML = `
       <div class="pin-container">
         <div class="pin-header">
-          <span class="pin-brand">D I G I T A L</span>
-          <span class="pin-brand">T W I N</span>
+          <span class="pin-brand">Your mirror in code</span>
         </div>
 
         <div class="pin-content">
@@ -627,13 +635,43 @@ const PIN = {
           await new Promise(r => setTimeout(r, 50));
 
           try {
-            const verified = await this.verifyPINByDecryption(currentPIN);
-            if (verified) {
-              // PIN is correct - save hash locally for future unlocks
-              const saltB64 = localStorage.getItem(this.SALT_KEY);
-              const hashB64 = await this.simpleHash(currentPIN + saltB64);
-              localStorage.setItem(this.HASH_KEY, hashB64);
+            let verified = false;
+            const saltB64 = localStorage.getItem(this.SALT_KEY);
+            const storedHash = localStorage.getItem(this.HASH_KEY);
 
+            // Try hash-based verification first (if we have cloud hash)
+            if (storedHash && this.cloudPinHashFetched) {
+              console.log('[PIN] Verifying using cloud PIN hash...');
+              const inputHash = await this.simpleHash(currentPIN + saltB64);
+              verified = inputHash === storedHash;
+              if (verified) {
+                console.log('[PIN] Hash verification successful');
+                // Derive encryption key
+                this.encryptionKey = await this.deriveKeySimple(currentPIN, saltB64);
+              }
+            }
+
+            // Fall back to decryption-based verification if hash didn't work
+            if (!verified) {
+              console.log('[PIN] Falling back to decryption verification...');
+              verified = await this.verifyPINByDecryption(currentPIN);
+              if (verified) {
+                // Save hash locally for future unlocks AND upload to cloud
+                const hashB64 = await this.simpleHash(currentPIN + saltB64);
+                localStorage.setItem(this.HASH_KEY, hashB64);
+                // Upload hash to cloud for future cross-device sync
+                if (typeof Sync !== 'undefined' && Sync.user && Sync.isAuthenticated()) {
+                  try {
+                    await Sync.savePinHash(hashB64);
+                    console.log('[PIN] PIN hash uploaded to cloud (migration)');
+                  } catch (e) {
+                    console.warn('[PIN] Could not upload PIN hash:', e.message);
+                  }
+                }
+              }
+            }
+
+            if (verified) {
               this.isSetup = true;
               this.isUnlocked = true;
 
@@ -748,8 +786,7 @@ const PIN = {
     return `
       <div class="pin-container">
         <div class="pin-header">
-          <span class="pin-brand">D I G I T A L</span>
-          <span class="pin-brand">T W I N</span>
+          <span class="pin-brand">Your mirror in code</span>
         </div>
 
         <div class="pin-content">
@@ -779,8 +816,7 @@ const PIN = {
     return `
       <div class="pin-container">
         <div class="pin-header">
-          <span class="pin-brand">D I G I T A L</span>
-          <span class="pin-brand">T W I N</span>
+          <span class="pin-brand">Your mirror in code</span>
         </div>
 
         <div class="pin-content">
@@ -810,8 +846,7 @@ const PIN = {
     return `
       <div class="pin-container">
         <div class="pin-header">
-          <span class="pin-brand">D I G I T A L</span>
-          <span class="pin-brand">T W I N</span>
+          <span class="pin-brand">Your mirror in code</span>
         </div>
 
         <div class="pin-content">
@@ -963,6 +998,24 @@ const PIN = {
                 // Clear lockout on success
                 this.clearLockout();
                 this.isUnlocked = true;
+
+                // MIGRATION: Upload PIN hash to cloud if not already there
+                // This ensures existing users get their hash synced for cross-device use
+                if (typeof Sync !== 'undefined' && Sync.user && Sync.isAuthenticated()) {
+                  try {
+                    const cloudHash = await Sync.fetchPinHash();
+                    if (!cloudHash) {
+                      console.log('[PIN] No cloud hash found, uploading for migration...');
+                      const saltB64 = localStorage.getItem(this.SALT_KEY);
+                      const hashB64 = await this.simpleHash(currentPIN + saltB64);
+                      await Sync.savePinHash(hashB64);
+                      console.log('[PIN] PIN hash migrated to cloud successfully');
+                    }
+                  } catch (e) {
+                    console.warn('[PIN] Migration check failed:', e.message);
+                  }
+                }
+
                 this.hideScreen();
                 // Initialize app after unlock
                 this.onUnlock();
@@ -1021,10 +1074,28 @@ const PIN = {
   /**
    * Called after successful unlock
    */
-  onUnlock() {
+  async onUnlock() {
     // Initialize sync if available
     if (typeof Sync !== 'undefined') {
-      Sync.init();
+      await Sync.init();
+
+      // CRITICAL: Ensure salt is in cloud for cross-device sync
+      // This handles cases where salt wasn't uploaded during initial setup
+      if (Sync.user && Sync.isAuthenticated()) {
+        const localSalt = localStorage.getItem(this.SALT_KEY);
+        if (localSalt) {
+          try {
+            const cloudSalt = await Sync.fetchSalt();
+            if (!cloudSalt) {
+              console.log('[PIN] No salt in cloud, uploading local salt...');
+              await Sync.saveSalt(localSalt);
+              console.log('[PIN] Salt uploaded to cloud successfully');
+            }
+          } catch (e) {
+            console.warn('[PIN] Salt sync check failed:', e.message);
+          }
+        }
+      }
     }
   },
 
@@ -1043,8 +1114,7 @@ const PIN = {
     screen.innerHTML = `
       <div class="pin-container">
         <div class="pin-header">
-          <span class="pin-brand">D I G I T A L</span>
-          <span class="pin-brand">T W I N</span>
+          <span class="pin-brand">Your mirror in code</span>
         </div>
 
         <div class="pin-content">
@@ -1137,8 +1207,7 @@ const PIN = {
     screen.innerHTML = `
       <div class="pin-container">
         <div class="pin-header">
-          <span class="pin-brand">D I G I T A L</span>
-          <span class="pin-brand">T W I N</span>
+          <span class="pin-brand">Your mirror in code</span>
         </div>
 
         <div class="pin-content">
@@ -1208,8 +1277,7 @@ const PIN = {
     screen.innerHTML = `
       <div class="pin-container">
         <div class="pin-header">
-          <span class="pin-brand">D I G I T A L</span>
-          <span class="pin-brand">T W I N</span>
+          <span class="pin-brand">Your mirror in code</span>
         </div>
 
         <div class="pin-content">
@@ -1357,6 +1425,26 @@ const PIN = {
       localStorage.setItem(this.SALT_KEY, saltB64);
       localStorage.setItem(this.HASH_KEY, hashB64);
       console.log('[PIN] localStorage OK');
+
+      // Step 6: CRITICAL - Upload salt AND pin_hash to cloud if user is signed in
+      // This ensures cross-device sync works even if user signed in before creating PIN
+      if (typeof Sync !== 'undefined' && Sync.user && Sync.isAuthenticated()) {
+        console.log('[PIN] Step 6: Uploading salt and PIN hash to cloud (user already signed in)...');
+        try {
+          await Sync.saveSalt(saltB64);
+          console.log('[PIN] Salt uploaded to cloud successfully');
+          // Also save PIN hash for cross-device verification
+          await Sync.savePinHash(hashB64);
+          console.log('[PIN] PIN hash uploaded to cloud successfully');
+        } catch (saltError) {
+          console.warn('[PIN] Could not upload salt/hash to cloud:', saltError.message);
+          // Will retry on next sync
+        }
+      } else {
+        console.log('[PIN] Step 6: Salt will be uploaded after sign-up (pendingSaltUpload set)');
+        // Also store hash for later upload
+        this.pendingHashUpload = hashB64;
+      }
 
       console.log('[PIN] savePIN COMPLETE!');
     } catch (error) {

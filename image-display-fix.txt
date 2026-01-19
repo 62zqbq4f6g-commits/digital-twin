@@ -1,0 +1,32 @@
+DESIGN: Vogue minimalist - black/white/gray only.
+
+IMAGE STORAGE AND DISPLAY FIX:
+
+1. COMPRESS IMAGE BEFORE PROCESSING:
+   - Max 1024px width/height
+   - JPEG quality 70%
+   - Target: under 300KB per image
+
+2. SAVE IMAGE TO NOTE:
+   - Store compressed base64 in note.imageData
+   - Save alongside existing analysis
+
+3. DISPLAY IMAGE IN NOTE DETAIL:
+   - Show image at top of note detail (below title, above Description)
+   - HTML: <img src="data:image/jpeg;base64,${note.imageData}" />
+   - Style: width 100%, max-height 300px, object-fit cover, subtle border
+   - Only show if note.imageData exists
+
+4. SYNC TO CLOUD:
+   - Include imageData in Supabase sync payload
+   - Restore on app load from cloud
+
+5. SHOW THUMBNAIL IN NOTES LIST:
+   - Small thumbnail (60x60px) next to note title in list view
+   - Only for notes with images
+
+TEST: 
+- Upload photo → photo visible in note detail
+- Clear cache → reload → photo still visible
+
+Deploy and output IMAGE-DISPLAY-FIXED

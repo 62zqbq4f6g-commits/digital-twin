@@ -1,5 +1,5 @@
 /**
- * Digital Twin - UI Controller
+ * Inscript - UI Controller
  * Handles navigation and screen management
  */
 
@@ -391,6 +391,65 @@ const UI = {
     }, duration);
   },
 
+  // Phase 11.2: Editorial loading messages (poetic, lowercase, Cormorant Garamond)
+  LOADING_MESSAGES: {
+    note: "sitting with this...",
+    voice: "listening closely...",
+    image: "seeing what's here...",
+    reflect: "going deeper...",
+    save: "holding this...",
+    auth: "one moment...",
+    onboarding: "preparing your space...",
+    delete: "letting go...",
+    sync: "finding you...",
+    analyze: "thinking alongside you..."
+  },
+
+  /**
+   * Phase 9.3: Show loading overlay with contextual message
+   * @param {string} type - Type of loading (note, voice, image, reflect, save, auth, onboarding, delete)
+   */
+  showLoading(type = 'note') {
+    const overlay = document.getElementById('loading-overlay');
+    const textEl = document.getElementById('loading-text');
+    if (!overlay) return;
+
+    const message = this.LOADING_MESSAGES[type] || this.LOADING_MESSAGES.note;
+    if (textEl) textEl.textContent = message;
+    overlay.classList.add('visible');
+  },
+
+  /**
+   * Phase 9.3: Hide loading overlay
+   */
+  hideLoading() {
+    const overlay = document.getElementById('loading-overlay');
+    if (overlay) {
+      overlay.classList.remove('visible');
+    }
+  },
+
+  /**
+   * Phase 9.1: Show feedback toast with editorial copy
+   * @param {'approve'|'reject'} type - Type of feedback
+   */
+  showFeedbackToast(type) {
+    const toast = document.getElementById('feedback-toast');
+    if (!toast) return;
+
+    const textEl = toast.querySelector('.feedback-toast__text');
+    const text = type === 'approve'
+      ? "Noted — I'll remember this resonates"
+      : "Got it — I'll adjust";
+
+    textEl.textContent = text;
+    toast.classList.add('feedback-toast--visible');
+
+    setTimeout(() => {
+      toast.classList.remove('feedback-toast--visible');
+    }, 2500);
+  },
+
   /**
    * Show error toast message (v5.3.0)
    * @param {string} message - Error message to display
@@ -615,7 +674,7 @@ const UI = {
           submitBtn.disabled = true;
 
           // Show processing overlay immediately
-          window.showProcessingOverlay?.('Processing voice...');
+          window.showProcessingOverlay?.('Your twin is listening...');
           this.setProcessing(true);
 
           // Wait briefly for final transcript to settle
@@ -682,12 +741,12 @@ const UI = {
           }
         }
 
-        // Phase 4.7.1: Show/update overlay with appropriate message
-        let overlayMessage = 'Saving...';
+        // Phase 11.2: Editorial loading messages (poetic, lowercase)
+        let overlayMessage = 'sitting with this...';
         if (hasImage) {
-          overlayMessage = 'Processing image...';
+          overlayMessage = 'seeing what\'s here...';
         } else if (hasVoice) {
-          overlayMessage = 'Processing voice note...';
+          overlayMessage = 'listening closely...';
         }
 
         // Update overlay if already showing, otherwise show it
@@ -942,6 +1001,7 @@ const UI = {
     notesList.querySelectorAll('.note-card').forEach(card => {
       card.addEventListener('click', () => {
         const noteId = card.dataset.noteId;
+        console.log('[UI] Note card clicked, noteId:', noteId);
         this.openNoteDetail(noteId);
       });
     });
@@ -957,7 +1017,33 @@ const UI = {
     const icon = this.categoryIcons[category] || '📝';
     const title = note.extracted?.title || 'Untitled Note';
     const timestamp = this.formatNoteListTimestamp(note.timestamps?.created_at || note.created_at);
-    const preview = (note.refined?.summary || '').substring(0, 100);
+
+    // Get user's original words - prioritize fields that contain user input
+    // AVOID: note.summary, note.content, note.refined (these are AI-generated)
+    // PREFER: raw_text, raw_content, text (user-authored fields)
+    const rawText = note.input?.raw_text ||
+                    note.input?.raw_content ||
+                    note.text ||  // Legacy field for very old notes
+                    '';
+
+    // Normalize whitespace and prepare preview
+    const normalizedText = rawText.replace(/\s+/g, ' ').trim();
+
+    // Generate preview with proper handling
+    let preview;
+    if (!normalizedText) {
+      // No original text available - show placeholder instead of AI summary
+      preview = '(no preview)';
+    } else if (normalizedText.length <= 80) {
+      preview = normalizedText;
+    } else {
+      // Truncate at word boundary to avoid mid-word cuts
+      // Using safer truncation that handles unicode better
+      const truncated = normalizedText.substring(0, 80).trim();
+      // Find last space to avoid cutting mid-word
+      const lastSpace = truncated.lastIndexOf(' ');
+      preview = (lastSpace > 40 ? truncated.substring(0, lastSpace) : truncated) + '...';
+    }
     const hasComment = note.feedback?.comment ? true : false;
     // Phase 4.5.3: Check all possible image locations
     const imageData = note.imageData || note.input?.image_thumbnail || note.input?.image_url || note.input?.image_data;
@@ -1492,9 +1578,11 @@ const UI = {
    * @param {string} noteId - Note ID
    */
   async openNoteDetail(noteId) {
+    console.log('[UI] openNoteDetail called with noteId:', noteId);
     try {
       // Get note from database
       const note = await DB.getNoteById(noteId);
+      console.log('[UI] DB.getNoteById result:', note ? 'found' : 'NOT FOUND', note?.id);
       if (!note) {
         this.showToast('Note not found');
         return;
@@ -1579,10 +1667,24 @@ const UI = {
     const isDecision = analysis.decision?.isDecision || analysis.decision?.is_decision || analysis.type === 'decision';
     const isResolved = analysis.decision?.resolved;
 
+    // Phase 8.8: Check if this is a tiered response (has new schema fields)
+    const isTieredResponse = analysis.heard || analysis.tier;
+
     // Phase 4A: Check if this is a personal-mode note
     const isPersonalMode = analysis.noteType === 'personal' || analysis.whatThisReveals;
 
-    // Phase 4A: Render personal format if applicable
+    // Phase 8.8: Render tiered format for ALL notes with tiered schema
+    // This takes priority over legacy personal/productive distinction
+    if (isTieredResponse) {
+      console.log('[UI] Phase 8.8 - Rendering tiered response:', {
+        tier: analysis.tier,
+        heard: analysis.heard?.substring(0, 30),
+        noteType: analysis.noteType
+      });
+      return this.renderPersonalOutput(note);
+    }
+
+    // Phase 4A: Render personal format if applicable (legacy fallback)
     if (isPersonalMode) {
       return this.renderPersonalOutput(note);
     }
@@ -1759,11 +1861,18 @@ const UI = {
     const dislikedClass = feedback.rating === 'disliked' ? 'active' : '';
 
     html += `
-      <div class="output-divider"></div>
-      <div class="feedback-row">
-        <button class="feedback-btn ${likedClass}" data-action="like" aria-label="Approve">APPROVE</button>
-        <button class="feedback-btn ${dislikedClass}" data-action="dislike" aria-label="Reject">REJECT</button>
-        <button class="feedback-btn" data-action="comment" aria-label="Comment">COMMENT</button>
+      <div class="feedback-buttons">
+        <button class="feedback-btn feedback-btn--reject ${dislikedClass}" data-action="dislike" aria-label="Not quite">
+          <span class="feedback-btn__icon">✕</span>
+          <span>Not quite</span>
+        </button>
+        <button class="feedback-btn feedback-btn--approve ${likedClass}" data-action="like" aria-label="Resonates">
+          <span class="feedback-btn__icon">✓</span>
+          <span>Resonates</span>
+        </button>
+      </div>
+      <div class="feedback-comment-row" style="margin-top: var(--space-3); text-align: center;">
+        <button class="btn-text" data-action="comment" aria-label="Add comment">Add feedback</button>
       </div>
     `;
 
@@ -1820,6 +1929,13 @@ const UI = {
     const analysis = note.analysis || {};
     const feedback = note.feedback || {};
 
+    // Phase 8.8 DEBUG: Log analysis object
+    console.log('[UI] renderPersonalOutput - analysis keys:', Object.keys(analysis));
+    console.log('[UI] renderPersonalOutput - analysis.heard:', analysis.heard);
+    console.log('[UI] renderPersonalOutput - analysis.noticed:', analysis.noticed);
+    console.log('[UI] renderPersonalOutput - analysis.tier:', analysis.tier);
+    console.log('[UI] renderPersonalOutput - analysis.summary:', analysis.summary);
+
     let html = '<div class="phase3a-output personal-output">';
 
     // Phase 7: Show preference indicator if preferences were applied
@@ -1851,57 +1967,176 @@ const UI = {
       `;
     }
 
-    // WHAT YOU SHARED section (whatYouShared - cleaned transcript preserving emotional tone)
-    // Phase 5A.1: with edit capability
-    const whatYouShared = analysis.whatYouShared || analysis.cleanedInput || note.input?.raw_text || '';
-    if (whatYouShared) {
-      html += `
-        <div class="note-section what-you-shared-section" data-note-id="${note.id}">
-          <div class="note-section-header">
-            WHAT YOU SHARED
-            <button class="edit-shared-btn" onclick="UI.toggleEditShared(this)">Edit</button>
+    // Phase 8.8: Check if this is a tiered response
+    const isTieredResponse = analysis.heard || analysis.tier;
+
+    // Phase 8.8 DEBUG: Detailed logging
+    console.log('[UI] Phase 8.8 isTieredResponse check:', {
+      isTieredResponse,
+      hasHeard: !!analysis.heard,
+      heardValue: analysis.heard,
+      hasTier: !!analysis.tier,
+      tierValue: analysis.tier,
+      hasNoticed: !!analysis.noticed,
+      noticedValue: analysis.noticed,
+      hasExperiment: !!analysis.experiment,
+      experimentValue: analysis.experiment
+    });
+
+    if (isTieredResponse) {
+      // ═══════════════════════════════════════════
+      // PHASE 8.8: TIERED RESPONSE RENDERING
+      // ═══════════════════════════════════════════
+
+      // WHAT YOU SHARED section (original content for context)
+      const originalContent = note.input?.raw_text || analysis.cleanedInput || '';
+      if (originalContent) {
+        html += `
+          <div class="note-section what-you-shared-section">
+            <div class="note-section-header">WHAT YOU SHARED</div>
+            <div class="note-original-content">"${this.escapeHtml(originalContent)}"</div>
           </div>
-          <div class="note-original personal-original shared-content">${this.escapeHtml(whatYouShared)}</div>
-        </div>
-      `;
-    }
+        `;
+      }
 
-    // WHAT THIS REVEALS section (Phase 4A - the key differentiator)
-    if (analysis.whatThisReveals) {
-      html += `
-        <div class="note-section">
-          <div class="note-section-header">WHAT THIS REVEALS</div>
-          <div class="personal-reveals">${this.escapeHtml(analysis.whatThisReveals)}</div>
-        </div>
-      `;
-    }
+      // WHAT I HEARD section (always present in tiered responses)
+      if (analysis.heard) {
+        html += `
+          <div class="note-section heard-section">
+            <div class="note-section-header">WHAT I HEARD</div>
+            <div class="personal-heard">${this.escapeHtml(analysis.heard)}</div>
+          </div>
+        `;
+      }
 
-    // A QUESTION TO SIT WITH section (Phase 4A)
-    const question = analysis.questionToSitWith || analysis.question;
-    if (question) {
-      html += `
-        <div class="note-section">
-          <div class="note-section-header">A QUESTION TO SIT WITH</div>
-          <div class="personal-question">${this.escapeHtml(question)}</div>
-        </div>
-      `;
+      // WHAT I NOTICED section (Standard/Deep tiers)
+      if (analysis.noticed) {
+        html += `
+          <div class="note-section noticed-section">
+            <div class="note-section-header">WHAT I NOTICED</div>
+            <div class="personal-noticed">${this.escapeHtml(analysis.noticed)}</div>
+          </div>
+        `;
+      }
 
-      // Answer container (hidden by default)
+      // A POSSIBILITY section (Deep tier - hidden_assumption)
+      if (analysis.hidden_assumption) {
+        html += `
+          <div class="note-section assumption-section">
+            <div class="note-section-header">A POSSIBILITY</div>
+            <div class="personal-assumption">${this.escapeHtml(analysis.hidden_assumption)}</div>
+          </div>
+        `;
+      }
+
+      // A QUESTION FOR YOU section
+      const question = analysis.question || analysis.questionToSitWith;
+      if (question) {
+        html += `
+          <div class="note-section question-section">
+            <div class="note-section-header">A QUESTION FOR YOU</div>
+            <div class="personal-question">${this.escapeHtml(question)}</div>
+          </div>
+        `;
+
+        // If note already has an answer, display it
+        if (note.questionAnswer?.answer) {
+          html += `
+            <div class="note-section reflection-section">
+              <div class="note-section-header">YOUR RESPONSE</div>
+              <div class="note-original-content">"${this.escapeHtml(note.questionAnswer.answer)}"</div>
+              <span class="edit-answer-link" data-action="edit-answer">Edit</span>
+            </div>
+          `;
+        } else {
+          // Always show inline response input for notes with questions (all tiers)
+          html += `
+            <div class="note-question__response" id="reflection-input-container">
+              <input
+                type="text"
+                class="note-question__input"
+                id="reflection-textarea"
+                placeholder="Type your response..."
+              />
+              <button class="note-question__submit" id="reflection-submit-btn">→</button>
+            </div>
+          `;
+        }
+      }
+
+      // Answer container for legacy toggle (hidden)
       html += `<div id="answer-container" class="answer-container" style="display: none;"></div>`;
 
-      // If note already has an answer, display it
-      if (note.questionAnswer?.answer) {
+      // SOMETHING TO TRY section (Standard/Deep tiers - experiment)
+      if (analysis.experiment) {
         html += `
-          <div class="note-answer">
-            <div class="note-section-header">YOUR REFLECTION</div>
-            <div class="answer-text">"${this.escapeHtml(note.questionAnswer.answer)}"</div>
-            <span class="edit-answer-link" data-action="edit-answer">Edit</span>
+          <div class="note-section experiment-section">
+            <div class="note-section-header">SOMETHING TO TRY</div>
+            <div class="personal-experiment">${this.escapeHtml(analysis.experiment)}</div>
           </div>
         `;
-      } else {
+      }
+
+      // INVITE section removed - was "Share more if you'd like me to dig deeper"
+
+    } else {
+      // ═══════════════════════════════════════════
+      // LEGACY PERSONAL NOTE RENDERING
+      // For backward compatibility with old notes
+      // ═══════════════════════════════════════════
+
+      // WHAT YOU SHARED section (whatYouShared - cleaned transcript preserving emotional tone)
+      // Phase 5A.1: with edit capability
+      const whatYouShared = analysis.whatYouShared || analysis.cleanedInput || note.input?.raw_text || '';
+      if (whatYouShared) {
         html += `
-          <button class="answer-question-btn personal-reflect-btn" data-action="show-answer-input">REFLECT</button>
+          <div class="note-section what-you-shared-section" data-note-id="${note.id}">
+            <div class="note-section-header">
+              WHAT YOU SHARED
+              <button class="edit-shared-btn" onclick="UI.toggleEditShared(this)">Edit</button>
+            </div>
+            <div class="note-original personal-original shared-content">${this.escapeHtml(whatYouShared)}</div>
+          </div>
         `;
+      }
+
+      // WHAT THIS REVEALS section (Phase 4A - the key differentiator)
+      if (analysis.whatThisReveals) {
+        html += `
+          <div class="note-section">
+            <div class="note-section-header">WHAT THIS REVEALS</div>
+            <div class="personal-reveals">${this.escapeHtml(analysis.whatThisReveals)}</div>
+          </div>
+        `;
+      }
+
+      // A QUESTION TO SIT WITH section (Phase 4A)
+      const question = analysis.questionToSitWith || analysis.question;
+      if (question) {
+        html += `
+          <div class="note-section">
+            <div class="note-section-header">A QUESTION TO SIT WITH</div>
+            <div class="personal-question">${this.escapeHtml(question)}</div>
+          </div>
+        `;
+
+        // Answer container (hidden by default)
+        html += `<div id="answer-container" class="answer-container" style="display: none;"></div>`;
+
+        // If note already has an answer, display it
+        if (note.questionAnswer?.answer) {
+          html += `
+            <div class="note-answer">
+              <div class="note-section-header">YOUR REFLECTION</div>
+              <div class="answer-text">"${this.escapeHtml(note.questionAnswer.answer)}"</div>
+              <span class="edit-answer-link" data-action="edit-answer">Edit</span>
+            </div>
+          `;
+        } else {
+          html += `
+            <button class="answer-question-btn personal-reflect-btn" data-action="show-answer-input">REFLECT</button>
+          `;
+        }
       }
     }
 
@@ -1923,11 +2158,18 @@ const UI = {
     const dislikedClass = feedback.rating === 'disliked' ? 'active' : '';
 
     html += `
-      <div class="output-divider"></div>
-      <div class="feedback-row">
-        <button class="feedback-btn ${likedClass}" data-action="like" aria-label="Approve">APPROVE</button>
-        <button class="feedback-btn ${dislikedClass}" data-action="dislike" aria-label="Reject">REJECT</button>
-        <button class="feedback-btn" data-action="comment" aria-label="Comment">COMMENT</button>
+      <div class="feedback-buttons">
+        <button class="feedback-btn feedback-btn--reject ${dislikedClass}" data-action="dislike" aria-label="Not quite">
+          <span class="feedback-btn__icon">✕</span>
+          <span>Not quite</span>
+        </button>
+        <button class="feedback-btn feedback-btn--approve ${likedClass}" data-action="like" aria-label="Resonates">
+          <span class="feedback-btn__icon">✓</span>
+          <span>Resonates</span>
+        </button>
+      </div>
+      <div class="feedback-comment-row" style="margin-top: var(--space-3); text-align: center;">
+        <button class="btn-text" data-action="comment" aria-label="Add comment">Add feedback</button>
       </div>
     `;
 
@@ -1994,6 +2236,25 @@ const UI = {
     if (editAnswerLink) {
       editAnswerLink.addEventListener('click', () => {
         this.toggleAnswerInput(noteId, true);
+      });
+    }
+
+    // Inline reflection submit button (new design)
+    const reflectionSubmitBtn = document.getElementById('reflection-submit-btn');
+    if (reflectionSubmitBtn) {
+      reflectionSubmitBtn.addEventListener('click', () => {
+        this.submitInlineReflection(noteId);
+      });
+    }
+
+    // Reflection input - submit on Enter
+    const reflectionTextarea = document.getElementById('reflection-textarea');
+    if (reflectionTextarea) {
+      reflectionTextarea.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          this.submitInlineReflection(noteId);
+        }
       });
     }
 
@@ -2215,8 +2476,12 @@ const UI = {
         }
       });
 
-      // Show toast immediately (don't wait for background processing)
-      this.showToast(newRating === 'liked' ? 'Thanks!' : newRating === 'disliked' ? 'Noted' : 'Feedback cleared');
+      // Show editorial feedback toast (Phase 9.1)
+      if (newRating) {
+        this.showFeedbackToast(newRating === 'liked' ? 'approve' : 'reject');
+      } else {
+        this.showToast('Feedback cleared');
+      }
 
       // Process feedback for learning in background (non-blocking)
       if (typeof Feedback !== 'undefined' && newRating) {
@@ -2358,6 +2623,8 @@ const UI = {
 
   /**
    * Submit answer to question and refine note (Phase 3c)
+   * For personal notes: Uses REFLECT mode - tier upgrade with deeper analysis
+   * For task notes: Uses REFINE mode - action refinement
    * @param {string} noteId - Note ID
    */
   async submitAnswer(noteId) {
@@ -2373,7 +2640,14 @@ const UI = {
     const note = await DB.getNoteById(noteId);
     if (!note) return;
 
-    // Store the answer
+    // Determine if this is a personal note (use REFLECT mode) or task note (use REFINE mode)
+    const isPersonalNote = note.classification?.category === 'personal_reflection' ||
+                           note.classification?.category === 'personal' ||
+                           note.analysis?.tier; // Tiered notes are personal
+
+    console.log('[UI] submitAnswer - isPersonalNote:', isPersonalNote, 'tier:', note.analysis?.tier);
+
+    // Store the answer/reflection
     note.questionAnswer = {
       answer: answer,
       answeredAt: new Date().toISOString()
@@ -2383,26 +2657,50 @@ const UI = {
     answerInput.disabled = true;
     const submitBtn = document.getElementById('submit-answer-btn');
     if (submitBtn) {
-      submitBtn.textContent = 'REFINING...';
+      submitBtn.textContent = isPersonalNote ? 'GOING DEEPER...' : 'REFINING...';
       submitBtn.disabled = true;
     }
 
     try {
-      // Call API for re-analysis
-      const refined = await this.refineWithAnswer(note, answer);
+      if (isPersonalNote) {
+        // REFLECT MODE - Tier upgrade with deeper analysis
+        const upgradedAnalysis = await this.reflectAndUpgrade(note, answer);
 
-      // Update note with refined data
-      if (refined.summary) {
-        note.analysis.summary = refined.summary;
-      }
-      if (refined.actions && refined.actions.length > 0) {
-        note.analysis.actions = refined.actions;
+        // Merge upgraded analysis with existing
+        if (upgradedAnalysis) {
+          // Preserve original heard, update with new deeper sections
+          const originalHeard = note.analysis?.heard;
+          note.analysis = {
+            ...note.analysis,
+            ...upgradedAnalysis,
+            // Keep original heard as reference
+            originalHeard: originalHeard,
+            // Mark as upgraded
+            upgradedFromReflection: true,
+            upgradedAt: new Date().toISOString()
+          };
+          console.log('[UI] Reflection upgraded analysis - new tier:', note.analysis.tier);
+        }
+
+        this.showToast('Going deeper...');
+
+      } else {
+        // REFINE MODE - Action refinement for task notes
+        const refined = await this.refineWithAnswer(note, answer);
+
+        // Update note with refined data
+        if (refined.summary) {
+          note.analysis.summary = refined.summary;
+        }
+        if (refined.actions && refined.actions.length > 0) {
+          note.analysis.actions = refined.actions;
+        }
+
+        this.showToast('Note refined!');
       }
 
       // Save updated note
       await DB.saveNote(note);
-
-      this.showToast('Note refined!');
 
       // Re-render the note detail
       this.openNoteDetail(noteId);
@@ -2413,8 +2711,8 @@ const UI = {
       }
 
     } catch (error) {
-      console.error('Refine failed:', error);
-      this.showToast('Refinement failed, answer saved');
+      console.error('Reflection/Refine failed:', error);
+      this.showToast('Processing failed, answer saved');
 
       // Restore button
       if (submitBtn) {
@@ -2429,7 +2727,130 @@ const UI = {
       // Re-render to show the answer
       this.openNoteDetail(noteId);
 
-      // Trigger cloud sync (non-blocking) - answer is saved even if refine fails
+      // Trigger cloud sync (non-blocking)
+      if (typeof Sync !== 'undefined' && Sync.isAuthenticated && Sync.isAuthenticated()) {
+        Sync.syncNow().catch(e => console.warn('Sync error:', e));
+      }
+    }
+  },
+
+  /**
+   * Call API to reflect and upgrade tier (REFLECT feature)
+   * @param {Object} note - Note object
+   * @param {string} reflection - User's reflection text
+   */
+  async reflectAndUpgrade(note, reflection) {
+    const inputContent = note.input?.raw_text || note.analysis?.cleanedInput || '';
+    const originalTier = note.analysis?.tier || 'quick';
+    const question = note.analysis?.question || note.analysis?.questionToSitWith || '';
+
+    console.log('[UI] reflectAndUpgrade - originalTier:', originalTier, 'input:', inputContent.substring(0, 50));
+
+    const response = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        input: {
+          content: inputContent,
+          type: note.input?.type || 'text'
+        },
+        context: {
+          reflection: reflection,
+          originalTier: originalTier,
+          question: question
+        },
+        mode: 'reflect'
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[UI] Reflect API failed:', errorText);
+      throw new Error('Reflect API failed');
+    }
+
+    return response.json();
+  },
+
+  /**
+   * Submit inline reflection (new UI design)
+   * @param {string} noteId - Note ID
+   */
+  async submitInlineReflection(noteId) {
+    const textarea = document.getElementById('reflection-textarea');
+    const reflection = textarea?.value?.trim();
+
+    if (!reflection) {
+      this.showToast('Please enter a reflection');
+      return;
+    }
+
+    // Get the note
+    const note = await DB.getNoteById(noteId);
+    if (!note) return;
+
+    // Store the reflection
+    note.questionAnswer = {
+      answer: reflection,
+      answeredAt: new Date().toISOString()
+    };
+
+    // Show loading state
+    textarea.disabled = true;
+    const submitBtn = document.getElementById('reflection-submit-btn');
+    if (submitBtn) {
+      submitBtn.textContent = '...';
+      submitBtn.disabled = true;
+    }
+
+    console.log('[UI] submitInlineReflection - starting reflection upgrade');
+
+    try {
+      // REFLECT MODE - Tier upgrade with deeper analysis
+      const upgradedAnalysis = await this.reflectAndUpgrade(note, reflection);
+
+      // Merge upgraded analysis with existing
+      if (upgradedAnalysis) {
+        const originalHeard = note.analysis?.heard;
+        note.analysis = {
+          ...note.analysis,
+          ...upgradedAnalysis,
+          originalHeard: originalHeard,
+          upgradedFromReflection: true,
+          upgradedAt: new Date().toISOString()
+        };
+        console.log('[UI] Reflection upgraded - new tier:', note.analysis.tier);
+      }
+
+      // Save updated note
+      await DB.saveNote(note);
+
+      this.showToast('Going deeper...');
+
+      // Re-render the note detail
+      this.openNoteDetail(noteId);
+
+      // Trigger cloud sync (non-blocking)
+      if (typeof Sync !== 'undefined' && Sync.isAuthenticated && Sync.isAuthenticated()) {
+        Sync.syncNow().catch(e => console.warn('Sync error:', e));
+      }
+
+    } catch (error) {
+      console.error('[UI] Reflection failed:', error);
+      this.showToast('Processing failed, reflection saved');
+
+      // Restore button
+      if (submitBtn) {
+        submitBtn.textContent = 'REFLECT';
+        submitBtn.disabled = false;
+      }
+      textarea.disabled = false;
+
+      // Still save the reflection even if upgrade fails
+      await DB.saveNote(note);
+      this.openNoteDetail(noteId);
+
+      // Trigger cloud sync
       if (typeof Sync !== 'undefined' && Sync.isAuthenticated && Sync.isAuthenticated()) {
         Sync.syncNow().catch(e => console.warn('Sync error:', e));
       }
@@ -2848,7 +3269,7 @@ const UI = {
 
     const a = document.createElement('a');
     a.href = url;
-    a.download = `digital-twin-${this.currentNote.id}.json`;
+    a.download = `inscript-${this.currentNote.id}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -2873,12 +3294,20 @@ const UI = {
 
   /**
    * Confirm and delete the note
+   * Phase 8.7: Fixed to use Sync.deleteNote for cloud persistence
    */
   async confirmDeleteNote() {
     if (!this.currentNote) return;
 
     try {
-      await DB.deleteNote(this.currentNote.id);
+      // Phase 8.7: Use Sync.deleteNote to delete from cloud AND local
+      // This prevents deleted notes from reappearing after re-login
+      if (typeof Sync !== 'undefined' && Sync.deleteNote) {
+        await Sync.deleteNote(this.currentNote.id);
+      } else {
+        // Fallback to local-only delete if Sync not available
+        await DB.deleteNote(this.currentNote.id);
+      }
       this.hideDeleteDialog();
       this.closeNoteDetail();
       this.loadNotes();
@@ -3227,15 +3656,6 @@ const UI = {
   },
 
   /**
-   * Handle change PIN
-   */
-  handleChangePIN() {
-    if (typeof PIN !== 'undefined') {
-      PIN.startChangePIN();
-    }
-  },
-
-  /**
    * Show clear data confirmation dialog with "type DELETE" requirement
    */
   showClearDataDialog() {
@@ -3562,7 +3982,7 @@ const UI = {
 
       // Generate filename with date
       const date = new Date().toISOString().slice(0, 10);
-      const filename = `digital-twin-backup-${date}.json`;
+      const filename = `inscript-backup-${date}.json`;
 
       const a = document.createElement('a');
       a.href = url;
@@ -4286,42 +4706,50 @@ const UI = {
   },
 
   /**
-   * Lock the app - clear PIN from memory and show PIN screen
-   * Does NOT sign out of Supabase (keeps cloud session)
+   * Sign out and show auth screen
    */
-  lockApp() {
-    console.log('[UI] Locking app...');
+  async lockApp() {
+    console.log('[UI] Signing out...');
 
-    // Clear PIN encryption key from memory
-    if (window.PIN) {
-      if (typeof PIN.lock === 'function') {
-        PIN.lock();
-      } else {
-        PIN.encryptionKey = null;
-      }
+    if (typeof Auth !== 'undefined') {
+      await Auth.signOut();
     }
 
-    // Hide main app
-    const appContainer = document.getElementById('app');
-    if (appContainer) {
-      appContainer.classList.add('hidden');
-    }
-
-    // Show PIN screen
-    if (window.PIN && typeof PIN.showLockScreen === 'function') {
-      PIN.showLockScreen();
-    }
-
-    console.log('[UI] App locked - PIN screen shown');
+    console.log('[UI] Signed out');
   }
 };
+
+// Phase 10.9: Delegation to modular components for backward compatibility
+// Chat delegations
+UI.openChatBottomSheet = function(noteId) { return ChatUI.open(noteId); };
+UI.closeChatBottomSheet = function() { return ChatUI.close(); };
+
+// Camera delegations
+UI.showCameraOptions = function() { return CameraUI.showOptions(); };
+UI.closeCameraSheet = function() { return CameraUI.closeSheet(); };
+UI.takePhoto = function() { return CameraUI.takePhoto(); };
+UI.chooseFromLibrary = function() { return CameraUI.chooseFromLibrary(); };
+UI.chooseFile = function() { return CameraUI.chooseFile(); };
+UI.handleCameraImageSelected = function(e) { return CameraUI.handleImageSelected(e); };
+UI.showImagePreviewFromDataUrl = function(url) { return CameraUI.showPreview(url); };
+UI.removeImagePreview = function() { return CameraUI.removePreview(); };
+
+// Entity delegations
+UI.openEntityEditor = function(id) { return EntityUI.openEditor(id); };
+UI.closeEntityEditor = function() { return EntityUI.closeEditor(); };
+UI.openEntityByName = function(name, type) { return EntityUI.openByName(name, type); };
+UI.showCreateEntityPrompt = function(name, type) { return EntityUI.showCreatePrompt(name, type); };
+UI.createEntity = function() { return EntityUI.create(); };
+UI.closeCreateEntityModal = function() { return EntityUI.closeCreateModal(); };
+UI.saveEntity = function(id) { return EntityUI.save(id); };
+UI.deleteEntity = function(id) { return EntityUI.delete(id); };
 
 // Export for global access
 window.UI = UI;
 
-// Phase 4.5.6: Global overlay functions - elegant editorial style
+// Phase 6.0.6: Global overlay functions - mobile-optimized with spinner
 window.showProcessingOverlay = function(message) {
-  console.log('showProcessingOverlay:', message);
+  console.log('[Overlay] Show:', message);
 
   window.hideProcessingOverlay();
 
@@ -4329,23 +4757,34 @@ window.showProcessingOverlay = function(message) {
   overlay.id = 'processing-overlay';
   overlay.className = 'processing-overlay';
 
-  // Phase 4.5.6: Elegant editorial overlay with animated line
+  // Phase 6.0.6: Full-screen overlay with spinner - works on mobile
   overlay.innerHTML = `
     <div class="processing-content">
-      <div class="processing-line"></div>
-      <span class="processing-text">${message || 'processing'}</span>
+      <div class="processing-spinner"></div>
+      <span class="processing-text">${message || 'sitting with this...'}</span>
     </div>
   `;
 
+  // Prevent touch scrolling while overlay is visible
+  overlay.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
+
   document.body.appendChild(overlay);
-  console.log('Overlay added to DOM');
+  console.log('[Overlay] Added to DOM');
+};
+
+window.updateProcessingOverlay = function(message) {
+  const textEl = document.querySelector('#processing-overlay .processing-text');
+  if (textEl) {
+    textEl.textContent = message;
+    console.log('[Overlay] Updated:', message);
+  }
 };
 
 window.hideProcessingOverlay = function() {
   const overlay = document.getElementById('processing-overlay');
   if (overlay) {
     overlay.remove();
-    console.log('Overlay removed');
+    console.log('[Overlay] Removed');
   }
 };
 

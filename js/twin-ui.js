@@ -18,6 +18,12 @@ const TwinUI = {
       };
     }
 
+    // A4: Listen for note-saved events to refresh TWIN tab data
+    window.addEventListener('note-saved', () => {
+      console.log('[TwinUI] Note saved, refreshing data...');
+      this.refresh();
+    });
+
     console.log('[TwinUI] Initialized');
   },
 
@@ -52,8 +58,28 @@ const TwinUI = {
       const profile = await TwinProfile.load();
       const summary = await TwinEngine.getProfileSummary();
 
-      // Update About Me section (Phase 8)
-      await this.updateAboutMeSection();
+      // Phase 9: Load and render profile sections
+      if (typeof UIProfile !== 'undefined') {
+        await UIProfile.loadProfile();
+        const aboutSection = document.getElementById('about-me-section');
+        if (aboutSection) {
+          aboutSection.innerHTML = UIProfile.renderAboutYouSection();
+        }
+        const prefsSection = document.getElementById('preferences-section');
+        if (prefsSection) {
+          prefsSection.innerHTML = UIProfile.renderPreferencesSection();
+        }
+        UIProfile.updateKeyPeopleCount();
+      }
+
+      // Phase 9: Load and render entities (Your World)
+      if (typeof Entities !== 'undefined') {
+        await Entities.loadEntities();
+        const worldSection = document.getElementById('your-world-section');
+        if (worldSection) {
+          worldSection.innerHTML = Entities.renderYourWorldSection();
+        }
+      }
 
       // Update Learning section (Phase 8)
       await this.renderLearningSection();

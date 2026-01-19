@@ -1,0 +1,7 @@
+Two fixes needed:
+
+1. Remove the COPY FOR TEAM button from note detail view in js/ui.js - it is redundant since Copy button already exists
+
+2. Verify showToast is called when user clicks Approve, Reject, or Copy buttons - should show brief confirmation like "Approved" or "Copied"
+
+Deploy when done. Output BUGFIX-COMPLETE when finished.

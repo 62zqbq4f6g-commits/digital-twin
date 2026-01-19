@@ -142,7 +142,7 @@ ${aiResult.people.map(person => `• ${person}`).join('\n')}
   }
 
   output += `
-*Captured by Digital Twin*`;
+*Captured by Inscript*`;
 
   return output;
 }
@@ -206,7 +206,7 @@ ${extracted.action_items.slice(0, 5).map(item => `☐ ${item}`).join('\n') || '�
 
 ---
 
-*Captured by Digital Twin (offline mode)*`;
+*Captured by Inscript (offline mode)*`;
 
   return {
     category: classification.category,

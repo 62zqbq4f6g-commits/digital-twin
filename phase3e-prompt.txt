@@ -1,0 +1,13 @@
+Read DIGITAL-TWIN-PHASE3E-SPEC.md first. It contains all prompts, code, and CSS.
+
+Implement every section in that file:
+- Section 1: Pattern prompt (api/patterns.js)
+- Section 2: Insight rules (api/analyze.js)
+- Section 3: Decision lens (api/analyze.js)
+- Section 4: UI polish (js/ui.js)
+- Section 5: Performance (js/ui.js, css)
+- Section 9: Complete implementation code
+
+SUCCESS: showToast works, delete modal works, dates show, patterns have evidence, version 3.8.0, deployed.
+
+Output PHASE3E-COMPLETE when done.

@@ -439,6 +439,9 @@ const ActionsUI = {
 
     // Attach listeners
     this.attachActionListeners();
+
+    // Initialize swipe gestures for mobile
+    this.initSwipeGestures();
   },
 
   /**
@@ -698,16 +701,25 @@ const ActionsUI = {
       <li class="action-group-item ${action.completed ? 'completed' : ''}"
           data-note-id="${action.noteId}"
           data-action-index="${action.actionIndex}">
-        <div class="action-checkbox-wrapper">
-          <input type="checkbox"
-                 class="action-checkbox"
-                 id="action-${action.noteId}-${action.actionIndex}"
-                 ${action.completed ? 'checked' : ''}>
-          <span class="action-checkmark"></span>
-        </div>
-        <div class="action-content">
-          <span class="action-text">${this.escapeHtml(action.text)}</span>
-          ${nudgeHtml}
+        <div class="action-swipe-container">
+          <div class="action-main-content">
+            <div class="action-checkbox-wrapper">
+              <input type="checkbox"
+                     class="action-checkbox"
+                     id="action-${action.noteId}-${action.actionIndex}"
+                     ${action.completed ? 'checked' : ''}>
+              <span class="action-checkmark"></span>
+            </div>
+            <div class="action-content">
+              <span class="action-text">${this.escapeHtml(action.text)}</span>
+              ${nudgeHtml}
+            </div>
+          </div>
+          <button class="action-delete-btn"
+                  onclick="event.stopPropagation(); ActionsUI.removeAction('${action.noteId}', ${action.actionIndex})"
+                  aria-label="Remove action">
+            Remove
+          </button>
         </div>
       </li>
     `;
@@ -1510,6 +1522,276 @@ const ActionsUI = {
       ideas: '💡'
     };
     return icons[category] || '📝';
+  },
+
+  /**
+   * Remove an action from the note and database
+   * @param {string} noteId - Note ID
+   * @param {number} actionIndex - Action index to remove
+   */
+  async removeAction(noteId, actionIndex) {
+    try {
+      console.log('[ActionsUI] Removing action:', { noteId, actionIndex });
+
+      // Get the note
+      const note = await DB.getNoteById(noteId);
+      if (!note || !note.analysis || !note.analysis.actions) {
+        console.error('[ActionsUI] Note or actions not found');
+        return;
+      }
+
+      // Store removed action for undo
+      const removedAction = note.analysis.actions[actionIndex];
+      const removedCompleted = note.analysis.actionsCompleted?.includes(actionIndex) || false;
+      const removedDate = note.analysis.actionCompletedDates?.[actionIndex] || null;
+
+      // Remove the action from the array
+      note.analysis.actions.splice(actionIndex, 1);
+
+      // Also remove from actionsCompleted if present
+      if (note.analysis.actionsCompleted) {
+        note.analysis.actionsCompleted = note.analysis.actionsCompleted
+          .filter(i => i !== actionIndex)
+          .map(i => i > actionIndex ? i - 1 : i); // Adjust indices
+      }
+
+      // Remove from actionCompletedDates if present
+      if (note.analysis.actionCompletedDates) {
+        delete note.analysis.actionCompletedDates[actionIndex];
+        // Reindex remaining dates
+        const newDates = {};
+        for (const [idx, date] of Object.entries(note.analysis.actionCompletedDates)) {
+          const newIdx = parseInt(idx) > actionIndex ? parseInt(idx) - 1 : parseInt(idx);
+          newDates[newIdx] = date;
+        }
+        note.analysis.actionCompletedDates = newDates;
+      }
+
+      // Save the updated note
+      await DB.saveNote(note);
+
+      // Remove from local cache
+      this.allActions = this.allActions.filter(a =>
+        !(a.noteId === noteId && a.actionIndex === actionIndex)
+      );
+
+      // Reindex remaining actions in cache
+      this.allActions.forEach(a => {
+        if (a.noteId === noteId && a.actionIndex > actionIndex) {
+          a.actionIndex--;
+          a.id = `${noteId}-action-${a.actionIndex}`;
+        }
+      });
+
+      // Remove from Supabase action_signals if present
+      if (typeof Sync !== 'undefined' && Sync.supabase && Sync.user) {
+        try {
+          const actionId = `${noteId}-action-${actionIndex}`;
+          await Sync.supabase
+            .from('action_signals')
+            .delete()
+            .eq('user_id', Sync.user.id)
+            .eq('action_id', actionId);
+          console.log('[ActionsUI] Removed from action_signals:', actionId);
+        } catch (e) {
+          console.warn('[ActionsUI] Failed to remove from action_signals:', e);
+        }
+      }
+
+      // Re-render the actions list
+      this.render();
+
+      // Show toast with undo option
+      this.showToast('Action removed', {
+        undoCallback: async () => {
+          console.log('[ActionsUI] Undoing action removal');
+          try {
+            // Re-fetch the note (it may have changed)
+            const currentNote = await DB.getNoteById(noteId);
+            if (!currentNote || !currentNote.analysis) return;
+
+            // Re-insert the action at the original index
+            currentNote.analysis.actions.splice(actionIndex, 0, removedAction);
+
+            // Restore completed status if applicable
+            if (removedCompleted) {
+              currentNote.analysis.actionsCompleted = currentNote.analysis.actionsCompleted || [];
+              // Shift indices back up
+              currentNote.analysis.actionsCompleted = currentNote.analysis.actionsCompleted
+                .map(i => i >= actionIndex ? i + 1 : i);
+              currentNote.analysis.actionsCompleted.push(actionIndex);
+            }
+
+            // Restore completion date if applicable
+            if (removedDate) {
+              currentNote.analysis.actionCompletedDates = currentNote.analysis.actionCompletedDates || {};
+              // Shift indices back up
+              const newDates = {};
+              for (const [idx, date] of Object.entries(currentNote.analysis.actionCompletedDates)) {
+                const newIdx = parseInt(idx) >= actionIndex ? parseInt(idx) + 1 : parseInt(idx);
+                newDates[newIdx] = date;
+              }
+              newDates[actionIndex] = removedDate;
+              currentNote.analysis.actionCompletedDates = newDates;
+            }
+
+            // Save the restored note
+            await DB.saveNote(currentNote);
+
+            // Reload and re-render
+            await this.loadActions();
+            this.render();
+
+            console.log('[ActionsUI] Action restored successfully');
+          } catch (e) {
+            console.error('[ActionsUI] Failed to undo action removal:', e);
+          }
+        }
+      });
+
+      // Trigger sync
+      if (typeof Sync !== 'undefined' && Sync.isAuthenticated && Sync.isAuthenticated()) {
+        Sync.syncNow().catch(e => console.warn('Sync error:', e));
+      }
+
+      console.log('[ActionsUI] Action removed successfully');
+    } catch (error) {
+      console.error('[ActionsUI] Failed to remove action:', error);
+    }
+  },
+
+  // Store for undo functionality
+  _pendingUndo: null,
+  _undoTimeout: null,
+
+  /**
+   * Show a toast notification with optional undo button
+   * @param {string} message - Message to display
+   * @param {Object} options - Options (undoCallback, duration)
+   */
+  showToast(message, options = {}) {
+    const duration = options.duration || 5000; // Extended to 5 seconds
+    const undoCallback = options.undoCallback;
+
+    // Remove existing toast if any
+    const existing = document.querySelector('.actions-toast');
+    if (existing) existing.remove();
+
+    // Clear any pending undo timeout
+    if (this._undoTimeout) {
+      clearTimeout(this._undoTimeout);
+      this._undoTimeout = null;
+    }
+
+    // Create toast element
+    const toast = document.createElement('div');
+    toast.className = 'actions-toast';
+
+    // Create message span
+    const messageSpan = document.createElement('span');
+    messageSpan.className = 'toast-message';
+    messageSpan.textContent = message;
+    toast.appendChild(messageSpan);
+
+    // Add undo button if callback provided
+    if (undoCallback) {
+      const undoBtn = document.createElement('button');
+      undoBtn.className = 'toast-undo-btn';
+      undoBtn.textContent = 'Undo';
+      undoBtn.onclick = (e) => {
+        e.stopPropagation();
+        // Clear timeout and hide toast
+        if (this._undoTimeout) {
+          clearTimeout(this._undoTimeout);
+          this._undoTimeout = null;
+        }
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+        // Execute undo callback
+        undoCallback();
+      };
+      toast.appendChild(undoBtn);
+    }
+
+    document.body.appendChild(toast);
+
+    // Trigger animation
+    requestAnimationFrame(() => {
+      toast.classList.add('show');
+    });
+
+    // Remove after duration
+    this._undoTimeout = setTimeout(() => {
+      toast.classList.remove('show');
+      setTimeout(() => toast.remove(), 300);
+      this._pendingUndo = null;
+    }, duration);
+  },
+
+  /**
+   * Initialize swipe gesture handling for action items
+   * Call this after rendering to attach touch listeners
+   * Uses 50% threshold to prevent accidental triggers
+   */
+  initSwipeGestures() {
+    const items = document.querySelectorAll('.action-group-item');
+    items.forEach(item => {
+      let startX = 0;
+      let currentX = 0;
+      let isDragging = false;
+      const container = item.querySelector('.action-swipe-container');
+      const mainContent = item.querySelector('.action-main-content');
+
+      if (!container || !mainContent) return;
+
+      item.addEventListener('touchstart', (e) => {
+        startX = e.touches[0].clientX;
+        isDragging = true;
+        mainContent.style.transition = 'none';
+      }, { passive: true });
+
+      item.addEventListener('touchmove', (e) => {
+        if (!isDragging) return;
+        currentX = e.touches[0].clientX;
+        const diff = currentX - startX;
+        // Only allow left swipe (negative diff), max -80px
+        if (diff < 0) {
+          const translateX = Math.max(diff, -80);
+          mainContent.style.transform = `translateX(${translateX}px)`;
+        }
+      }, { passive: true });
+
+      item.addEventListener('touchend', () => {
+        if (!isDragging) return;
+        isDragging = false;
+        mainContent.style.transition = 'transform 0.2s ease-out';
+
+        const diff = currentX - startX;
+        const itemWidth = item.offsetWidth;
+        const threshold = itemWidth * 0.5; // 50% threshold
+
+        if (diff < -threshold || diff < -80) {
+          // Swipe exceeded 50% threshold - show delete button
+          mainContent.style.transform = 'translateX(-80px)';
+          item.classList.add('swiped');
+        } else {
+          // Didn't reach threshold - snap back
+          mainContent.style.transform = 'translateX(0)';
+          item.classList.remove('swiped');
+        }
+        currentX = 0;
+      });
+
+      // Close on tap elsewhere
+      mainContent.addEventListener('click', (e) => {
+        if (item.classList.contains('swiped')) {
+          e.preventDefault();
+          e.stopPropagation();
+          mainContent.style.transform = 'translateX(0)';
+          item.classList.remove('swiped');
+        }
+      });
+    });
   },
 
   /**

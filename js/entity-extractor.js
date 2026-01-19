@@ -102,12 +102,29 @@ const EntityExtractor = {
       topics: []
     };
 
-    // Extract capitalized names (potential people)
-    const namePattern = /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\b/g;
+    // Extract capitalized names (potential people) - includes single names like "Marcus"
+    const namePattern = /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\b/g;
     const commonWords = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday',
       'Saturday', 'Sunday', 'January', 'February', 'March', 'April', 'May',
       'June', 'July', 'August', 'September', 'October', 'November', 'December',
-      'Digital Twin', 'The', 'This', 'That', 'Today', 'Tomorrow'];
+      'Inscript', 'The', 'This', 'That', 'Today', 'Tomorrow', 'Yesterday',
+      'Hello', 'Hi', 'Hey', 'Thanks', 'Thank', 'Please', 'Sorry', 'Yes', 'No',
+      'Maybe', 'Just', 'Really', 'Actually', 'Basically', 'However', 'Also',
+      'But', 'And', 'Or', 'Not', 'So', 'Very', 'Much', 'More', 'Most', 'Some',
+      'Any', 'All', 'Each', 'Every', 'Both', 'Few', 'Many', 'Other', 'Another',
+      'Such', 'What', 'Which', 'Who', 'Whom', 'Whose', 'Where', 'When', 'Why',
+      'How', 'If', 'Then', 'Than', 'Because', 'Although', 'Though', 'Unless',
+      'Until', 'While', 'After', 'Before', 'During', 'About', 'Against',
+      'Between', 'Into', 'Through', 'During', 'Before', 'After', 'Above',
+      'Below', 'From', 'Up', 'Down', 'In', 'Out', 'On', 'Off', 'Over', 'Under',
+      'Again', 'Further', 'Then', 'Once', 'Here', 'There', 'When', 'Where',
+      'Why', 'How', 'All', 'Each', 'Few', 'More', 'Most', 'Other', 'Some',
+      'Such', 'No', 'Nor', 'Not', 'Only', 'Own', 'Same', 'So', 'Than', 'Too',
+      'Very', 'Can', 'Will', 'Just', 'Should', 'Now', 'Could', 'Would', 'May',
+      'Might', 'Must', 'Shall', 'He', 'She', 'They', 'It', 'We', 'You', 'Me',
+      'His', 'Her', 'Their', 'Its', 'Our', 'Your', 'My', 'Him', 'Them', 'Us',
+      'Notion', 'Stripe', 'Google', 'Apple', 'Amazon', 'Facebook', 'Microsoft',
+      'Twitter', 'LinkedIn', 'Instagram', 'YouTube', 'Slack', 'Zoom', 'Teams'];
 
     let match;
     while ((match = namePattern.exec(text)) !== null) {

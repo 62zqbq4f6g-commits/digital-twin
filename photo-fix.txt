@@ -1,0 +1,23 @@
+DESIGN: Vogue minimalist - black/white/gray only.
+
+PHOTO UPLOAD FIX:
+
+Error: "failed to process image"
+
+Debug steps:
+1. Check if Vision API endpoint exists and is correct
+2. Check if API key is configured for vision
+3. Check if image is being converted to base64 correctly
+4. Check if the request payload format is correct for Claude Vision API
+
+Common issues:
+- API endpoint might be wrong
+- Image might be too large (resize before sending)
+- Base64 encoding might be malformed
+- Content-type header might be wrong
+
+Add better error logging to show EXACT error from API response.
+
+TEST: tap image → select photo → note creates with analysis
+
+Deploy and output PHOTO-FIXED
