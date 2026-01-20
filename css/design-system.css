@@ -2360,3 +2360,287 @@
   font-size: var(--text-sm);
   cursor: pointer;
 }
+
+/* =============================================================================
+   Phase 12: Knowledge Pulse
+   Shows what Inscript learned after each note save
+   ============================================================================= */
+
+.knowledge-pulse {
+  position: fixed;
+  bottom: 100px;  /* Above the bottom nav */
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--paper);
+  border: 1px solid var(--silver-200);
+  padding: 16px 24px;
+  min-width: 280px;
+  max-width: 360px;
+  z-index: 1000;
+
+  /* Animation */
+  opacity: 0;
+  transform: translateX(-50%) translateY(10px);
+  transition: all 0.3s ease;
+  pointer-events: none;
+}
+
+.knowledge-pulse.visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+  pointer-events: auto;
+}
+
+.pulse-header {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--success);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pulse-header::before {
+  content: '✓';
+}
+
+.pulse-items {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pulse-item {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--silver-600);
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.pulse-item-icon {
+  color: var(--silver-400);
+  flex-shrink: 0;
+}
+
+.pulse-item-icon.primary {
+  color: var(--ink);
+}
+
+.pulse-item-text {
+  line-height: 1.4;
+}
+
+.pulse-item-entity {
+  font-weight: 500;
+  color: var(--ink);
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 2px;
+}
+
+.pulse-item-entity:hover {
+  color: var(--silver-600);
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+  .knowledge-pulse {
+    background: var(--silver-900);
+    border-color: var(--silver-700);
+  }
+
+  .pulse-item-icon.primary {
+    color: var(--paper);
+  }
+
+  .pulse-item-entity {
+    color: var(--paper);
+  }
+}
+
+/* =============================================================================
+   Phase 12: Entity Cards
+   Click any entity to see accumulated knowledge
+   ============================================================================= */
+
+.entity-card-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s ease;
+}
+
+.entity-card-overlay.visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+.entity-card {
+  background: var(--paper);
+  width: 100%;
+  max-width: 360px;
+  max-height: 80vh;
+  overflow-y: auto;
+  position: relative;
+}
+
+.entity-card-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: none;
+  border: none;
+  font-size: 20px;
+  color: var(--silver-400);
+  cursor: pointer;
+  padding: 4px;
+}
+
+.entity-card-close:hover {
+  color: var(--ink);
+}
+
+/* Header */
+.entity-card-header {
+  text-align: center;
+  padding: 32px 24px 24px;
+}
+
+.entity-card-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--silver-100);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.entity-card-name {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink);
+  margin: 0 0 4px;
+}
+
+.entity-card-relationship {
+  font-family: var(--font-editorial);
+  font-size: 18px;
+  font-style: italic;
+  color: var(--silver-500);
+  margin: 0;
+}
+
+/* Sections */
+.entity-card-section {
+  padding: 20px 24px;
+  border-top: 1px solid var(--silver-200);
+}
+
+.entity-card-section-title {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--silver-400);
+  margin: 0 0 8px;
+}
+
+.entity-card-section-content {
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+  margin: 0;
+}
+
+.entity-card-quote {
+  font-family: var(--font-editorial);
+  font-size: 16px;
+  font-style: italic;
+  color: var(--ink-soft);
+  margin: 0 0 4px;
+}
+
+.entity-card-quote-date {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--silver-400);
+}
+
+/* Footer */
+.entity-card-footer {
+  padding: 16px 24px;
+  border-top: 1px solid var(--silver-200);
+  text-align: center;
+}
+
+.entity-card-stats {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--silver-500);
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+  .entity-card {
+    background: var(--silver-900);
+  }
+  .entity-card-avatar {
+    background: var(--silver-800);
+    color: var(--paper);
+  }
+  .entity-card-name {
+    color: var(--paper);
+  }
+  .entity-card-section {
+    border-color: var(--silver-700);
+  }
+  .entity-card-section-content,
+  .entity-card-quote {
+    color: var(--silver-300);
+  }
+  .entity-card-footer {
+    border-color: var(--silver-700);
+  }
+}
+
+/* =============================================================================
+   Phase 12: Entity Links in Reflections
+   Make entity names clickable throughout the app
+   ============================================================================= */
+
+.entity-link {
+  font-weight: 500;
+  color: var(--ink);
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 2px;
+  transition: color 0.15s ease;
+}
+
+.entity-link:hover {
+  color: var(--silver-600);
+}

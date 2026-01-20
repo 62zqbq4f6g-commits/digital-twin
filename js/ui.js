@@ -1113,6 +1113,51 @@ const UI = {
   },
 
   /**
+   * Phase 12: Escape HTML but make entity names clickable
+   * @param {string} text - Text to escape
+   * @param {Array} entities - Array of entity objects with name property
+   * @returns {string} Escaped text with clickable entity links
+   */
+  escapeHtmlWithEntities(text, entities) {
+    if (!text) return '';
+
+    // First escape the HTML
+    let escaped = this.escapeHtml(text);
+
+    // If no entities provided, try to get them from the current note
+    if (!entities || entities.length === 0) {
+      const note = this.currentNote;
+      if (note?.analysis?.entities?.people) {
+        entities = note.analysis.entities.people.map(name => ({ name }));
+      }
+      // Also include visual entities
+      if (note?.analysis?.visualEntities) {
+        entities = (entities || []).concat(note.analysis.visualEntities);
+      }
+    }
+
+    if (!entities || entities.length === 0) return escaped;
+
+    // Sort by name length descending to avoid partial replacements
+    const sortedEntities = [...entities].sort((a, b) =>
+      (b.name?.length || 0) - (a.name?.length || 0)
+    );
+
+    // Replace entity names with clickable spans
+    for (const entity of sortedEntities) {
+      if (!entity.name) continue;
+      const name = entity.name;
+      // Create a case-insensitive regex that matches whole words
+      const regex = new RegExp(`\\b(${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})\\b`, 'gi');
+      escaped = escaped.replace(regex, (match) =>
+        `<span class="entity-link" data-entity="${name.toLowerCase()}">${match}</span>`
+      );
+    }
+
+    return escaped;
+  },
+
+  /**
    * Phase 5A.6: Enter edit mode for "What You Shared" section
    * @param {HTMLElement} button - Edit button element
    */
@@ -2004,7 +2049,7 @@ const UI = {
         html += `
           <div class="note-section heard-section">
             <div class="note-section-header">WHAT I HEARD</div>
-            <div class="personal-heard">${this.escapeHtml(analysis.heard)}</div>
+            <div class="personal-heard">${this.escapeHtmlWithEntities(analysis.heard)}</div>
           </div>
         `;
       }
@@ -2014,7 +2059,7 @@ const UI = {
         html += `
           <div class="note-section noticed-section">
             <div class="note-section-header">WHAT I NOTICED</div>
-            <div class="personal-noticed">${this.escapeHtml(analysis.noticed)}</div>
+            <div class="personal-noticed">${this.escapeHtmlWithEntities(analysis.noticed)}</div>
           </div>
         `;
       }
@@ -2024,7 +2069,7 @@ const UI = {
         html += `
           <div class="note-section assumption-section">
             <div class="note-section-header">A POSSIBILITY</div>
-            <div class="personal-assumption">${this.escapeHtml(analysis.hidden_assumption)}</div>
+            <div class="personal-assumption">${this.escapeHtmlWithEntities(analysis.hidden_assumption)}</div>
           </div>
         `;
       }
@@ -2035,7 +2080,7 @@ const UI = {
         html += `
           <div class="note-section question-section">
             <div class="note-section-header">A QUESTION FOR YOU</div>
-            <div class="personal-question">${this.escapeHtml(question)}</div>
+            <div class="personal-question">${this.escapeHtmlWithEntities(question)}</div>
           </div>
         `;
 

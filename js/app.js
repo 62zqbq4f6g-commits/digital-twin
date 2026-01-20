@@ -83,8 +83,14 @@ const App = {
       const savedNote = await DB.saveNote(note);
       console.log('[App.processNote] Saved note ID:', savedNote.id);
 
-      // Show success feedback
-      UI.showToast('Note saved!');
+      // Phase 12: Show Knowledge Pulse with learning data
+      if (typeof KnowledgePulse !== 'undefined' && window.KnowledgePulse) {
+        console.log('[App] Phase 12 - Showing Knowledge Pulse with learning:', analysis?.learning);
+        window.KnowledgePulse.show(analysis?.learning);
+      } else {
+        // Fallback to simple toast if KnowledgePulse not available
+        UI.showToast('Note saved!');
+      }
 
       // Update recent notes on capture screen
       this.updateRecentNotes();

@@ -1277,6 +1277,66 @@ SHOW understanding, don't just REPEAT.
       console.log('[Analyze] Phase 8.8 DEBUG - FINAL tier:', result.tier);
     }
 
+    // Phase 12: Build learning data for Knowledge Pulse
+    const learning = {
+      entities_extracted: [],
+      themes_detected: [],
+      similar_notes: []
+    };
+
+    // Extract entities from people mentioned
+    if (result.entities?.people?.length > 0) {
+      for (const person of result.entities.people) {
+        learning.entities_extracted.push({
+          name: typeof person === 'string' ? person : person.name || person,
+          type: 'person',
+          relationship: null,
+          is_new: true  // Assume new for now, UI can verify
+        });
+      }
+    }
+
+    // Add visual entities if present
+    if (visualEntities && visualEntities.length > 0) {
+      for (const ve of visualEntities) {
+        learning.entities_extracted.push({
+          name: ve.name,
+          type: ve.type || 'person',
+          relationship: ve.relationship || null,
+          is_new: true
+        });
+      }
+    }
+
+    // Extract themes from noticed/heard or category
+    if (result.noticed) {
+      // Try to extract a theme from the noticed text
+      const noticedLower = result.noticed.toLowerCase();
+      if (noticedLower.includes('stress') || noticedLower.includes('pressure') || noticedLower.includes('overwhelm')) {
+        learning.themes_detected.push('stress');
+      }
+      if (noticedLower.includes('decision') || noticedLower.includes('choice') || noticedLower.includes('crossroad')) {
+        learning.themes_detected.push('decision-making');
+      }
+      if (noticedLower.includes('relationship') || noticedLower.includes('friend') || noticedLower.includes('family')) {
+        learning.themes_detected.push('relationships');
+      }
+      if (noticedLower.includes('work') || noticedLower.includes('career') || noticedLower.includes('job')) {
+        learning.themes_detected.push('work');
+      }
+      if (noticedLower.includes('growth') || noticedLower.includes('learn') || noticedLower.includes('improve')) {
+        learning.themes_detected.push('personal growth');
+      }
+    }
+
+    // Add category as a theme if no themes detected
+    if (learning.themes_detected.length === 0 && finalCategory) {
+      learning.themes_detected.push(finalCategory);
+    }
+
+    result.learning = learning;
+    console.log('[Analyze] Phase 12 - Learning data:', JSON.stringify(learning));
+
     return res.status(200).json(result);
 
   } catch (error) {
