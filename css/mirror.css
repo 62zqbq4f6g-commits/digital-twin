@@ -12,18 +12,19 @@
   flex-direction: column;
   height: 100%;
   max-height: calc(100vh - 120px);
-  background: #FFFFFF;
+  background: #FFFFFF !important;
 }
 
-/* Light mode - explicit */
-[data-theme="light"] .mirror-wrapper,
-:root:not([data-theme="dark"]) .mirror-wrapper {
-  background: #FFFFFF;
+/* Override system dark mode - force light unless explicit data-theme="dark" */
+@media (prefers-color-scheme: dark) {
+  .mirror-wrapper {
+    background: #FFFFFF !important;
+  }
 }
 
-/* Dark mode */
+/* Only apply dark mode when explicitly set */
 [data-theme="dark"] .mirror-wrapper {
-  background: var(--ink-rich, #1A1A1A);
+  background: #1A1A1A !important;
 }
 
 /* =====================================================
@@ -35,11 +36,21 @@
   justify-content: space-between;
   align-items: center;
   padding: 16px 20px;
-  border-bottom: 1px solid var(--silver-200, #E5E5E5);
+  border-bottom: 1px solid #E5E5E5 !important;
+  background: #FFFFFF !important;
+}
+
+/* Override system dark mode */
+@media (prefers-color-scheme: dark) {
+  .mirror-header {
+    border-bottom-color: #E5E5E5 !important;
+    background: #FFFFFF !important;
+  }
 }
 
 [data-theme="dark"] .mirror-header {
-  border-bottom-color: var(--silver-800, #333333);
+  border-bottom-color: #333333 !important;
+  background: #1A1A1A !important;
 }
 
 .mirror-title {
@@ -47,8 +58,19 @@
   font-size: 12px;
   font-weight: 500;
   letter-spacing: 0.1em;
-  color: var(--ink-soft, #333333);
+  color: #333333 !important;
   margin: 0;
+}
+
+/* Override system dark mode */
+@media (prefers-color-scheme: dark) {
+  .mirror-title {
+    color: #333333 !important;
+  }
+}
+
+[data-theme="dark"] .mirror-title {
+  color: #A3A3A3 !important;
 }
 
 [data-theme="dark"] .mirror-title {
@@ -183,43 +205,45 @@
 }
 
 .mirror-bubble-inscript {
-  background: #FFFFFF;
-  border: 1px solid #E5E5E5;
+  background: #FFFFFF !important;
+  border: 1px solid #E5E5E5 !important;
   border-radius: 16px 16px 16px 4px;
 }
 
-/* Light mode - explicit */
-[data-theme="light"] .mirror-bubble-inscript,
-:root:not([data-theme="dark"]) .mirror-bubble-inscript {
-  background: #FFFFFF;
-  border-color: #E5E5E5;
+/* Override system dark mode */
+@media (prefers-color-scheme: dark) {
+  .mirror-bubble-inscript {
+    background: #FFFFFF !important;
+    border-color: #E5E5E5 !important;
+  }
 }
 
 [data-theme="dark"] .mirror-bubble-inscript {
-  background: var(--ink-soft, #333333);
-  border-color: var(--silver-700, #404040);
+  background: #333333 !important;
+  border-color: #404040 !important;
 }
 
 .mirror-bubble-user {
-  background: #FAFAFA;
+  background: #FAFAFA !important;
   border-radius: 16px 16px 4px 16px;
 }
 
-/* Light mode - explicit */
-[data-theme="light"] .mirror-bubble-user,
-:root:not([data-theme="dark"]) .mirror-bubble-user {
-  background: #FAFAFA;
+/* Override system dark mode */
+@media (prefers-color-scheme: dark) {
+  .mirror-bubble-user {
+    background: #FAFAFA !important;
+  }
 }
 
 [data-theme="dark"] .mirror-bubble-user {
-  background: var(--silver-800, #333333);
+  background: #333333 !important;
 }
 
 .mirror-bubble-text {
   font-family: var(--font-body, Inter, sans-serif);
   font-size: 15px;
   line-height: 1.5;
-  color: #000000;
+  color: #000000 !important;
   margin: 0;
   white-space: pre-wrap;
 }
@@ -229,26 +253,25 @@
   font-family: var(--font-editorial, 'Cormorant Garamond', serif);
   font-size: 17px;
   font-style: italic;
-  color: #333333;
+  color: #333333 !important;
 }
 
-/* Light mode - explicit */
-[data-theme="light"] .mirror-bubble-text,
-:root:not([data-theme="dark"]) .mirror-bubble-text {
-  color: #000000;
-}
-
-[data-theme="light"] .mirror-bubble-inscript .mirror-bubble-text,
-:root:not([data-theme="dark"]) .mirror-bubble-inscript .mirror-bubble-text {
-  color: #333333;
+/* Override system dark mode */
+@media (prefers-color-scheme: dark) {
+  .mirror-bubble-text {
+    color: #000000 !important;
+  }
+  .mirror-bubble-inscript .mirror-bubble-text {
+    color: #333333 !important;
+  }
 }
 
 [data-theme="dark"] .mirror-bubble-text {
-  color: var(--paper, #FFFFFF);
+  color: #FFFFFF !important;
 }
 
 [data-theme="dark"] .mirror-bubble-inscript .mirror-bubble-text {
-  color: var(--silver-300, #D4D4D4);
+  color: #D4D4D4 !important;
 }
 
 /* =====================================================
@@ -343,38 +366,40 @@
 
 .mirror-input-area {
   padding: 16px 20px;
-  border-top: 1px solid #E5E5E5;
-  background: #FFFFFF;
+  border-top: 1px solid #E5E5E5 !important;
+  background: #FFFFFF !important;
 }
 
-/* Light mode - explicit */
-[data-theme="light"] .mirror-input-area,
-:root:not([data-theme="dark"]) .mirror-input-area {
-  background: #FFFFFF;
-  border-top-color: #E5E5E5;
+/* Override system dark mode */
+@media (prefers-color-scheme: dark) {
+  .mirror-input-area {
+    background: #FFFFFF !important;
+    border-top-color: #E5E5E5 !important;
+  }
 }
 
 [data-theme="dark"] .mirror-input-area {
-  border-top-color: var(--silver-800, #333333);
-  background: var(--ink-rich, #1A1A1A);
+  border-top-color: #333333 !important;
+  background: #1A1A1A !important;
 }
 
 .mirror-input-container {
   display: flex;
   align-items: flex-end;
   gap: 12px;
-  background: #FFFFFF;
-  border: 1px solid #D4D4D4;
+  background: #FFFFFF !important;
+  border: 1px solid #D4D4D4 !important;
   border-radius: 24px;
   padding: 8px 12px 8px 16px;
   transition: border-color var(--motion-fast, 75ms) ease;
 }
 
-/* Light mode - explicit */
-[data-theme="light"] .mirror-input-container,
-:root:not([data-theme="dark"]) .mirror-input-container {
-  background: #FFFFFF;
-  border-color: #D4D4D4;
+/* Override system dark mode */
+@media (prefers-color-scheme: dark) {
+  .mirror-input-container {
+    background: #FFFFFF !important;
+    border-color: #D4D4D4 !important;
+  }
 }
 
 .mirror-input-container:focus-within {
@@ -382,18 +407,24 @@
 }
 
 [data-theme="dark"] .mirror-input-container {
-  background: var(--ink-soft, #333333);
-  border-color: var(--silver-700, #404040);
+  background: #333333 !important;
+  border-color: #404040 !important;
 }
 
-/* Input text color - light mode */
+/* Input text color */
 .mirror-input {
-  color: #000000;
+  color: #000000 !important;
 }
 
-[data-theme="light"] .mirror-input,
-:root:not([data-theme="dark"]) .mirror-input {
-  color: #000000;
+/* Override system dark mode */
+@media (prefers-color-scheme: dark) {
+  .mirror-input {
+    color: #000000 !important;
+  }
+}
+
+[data-theme="dark"] .mirror-input {
+  color: #FFFFFF !important;
 }
 
 [data-theme="dark"] .mirror-input-container:focus-within {
