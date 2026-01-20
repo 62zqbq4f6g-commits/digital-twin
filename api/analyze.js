@@ -420,7 +420,8 @@ async function executeMemoryOperation(supabaseClient, userId, operation, input, 
     return null;
   } catch (err) {
     console.error('[Analyze] Mem0 execute error:', err.message);
-    return null;
+    // Re-throw so caller can capture the error
+    throw err;
   }
 }
 
