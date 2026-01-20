@@ -7326,6 +7326,121 @@ body {
 }
 
 /* ==================== */
+/* VALUE PRIORITIES     */
+/* ==================== */
+
+.onboarding-values .onboarding-content {
+  max-width: 340px;
+}
+
+.onboarding-values-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 24px 0;
+  text-align: left;
+}
+
+.onboarding-value-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--color-white);
+  border: 1px solid var(--color-gray-200);
+  border-radius: 8px;
+  cursor: grab;
+  user-select: none;
+  transition: all 0.15s ease;
+  touch-action: none;
+}
+
+.onboarding-value-item:hover {
+  border-color: var(--color-gray-300);
+  background: var(--color-gray-50);
+}
+
+.onboarding-value-item:focus {
+  outline: none;
+  border-color: var(--color-black);
+  box-shadow: 0 0 0 1px var(--color-black);
+}
+
+.onboarding-value-item.dragging {
+  opacity: 0.5;
+  cursor: grabbing;
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.onboarding-value-item.touching {
+  background: var(--color-gray-100);
+  border-color: var(--color-black);
+  transform: scale(1.02);
+}
+
+.onboarding-value-handle {
+  font-size: 14px;
+  color: var(--color-gray-400);
+  line-height: 1;
+  cursor: grab;
+}
+
+.onboarding-value-rank {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-white);
+  background: var(--color-black);
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.onboarding-value-label {
+  font-family: var(--font-sans);
+  font-size: 15px;
+  color: var(--color-black);
+  flex: 1;
+}
+
+.onboarding-values-footer {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--color-gray-400);
+  margin: 0 0 24px 0;
+  text-align: center;
+}
+
+/* Touch device optimizations */
+@media (hover: none) {
+  .onboarding-value-item {
+    padding: 16px 18px;
+  }
+
+  .onboarding-value-handle {
+    font-size: 16px;
+    padding: 4px;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .onboarding-value-item {
+    transition: none;
+  }
+
+  .onboarding-value-item.dragging,
+  .onboarding-value-item.touching {
+    transform: none;
+  }
+}
+
+/* ==================== */
 /* EMPTY STATES         */
 /* ==================== */
 

@@ -14,6 +14,7 @@ window.Onboarding = {
     mental_focus: [],
     depth_question: '',
     depth_answer: '',
+    value_priorities: [],
     seeded_people: []
   },
 
@@ -53,6 +54,15 @@ window.Onboarding = {
     decision: "What decision is on your mind?",
     default: "What's one thing you'd want me to understand about your life right now?"
   },
+
+  VALUE_PRIORITIES: [
+    { domain: 'health', label: 'Health & Wellbeing' },
+    { domain: 'family', label: 'Family & Relationships' },
+    { domain: 'work', label: 'Work & Career' },
+    { domain: 'financial', label: 'Financial Security' },
+    { domain: 'creative', label: 'Creative Fulfillment' },
+    { domain: 'growth', label: 'Personal Growth' }
+  ],
 
   /**
    * Check if onboarding should be shown
@@ -165,6 +175,7 @@ window.Onboarding = {
       mental_focus: [],
       depth_question: '',
       depth_answer: '',
+      value_priorities: this.VALUE_PRIORITIES.map((v, i) => ({ ...v, rank: i + 1 })),
       seeded_people: []
     };
     this.render();
@@ -185,6 +196,7 @@ window.Onboarding = {
       this.renderSeasons,
       this.renderFocus,
       this.renderDepth,
+      this.renderValuePriorities,
       this.renderPeople,
       this.renderPrivacy,
       this.renderWow
@@ -228,7 +240,7 @@ window.Onboarding = {
       <div class="onboarding-screen onboarding-name">
         <div class="onboarding-header">
           <button class="onboarding-back" data-action="back" aria-label="Go back">←</button>
-          <span class="onboarding-progress">1 of 6</span>
+          <span class="onboarding-progress">1 of 7</span>
         </div>
 
         <div class="onboarding-content">
@@ -260,7 +272,7 @@ window.Onboarding = {
       <div class="onboarding-screen onboarding-seasons">
         <div class="onboarding-header">
           <button class="onboarding-back" data-action="back" aria-label="Go back">←</button>
-          <span class="onboarding-progress">2 of 6</span>
+          <span class="onboarding-progress">2 of 7</span>
         </div>
 
         <div class="onboarding-content">
@@ -295,7 +307,7 @@ window.Onboarding = {
       <div class="onboarding-screen onboarding-focus">
         <div class="onboarding-header">
           <button class="onboarding-back" data-action="back" aria-label="Go back">←</button>
-          <span class="onboarding-progress">3 of 6</span>
+          <span class="onboarding-progress">3 of 7</span>
         </div>
 
         <div class="onboarding-content">
@@ -333,7 +345,7 @@ window.Onboarding = {
       <div class="onboarding-screen onboarding-depth">
         <div class="onboarding-header">
           <button class="onboarding-back" data-action="back" aria-label="Go back">←</button>
-          <span class="onboarding-progress">4 of 6</span>
+          <span class="onboarding-progress">4 of 7</span>
         </div>
 
         <div class="onboarding-content">
@@ -361,14 +373,59 @@ window.Onboarding = {
   },
 
   /**
-   * Step 5: Your People
+   * Step 5: Value Priorities
+   */
+  renderValuePriorities() {
+    const sortedPriorities = [...this.data.value_priorities].sort((a, b) => a.rank - b.rank);
+
+    return `
+      <div class="onboarding-screen onboarding-values">
+        <div class="onboarding-header">
+          <button class="onboarding-back" data-action="back" aria-label="Go back">←</button>
+          <span class="onboarding-progress">5 of 7</span>
+        </div>
+
+        <div class="onboarding-content">
+          <h2 class="onboarding-question">What matters most to you right now?</h2>
+          <p class="onboarding-hint">Drag to rank in order of importance.</p>
+
+          <div class="onboarding-values-list" id="values-list" role="listbox" aria-label="Value priorities">
+            ${sortedPriorities.map((priority, index) => `
+              <div
+                class="onboarding-value-item"
+                data-domain="${priority.domain}"
+                data-rank="${priority.rank}"
+                draggable="true"
+                role="option"
+                tabindex="0"
+                aria-label="${priority.label}, ranked ${priority.rank}"
+              >
+                <span class="onboarding-value-handle" aria-hidden="true">≡</span>
+                <span class="onboarding-value-rank">${priority.rank}</span>
+                <span class="onboarding-value-label">${priority.label}</span>
+              </div>
+            `).join('')}
+          </div>
+
+          <p class="onboarding-values-footer">You can change this anytime in settings.</p>
+
+          <button class="onboarding-btn onboarding-btn-primary" data-action="next">
+            Continue →
+          </button>
+        </div>
+      </div>
+    `;
+  },
+
+  /**
+   * Step 6: Your People
    */
   renderPeople() {
     return `
       <div class="onboarding-screen onboarding-people">
         <div class="onboarding-header">
           <button class="onboarding-back" data-action="back" aria-label="Go back">←</button>
-          <span class="onboarding-progress">5 of 6</span>
+          <span class="onboarding-progress">6 of 7</span>
         </div>
 
         <div class="onboarding-content">
@@ -429,7 +486,7 @@ window.Onboarding = {
       <div class="onboarding-screen onboarding-privacy">
         <div class="onboarding-header">
           <button class="onboarding-back" data-action="back" aria-label="Go back">←</button>
-          <span class="onboarding-progress">6 of 6</span>
+          <span class="onboarding-progress">7 of 7</span>
         </div>
 
         <div class="onboarding-content">
@@ -629,6 +686,138 @@ window.Onboarding = {
   },
 
   /**
+   * Setup drag-and-drop for value priorities
+   * Supports both mouse drag and touch events for mobile
+   */
+  setupValuesDragAndDrop() {
+    const list = document.getElementById('values-list');
+    if (!list) return;
+
+    let draggedItem = null;
+    let touchStartY = 0;
+    let touchCurrentItem = null;
+
+    // Desktop drag-and-drop
+    list.querySelectorAll('.onboarding-value-item').forEach(item => {
+      item.addEventListener('dragstart', (e) => {
+        draggedItem = item;
+        item.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', item.dataset.domain);
+      });
+
+      item.addEventListener('dragend', () => {
+        item.classList.remove('dragging');
+        draggedItem = null;
+        this.updateValueRanks();
+      });
+
+      item.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+
+        if (!draggedItem || draggedItem === item) return;
+
+        const rect = item.getBoundingClientRect();
+        const midY = rect.top + rect.height / 2;
+
+        if (e.clientY < midY) {
+          item.parentNode.insertBefore(draggedItem, item);
+        } else {
+          item.parentNode.insertBefore(draggedItem, item.nextSibling);
+        }
+      });
+
+      // Touch events for mobile
+      item.addEventListener('touchstart', (e) => {
+        touchStartY = e.touches[0].clientY;
+        touchCurrentItem = item;
+        item.classList.add('touching');
+
+        // Prevent scrolling while dragging
+        e.preventDefault();
+      }, { passive: false });
+
+      item.addEventListener('touchmove', (e) => {
+        if (!touchCurrentItem) return;
+        e.preventDefault();
+
+        const touchY = e.touches[0].clientY;
+        const items = Array.from(list.querySelectorAll('.onboarding-value-item'));
+
+        // Find item under touch point
+        for (const otherItem of items) {
+          if (otherItem === touchCurrentItem) continue;
+
+          const rect = otherItem.getBoundingClientRect();
+          if (touchY >= rect.top && touchY <= rect.bottom) {
+            const midY = rect.top + rect.height / 2;
+            if (touchY < midY) {
+              list.insertBefore(touchCurrentItem, otherItem);
+            } else {
+              list.insertBefore(touchCurrentItem, otherItem.nextSibling);
+            }
+            break;
+          }
+        }
+      }, { passive: false });
+
+      item.addEventListener('touchend', () => {
+        if (touchCurrentItem) {
+          touchCurrentItem.classList.remove('touching');
+          touchCurrentItem = null;
+          this.updateValueRanks();
+        }
+      });
+
+      // Keyboard accessibility - move with arrow keys
+      item.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+          e.preventDefault();
+          const items = Array.from(list.querySelectorAll('.onboarding-value-item'));
+          const currentIndex = items.indexOf(item);
+
+          if (e.key === 'ArrowUp' && currentIndex > 0) {
+            list.insertBefore(item, items[currentIndex - 1]);
+            item.focus();
+            this.updateValueRanks();
+          } else if (e.key === 'ArrowDown' && currentIndex < items.length - 1) {
+            list.insertBefore(item, items[currentIndex + 2] || null);
+            item.focus();
+            this.updateValueRanks();
+          }
+        }
+      });
+    });
+  },
+
+  /**
+   * Update value priorities based on current DOM order
+   */
+  updateValueRanks() {
+    const list = document.getElementById('values-list');
+    if (!list) return;
+
+    const items = list.querySelectorAll('.onboarding-value-item');
+    this.data.value_priorities = Array.from(items).map((item, index) => {
+      const domain = item.dataset.domain;
+      const priority = this.VALUE_PRIORITIES.find(v => v.domain === domain);
+      const rank = index + 1;
+
+      // Update DOM
+      item.dataset.rank = rank;
+      item.querySelector('.onboarding-value-rank').textContent = rank;
+      item.setAttribute('aria-label', `${priority.label}, ranked ${rank}`);
+
+      return {
+        domain: domain,
+        rank: rank,
+        label: priority.label
+      };
+    });
+  },
+
+  /**
    * Attach event listeners
    */
   attachEventListeners() {
@@ -669,8 +858,13 @@ window.Onboarding = {
     });
 
     // Animate WOW screen
-    if (this.currentStep === 7) {
+    if (this.currentStep === 8) {
       setTimeout(() => this.animateWorld(), 100);
+    }
+
+    // Setup drag-and-drop for Value Priorities screen
+    if (this.currentStep === 5) {
+      this.setupValuesDragAndDrop();
     }
   },
 
@@ -810,6 +1004,7 @@ window.Onboarding = {
           mental_focus: this.data.mental_focus,
           depth_question: this.data.depth_question || this.getDepthQuestion(),
           depth_answer: this.data.depth_answer,
+          value_priorities: this.data.value_priorities,
           seeded_people: this.data.seeded_people.filter(p => p && p.name),
           completed_at: new Date().toISOString()
         }, { onConflict: 'user_id' });
