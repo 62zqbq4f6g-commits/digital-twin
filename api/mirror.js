@@ -85,18 +85,24 @@ async function handleOpen(req, res, user_id) {
     // Resume existing conversation
     const messages = existingConvo.mirror_messages || [];
     const opening = await generateContinuityOpening(user_id, existingConvo);
+    const userContext = await getUserContext(user_id);
 
     return res.status(200).json({
       conversationId: existingConvo.id,
       isNewConversation: false,
       noteCount,
       opening,
+      hasContext: userContext.hasContext,
       previousMessages: messages.map(formatMessage)
     });
   }
 
+  // Get user context to determine hasContext
+  const userContext = await getUserContext(user_id);
+  const hasContext = userContext.hasContext;
+
   // Create new conversation
-  const opening = await generateOpening(user_id, noteCount);
+  const opening = await generateOpening(user_id, noteCount, hasContext);
 
   const { data: newConvo, error: createError } = await supabase
     .from('mirror_conversations')
@@ -130,6 +136,7 @@ async function handleOpen(req, res, user_id) {
     isNewConversation: true,
     noteCount,
     opening,
+    hasContext,
     previousMessages: []
   });
 }
@@ -258,7 +265,16 @@ async function handleClose(req, res, user_id) {
 /**
  * Generate opening message based on user state and signals
  */
-async function generateOpening(user_id, noteCount) {
+async function generateOpening(user_id, noteCount, hasContext = true) {
+  // No context at all - minimal personalization fallback
+  if (!hasContext) {
+    return {
+      type: 'presence',
+      message: "I'm still getting to know you. What's on your mind?",
+      promptButtons: null
+    };
+  }
+
   // New user - gentle welcome
   if (noteCount < MIN_NOTES_FOR_INSIGHTS) {
     return {
@@ -628,11 +644,45 @@ async function getUserContext(user_id) {
     .eq('user_id', user_id)
     .single();
 
+  // Get onboarding data (graceful fallback if missing)
+  const onboarding = await getOnboardingContext(user_id);
+
   return {
     notes: recentNotes || [],
     entities: entities || [],
-    userName: profile?.name || 'there'
+    userName: onboarding?.name || profile?.name || 'there',
+    onboarding: onboarding,
+    hasContext: !!(onboarding || (recentNotes && recentNotes.length > 0) || (entities && entities.length > 0))
   };
+}
+
+/**
+ * Get onboarding context with graceful fallback
+ * Never fails - returns null if no onboarding data exists
+ */
+async function getOnboardingContext(user_id) {
+  try {
+    const { data, error } = await supabase
+      .from('onboarding_data')
+      .select('name, life_seasons, mental_focus, seeded_people')
+      .eq('user_id', user_id)
+      .maybeSingle(); // Use maybeSingle to avoid error when no rows
+
+    if (error || !data) {
+      console.log('[mirror] No onboarding data for user, using fallback');
+      return null;
+    }
+
+    return {
+      name: data.name,
+      lifeSeasons: data.life_seasons || [],
+      focus: data.mental_focus || [],
+      people: data.seeded_people || []
+    };
+  } catch (err) {
+    console.error('[mirror] Error fetching onboarding data:', err);
+    return null;
+  }
 }
 
 /**

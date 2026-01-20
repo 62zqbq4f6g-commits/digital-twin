@@ -12,7 +12,13 @@
   flex-direction: column;
   height: 100%;
   max-height: calc(100vh - 120px);
-  background: var(--paper, #FFFFFF);
+  background: #FFFFFF;
+}
+
+/* Light mode - explicit */
+[data-theme="light"] .mirror-wrapper,
+:root:not([data-theme="dark"]) .mirror-wrapper {
+  background: #FFFFFF;
 }
 
 /* Dark mode */
@@ -177,9 +183,16 @@
 }
 
 .mirror-bubble-inscript {
-  background: var(--paper-warm, #FAFAFA);
-  border: 1px solid var(--silver-200, #E5E5E5);
+  background: #FFFFFF;
+  border: 1px solid #E5E5E5;
   border-radius: 16px 16px 16px 4px;
+}
+
+/* Light mode - explicit */
+[data-theme="light"] .mirror-bubble-inscript,
+:root:not([data-theme="dark"]) .mirror-bubble-inscript {
+  background: #FFFFFF;
+  border-color: #E5E5E5;
 }
 
 [data-theme="dark"] .mirror-bubble-inscript {
@@ -188,8 +201,14 @@
 }
 
 .mirror-bubble-user {
-  background: var(--silver-100, #F5F5F5);
+  background: #FAFAFA;
   border-radius: 16px 16px 4px 16px;
+}
+
+/* Light mode - explicit */
+[data-theme="light"] .mirror-bubble-user,
+:root:not([data-theme="dark"]) .mirror-bubble-user {
+  background: #FAFAFA;
 }
 
 [data-theme="dark"] .mirror-bubble-user {
@@ -200,7 +219,7 @@
   font-family: var(--font-body, Inter, sans-serif);
   font-size: 15px;
   line-height: 1.5;
-  color: var(--ink, #000000);
+  color: #000000;
   margin: 0;
   white-space: pre-wrap;
 }
@@ -210,7 +229,18 @@
   font-family: var(--font-editorial, 'Cormorant Garamond', serif);
   font-size: 17px;
   font-style: italic;
-  color: var(--ink-soft, #333333);
+  color: #333333;
+}
+
+/* Light mode - explicit */
+[data-theme="light"] .mirror-bubble-text,
+:root:not([data-theme="dark"]) .mirror-bubble-text {
+  color: #000000;
+}
+
+[data-theme="light"] .mirror-bubble-inscript .mirror-bubble-text,
+:root:not([data-theme="dark"]) .mirror-bubble-inscript .mirror-bubble-text {
+  color: #333333;
 }
 
 [data-theme="dark"] .mirror-bubble-text {
@@ -313,8 +343,15 @@
 
 .mirror-input-area {
   padding: 16px 20px;
-  border-top: 1px solid var(--silver-200, #E5E5E5);
-  background: var(--paper, #FFFFFF);
+  border-top: 1px solid #E5E5E5;
+  background: #FFFFFF;
+}
+
+/* Light mode - explicit */
+[data-theme="light"] .mirror-input-area,
+:root:not([data-theme="dark"]) .mirror-input-area {
+  background: #FFFFFF;
+  border-top-color: #E5E5E5;
 }
 
 [data-theme="dark"] .mirror-input-area {
@@ -326,11 +363,18 @@
   display: flex;
   align-items: flex-end;
   gap: 12px;
-  background: var(--silver-50, #FAFAFA);
-  border: 1px solid var(--silver-200, #E5E5E5);
+  background: #FFFFFF;
+  border: 1px solid #D4D4D4;
   border-radius: 24px;
   padding: 8px 12px 8px 16px;
   transition: border-color var(--motion-fast, 75ms) ease;
+}
+
+/* Light mode - explicit */
+[data-theme="light"] .mirror-input-container,
+:root:not([data-theme="dark"]) .mirror-input-container {
+  background: #FFFFFF;
+  border-color: #D4D4D4;
 }
 
 .mirror-input-container:focus-within {
@@ -340,6 +384,16 @@
 [data-theme="dark"] .mirror-input-container {
   background: var(--ink-soft, #333333);
   border-color: var(--silver-700, #404040);
+}
+
+/* Input text color - light mode */
+.mirror-input {
+  color: #000000;
+}
+
+[data-theme="light"] .mirror-input,
+:root:not([data-theme="dark"]) .mirror-input {
+  color: #000000;
 }
 
 [data-theme="dark"] .mirror-input-container:focus-within {
