@@ -640,7 +640,7 @@ async function getUserContext(user_id) {
   // Get entities
   const { data: entities, error: entitiesError } = await supabase
     .from('user_entities')
-    .select('name, entity_type, relationship, compressed_context')
+    .select('name, entity_type, relationship, context_notes, mention_count')
     .eq('user_id', user_id)
     .order('mention_count', { ascending: false })
     .limit(15);
@@ -654,7 +654,7 @@ async function getUserContext(user_id) {
   // Get user patterns
   const { data: patterns, error: patternsError } = await supabase
     .from('user_patterns')
-    .select('pattern_type, description, short_description, confidence, status')
+    .select('pattern_type, short_description, confidence, status')
     .eq('user_id', user_id)
     .gte('confidence', 0.6)
     .order('confidence', { ascending: false })
@@ -885,14 +885,17 @@ function buildSystemPrompt(context, insightType = 'reflection_prompt') {
   // Build entities/people context
   const entitiesContext = entities.length > 0
     ? entities.slice(0, 10).map(e => {
-        const context = e.compressed_context ? ` — ${e.compressed_context}` : '';
-        return `- ${e.name} (${e.entity_type}${e.relationship ? `, ${e.relationship}` : ''})${context}`;
+        // context_notes is a TEXT array - take most recent context
+        const contextNote = Array.isArray(e.context_notes) && e.context_notes.length > 0
+          ? ` — ${e.context_notes[0]}`
+          : '';
+        return `- ${e.name} (${e.entity_type}${e.relationship ? `, ${e.relationship}` : ''}, mentioned ${e.mention_count || 1}x)${contextNote}`;
       }).join('\n')
     : 'No known people or topics yet.';
 
   // Build patterns context
   const patternsContext = patterns && patterns.length > 0
-    ? patterns.map(p => `- ${p.short_description || p.description} (${Math.round(p.confidence * 100)}% confidence)`).join('\n')
+    ? patterns.map(p => `- ${p.short_description || 'Pattern detected'} (${Math.round(p.confidence * 100)}% confidence)`).join('\n')
     : null;
 
   // Build onboarding context
