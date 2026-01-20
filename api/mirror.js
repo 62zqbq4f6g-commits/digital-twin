@@ -337,45 +337,47 @@ async function generateContinuityOpening(user_id, conversation) {
 
 /**
  * Find best signal to open conversation with
+ * Note: Notes are E2E encrypted, so we use entities for signal detection
  * Priority order:
- * 1. Recency + Frequency (3+ mentions in 7 days)
- * 2. Emotional Signal (stress, excitement, uncertainty)
- * 3. Pattern Confirmation (unverified pattern above 80%)
- * 4. Time-based Continuity (last conversation left thread open)
- * 5. Milestone (10th note, 30 days of use, etc.)
- * 6. Gentle Presence (no strong signal)
+ * 1. Recency + Frequency (entity mentioned 3+ times)
+ * 2. Pattern Confirmation (unverified pattern above 80%)
+ * 3. Time-based Continuity (last conversation left thread open)
+ * 4. Milestone (10th note, 30 days of use, etc.)
+ * 5. Gentle Presence (no strong signal)
  */
 async function findBestSignal(user_id) {
-  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  // Get entities with high mention counts for frequency signals
+  const { data: entities } = await supabase
+    .from('user_entities')
+    .select('name, entity_type, mention_count, context_notes, updated_at')
+    .eq('user_id', user_id)
+    .gte('mention_count', 3)
+    .order('mention_count', { ascending: false })
+    .limit(5);
 
-  // Get recent notes for analysis
-  const { data: recentNotes } = await supabase
+  // Get recent note count
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const { count: recentNoteCount } = await supabase
     .from('notes')
-    .select('id, content, created_at, classification')
+    .select('id', { count: 'exact', head: true })
     .eq('user_id', user_id)
     .is('deleted_at', null)
-    .gte('created_at', sevenDaysAgo)
-    .order('created_at', { ascending: false })
-    .limit(20);
+    .gte('created_at', sevenDaysAgo);
 
-  // PRIORITY 1: Recency + Frequency
-  const frequencySignal = await checkFrequencySignal(recentNotes);
+  // PRIORITY 1: Recency + Frequency (entity mentioned 3+ times)
+  const frequencySignal = checkFrequencySignal(entities);
   if (frequencySignal) return frequencySignal;
 
-  // PRIORITY 2: Emotional Signal
-  const emotionalSignal = checkEmotionalSignal(recentNotes);
-  if (emotionalSignal) return emotionalSignal;
-
-  // PRIORITY 3: Pattern Confirmation
+  // PRIORITY 2: Pattern Confirmation
   const patternSignal = await checkPatternSignal(user_id);
   if (patternSignal) return patternSignal;
 
-  // PRIORITY 4: Time-based Continuity
+  // PRIORITY 3: Time-based Continuity
   const continuitySignal = await checkContinuitySignal(user_id);
   if (continuitySignal) return continuitySignal;
 
-  // PRIORITY 5: Milestone
-  const milestoneSignal = await checkMilestoneSignal(user_id, recentNotes?.length || 0);
+  // PRIORITY 4: Milestone
+  const milestoneSignal = await checkMilestoneSignal(user_id, recentNoteCount || 0);
   if (milestoneSignal) return milestoneSignal;
 
   // No strong signal
@@ -384,39 +386,22 @@ async function findBestSignal(user_id) {
 
 /**
  * Check for frequency-based signal (entity mentioned 3+ times)
+ * Uses extracted entities since notes are E2E encrypted
  */
-async function checkFrequencySignal(recentNotes) {
-  if (!recentNotes || recentNotes.length < 3) return null;
+function checkFrequencySignal(entities) {
+  if (!entities || entities.length === 0) return null;
 
-  // Look for recurring themes/entities
-  const entityMentions = {};
-  const notesByEntity = {};
+  // Find the most frequently mentioned entity
+  const topEntity = entities[0]; // Already sorted by mention_count DESC
 
-  for (const note of recentNotes) {
-    const content = note.content || '';
-    // Extract capitalized words as potential entities
-    const words = content.split(/\s+/).filter(w => w.length > 3 && /^[A-Z]/.test(w));
-    for (const word of words) {
-      entityMentions[word] = (entityMentions[word] || 0) + 1;
-      if (!notesByEntity[word]) notesByEntity[word] = [];
-      notesByEntity[word].push(note);
-    }
-  }
-
-  // Find entity mentioned 3+ times
-  const frequentEntity = Object.entries(entityMentions)
-    .sort((a, b) => b[1] - a[1])
-    .find(([_, count]) => count >= 3);
-
-  if (frequentEntity) {
-    const [entity, count] = frequentEntity;
+  if (topEntity && topEntity.mention_count >= 3) {
     return {
-      message: `${entity} has come up ${count} times this week. There seems to be something on your mind. Want to explore it?`,
+      message: `${topEntity.name} has come up ${topEntity.mention_count} times recently. There seems to be something on your mind. Want to explore it?`,
       buttons: [
         { label: "Let's explore", action: "explore" },
         { label: "Not now", action: "dismiss" }
       ],
-      data: { type: 'frequency', entity, count }
+      data: { type: 'frequency', entity: topEntity.name, count: topEntity.mention_count }
     };
   }
 
@@ -424,68 +409,12 @@ async function checkFrequencySignal(recentNotes) {
 }
 
 /**
- * Check for emotional signals in recent notes
+ * Check for emotional signals
+ * Note: Notes are E2E encrypted, so emotional detection is not currently available
+ * Future: Could detect emotions from entity context_notes if we extract sentiment
  */
-function checkEmotionalSignal(recentNotes) {
-  if (!recentNotes || recentNotes.length === 0) return null;
-
-  // Emotional keywords to look for
-  const stressKeywords = ['stressed', 'stress', 'overwhelmed', 'anxious', 'worried', 'exhausted', 'frustrated', 'struggling'];
-  const excitementKeywords = ['excited', 'thrilled', 'amazing', 'wonderful', 'incredible', 'happy', 'great news'];
-  const uncertaintyKeywords = ['not sure', 'don\'t know', 'confused', 'uncertain', 'wondering', 'should I', 'maybe'];
-
-  let stressCount = 0;
-  let excitementCount = 0;
-  let uncertaintyCount = 0;
-
-  for (const note of recentNotes.slice(0, 5)) { // Check last 5 notes
-    const content = (note.content || '').toLowerCase();
-
-    for (const keyword of stressKeywords) {
-      if (content.includes(keyword)) stressCount++;
-    }
-    for (const keyword of excitementKeywords) {
-      if (content.includes(keyword)) excitementCount++;
-    }
-    for (const keyword of uncertaintyKeywords) {
-      if (content.includes(keyword)) uncertaintyCount++;
-    }
-  }
-
-  // Threshold of 2+ emotional signals
-  if (stressCount >= 2) {
-    return {
-      message: "Your last few notes have felt heavy. There's something weighing on you. Want to talk about it?",
-      buttons: [
-        { label: "Yes, let's talk", action: "explore" },
-        { label: "Not right now", action: "dismiss" }
-      ],
-      data: { type: 'emotional', emotion: 'stress', count: stressCount }
-    };
-  }
-
-  if (excitementCount >= 2) {
-    return {
-      message: "There's been a lot of energy in your recent notes. Something good is happening. Tell me about it?",
-      buttons: [
-        { label: "Yes!", action: "explore" },
-        { label: "Maybe later", action: "dismiss" }
-      ],
-      data: { type: 'emotional', emotion: 'excitement', count: excitementCount }
-    };
-  }
-
-  if (uncertaintyCount >= 2) {
-    return {
-      message: "You seem to be working through something. There's a decision brewing. Want to think it through together?",
-      buttons: [
-        { label: "That would help", action: "explore" },
-        { label: "Not yet", action: "dismiss" }
-      ],
-      data: { type: 'emotional', emotion: 'uncertainty', count: uncertaintyCount }
-    };
-  }
-
+function checkEmotionalSignal() {
+  // Not implemented - notes are E2E encrypted and we can't read content server-side
   return null;
 }
 
@@ -622,19 +551,18 @@ async function checkMilestoneSignal(user_id, recentNoteCount) {
 async function getUserContext(user_id) {
   console.log('[mirror] Fetching context for user:', user_id);
 
-  // Get recent notes - fetch more for better context
-  const { data: recentNotes, error: notesError } = await supabase
+  // Get note count - notes are E2E encrypted so we can only get metadata
+  // The actual content is in encrypted_data which we can't read server-side
+  const { count: noteCount, error: notesError } = await supabase
     .from('notes')
-    .select('id, content, created_at, classification')
+    .select('id', { count: 'exact', head: true })
     .eq('user_id', user_id)
-    .is('deleted_at', null)
-    .order('created_at', { ascending: false })
-    .limit(20);
+    .is('deleted_at', null);
 
   if (notesError) {
-    console.error('[mirror] Error fetching notes:', notesError);
+    console.error('[mirror] Error counting notes:', notesError);
   } else {
-    console.log('[mirror] Fetched notes count:', recentNotes?.length || 0);
+    console.log('[mirror] User note count:', noteCount || 0);
   }
 
   // Get entities
@@ -694,16 +622,16 @@ async function getUserContext(user_id) {
   }
 
   const contextResult = {
-    notes: recentNotes || [],
+    noteCount: noteCount || 0, // Notes are E2E encrypted, we only have count
     entities: allPeople,
     patterns: patterns || [],
     userName: onboarding?.name || profile?.name || 'there',
     onboarding: onboarding,
-    hasContext: !!((recentNotes && recentNotes.length > 0) || (allPeople && allPeople.length > 0) || onboarding)
+    hasContext: !!((noteCount > 0) || (allPeople && allPeople.length > 0) || onboarding)
   };
 
   console.log('[mirror] Context summary:', {
-    notesCount: contextResult.notes.length,
+    noteCount: contextResult.noteCount,
     entitiesCount: contextResult.entities.length,
     patternsCount: contextResult.patterns.length,
     userName: contextResult.userName,
@@ -763,14 +691,14 @@ async function generateResponse(user_id, userMessage, history, context, addition
 
     const content = response.content[0].text;
 
-    // Find referenced notes mentioned in response
-    const referencedNotes = findReferencedNotes(content, context.notes);
+    // Find referenced entities mentioned in response
+    const referencedEntities = findReferencedEntities(content, context.entities);
 
     return {
       content,
       type: insightType,
-      referencedNotes,
-      referencedEntities: null
+      referencedNotes: null, // Notes are E2E encrypted
+      referencedEntities
     };
 
   } catch (error) {
@@ -811,16 +739,25 @@ function analyzeForInsightType(userMessage, history, context) {
     return 'summary';
   }
 
-  // Check if topic relates to past notes (use connection)
-  if (context.notes && context.notes.length > 0) {
-    for (const note of context.notes) {
-      const noteContent = (note.content || '').toLowerCase();
-      // Check for overlapping significant words
-      const userWords = message.split(/\s+/).filter(w => w.length > 4);
-      const noteWords = noteContent.split(/\s+/).filter(w => w.length > 4);
-      const overlap = userWords.filter(w => noteWords.includes(w));
-      if (overlap.length >= 2) {
+  // Check if topic relates to known entities (use connection)
+  if (context.entities && context.entities.length > 0) {
+    for (const entity of context.entities) {
+      const entityName = (entity.name || '').toLowerCase();
+      // Check if user mentions a known entity
+      if (message.includes(entityName)) {
         return 'connection';
+      }
+      // Check entity context_notes for overlap
+      if (Array.isArray(entity.context_notes)) {
+        for (const ctx of entity.context_notes) {
+          const ctxLower = (ctx || '').toLowerCase();
+          const userWords = message.split(/\s+/).filter(w => w.length > 4);
+          const ctxWords = ctxLower.split(/\s+/).filter(w => w.length > 4);
+          const overlap = userWords.filter(w => ctxWords.includes(w));
+          if (overlap.length >= 2) {
+            return 'connection';
+          }
+        }
       }
     }
   }
@@ -843,22 +780,22 @@ function analyzeForInsightType(userMessage, history, context) {
 }
 
 /**
- * Find notes referenced by content
+ * Find entities referenced in response content
  */
-function findReferencedNotes(content, notes) {
-  if (!notes || notes.length === 0) return null;
+function findReferencedEntities(content, entities) {
+  if (!entities || entities.length === 0) return null;
 
   const referenced = [];
   const contentLower = content.toLowerCase();
 
-  for (const note of notes) {
-    const noteDate = new Date(note.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    // Check if date is mentioned
-    if (contentLower.includes(noteDate.toLowerCase())) {
+  for (const entity of entities) {
+    const entityName = (entity.name || '').toLowerCase();
+    // Check if entity name is mentioned
+    if (contentLower.includes(entityName)) {
       referenced.push({
-        id: note.id,
-        date: noteDate,
-        snippet: (note.content || '').substring(0, 50)
+        name: entity.name,
+        type: entity.entity_type,
+        relationship: entity.relationship
       });
     }
   }
@@ -868,28 +805,27 @@ function findReferencedNotes(content, notes) {
 
 /**
  * Build system prompt for MIRROR conversation
+ * Note: User notes are E2E encrypted, so we use extracted entities for context
  */
 function buildSystemPrompt(context, insightType = 'reflection_prompt') {
-  const { notes, entities, patterns, userName, onboarding } = context;
+  const { noteCount, entities, patterns, userName, onboarding } = context;
 
-  // Build rich notes context - use more notes with longer snippets
-  const notesContext = notes.length > 0
-    ? notes.slice(0, 10).map(n => {
-        const date = new Date(n.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        const snippet = (n.content || '').substring(0, 250).trim();
-        const category = n.classification ? ` [${n.classification}]` : '';
-        return `- ${date}${category}: "${snippet}${snippet.length >= 250 ? '...' : ''}"`;
-      }).join('\n')
-    : 'No recent notes yet.';
+  // Note: Notes are E2E encrypted - we can't read content server-side
+  // Instead, we use extracted entities which capture key people/topics from notes
+  const notesContext = noteCount > 0
+    ? `User has written ${noteCount} notes. Their key topics and people are extracted below.`
+    : 'No notes yet - this is a new user.';
 
-  // Build entities/people context
+  // Build entities/people context - this is our primary source of note context
+  // since notes are E2E encrypted and we can't read content server-side
   const entitiesContext = entities.length > 0
-    ? entities.slice(0, 10).map(e => {
-        // context_notes is a TEXT array - take most recent context
-        const contextNote = Array.isArray(e.context_notes) && e.context_notes.length > 0
-          ? ` — ${e.context_notes[0]}`
+    ? entities.slice(0, 12).map(e => {
+        // context_notes is a TEXT array containing extracted context from notes
+        const contextNotes = Array.isArray(e.context_notes) && e.context_notes.length > 0
+          ? e.context_notes.slice(0, 3).map(c => `"${c}"`).join('; ')
           : '';
-        return `- ${e.name} (${e.entity_type}${e.relationship ? `, ${e.relationship}` : ''}, mentioned ${e.mention_count || 1}x)${contextNote}`;
+        const contextStr = contextNotes ? `\n    Context from notes: ${contextNotes}` : '';
+        return `- ${e.name} (${e.entity_type}${e.relationship ? `, ${e.relationship}` : ''}, mentioned ${e.mention_count || 1}x)${contextStr}`;
       }).join('\n')
     : 'No known people or topics yet.';
 
@@ -911,10 +847,9 @@ Currently focused on: ${onboarding.focus?.join(', ') || 'various things'}`
   let userContextBlock = `<user_context>
 User's name: ${userName}
 ${onboardingContext ? onboardingContext + '\n' : ''}
-Recent notes (what they've been writing about):
-${notesContext}
+Note activity: ${notesContext}
 
-People and topics in their world:
+People and topics from their notes:
 ${entitiesContext}
 ${patternsContext ? `\nObserved patterns:\n${patternsContext}` : ''}
 </user_context>`;
@@ -941,12 +876,12 @@ ${insightInstructions}
 
 CONVERSATION RULES:
 1. Never more than 3 sentences before inviting response
-2. Reference specific dates/notes when making connections — USE THE ACTUAL CONTENT from their notes above
+2. Reference the people, topics, and context you know about them from their entities above
 3. Allow user to redirect anytime
 4. Match their energy - quick message = brief response
-5. When asked about what they've written, ALWAYS reference specific notes from the context above
+5. When asked what they've been writing about, reference the people and topics you know about (listed above with context from their notes)
 
-IMPORTANT: You have access to ${userName}'s actual notes above. When they ask what they've been writing about or mention a topic, reference the specific content from their notes. Never say you don't have their entries — you do, they're listed above.
+IMPORTANT: You know the key people and topics from ${userName}'s notes (listed above). When they ask what they've been writing about, reference these specific people and topics, including any context excerpts. If entities have context notes, those are direct quotes or summaries from their actual writing.
 
 Remember: You're their mirror, not their therapist. Reflect, don't prescribe.`;
 }
