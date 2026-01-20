@@ -48,6 +48,459 @@ async function getUserOnboardingContext(userId) {
   }
 }
 
+// ═══════════════════════════════════════════════════════════
+// MEM0 BUILD 7: INTELLIGENT MEMORY INTEGRATION
+// Enhanced extraction + UPDATE PHASE (ADD/UPDATE/DELETE/NOOP)
+// ═══════════════════════════════════════════════════════════
+
+/**
+ * Generate embedding using OpenAI text-embedding-3-small
+ * @param {string} text - Text to embed
+ * @returns {number[]|null} 1536-dimension embedding vector or null on error
+ */
+async function generateEmbedding(text) {
+  if (!text || !process.env.OPENAI_API_KEY) return null;
+
+  try {
+    const response = await fetch('https://api.openai.com/v1/embeddings', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'text-embedding-3-small',
+        input: text.substring(0, 8000)
+      })
+    });
+
+    if (!response.ok) return null;
+    const data = await response.json();
+    return data.data[0].embedding;
+  } catch (err) {
+    console.error('[Analyze] Embedding error:', err.message);
+    return null;
+  }
+}
+
+/**
+ * Enhanced memory extraction with Mem0 memory types
+ * @param {string} text - Note content
+ * @param {Anthropic} client - Anthropic client instance
+ * @param {Array} knownEntities - Known entities for context
+ * @returns {Object} Extracted memories, relationships, changes
+ */
+async function extractEnhancedMemories(text, client, knownEntities = []) {
+  const knownContext = knownEntities.length > 0
+    ? `\nKnown entities: ${knownEntities.map(e => typeof e === 'string' ? e : e.name).slice(0, 20).join(', ')}`
+    : '';
+
+  const prompt = `You are a Personal Information Organizer extracting memories from notes.
+
+Extract CRUCIAL, NEW, ACTIONABLE information for memory storage.
+
+## MEMORY TYPE CLASSIFICATION
+| Type | Use When | Examples |
+|------|----------|----------|
+| entity | A person, place, project, pet, or thing | "Marcus", "Anthropic", "Project Alpha" |
+| fact | Objective information about an entity | "Marcus works at Notion", "based in SF" |
+| preference | A like, dislike, or preference | "Prefers async communication", "Hates meetings" |
+| event | Something with a specific time/date | "Wedding on June 15", "standup every Monday" |
+| goal | An objective or desired outcome | "Wants to ship by March", "Aiming for 10k users" |
+| procedure | Step-by-step knowledge | "Deploy process: commit, push, verify" |
+| decision | A decision made | "Decided to take the job", "Chose React" |
+| action | An action completed | "Shipped the feature", "Left Google" |
+
+## TEMPORAL DETECTION
+- **is_historical** = true: "used to", "previously", "no longer", "left", past tense changes
+- **recurrence_pattern**: "every Monday" → {"type": "weekly", "day": "Monday"}
+- **effective_from**: "starting next month" → future date
+- **expires_at**: "until Friday" → end date
+
+## SENSITIVITY DETECTION
+- "sensitive": health, medical, death, grief, mental health, therapy
+- "private": financial, salary (rarely store)
+- "normal": everything else
+
+${knownContext}
+
+Note to analyze: "${text}"
+
+Return JSON only (no markdown):
+{
+  "memories": [
+    {
+      "name": "entity or fact name",
+      "memory_type": "entity|fact|preference|event|goal|procedure|decision|action",
+      "content": "the extracted information",
+      "entity_type": "person|project|place|pet|organization|concept|other",
+      "importance": "critical|high|medium|low|trivial",
+      "is_historical": false,
+      "recurrence_pattern": null,
+      "sensitivity_level": "normal|sensitive|private",
+      "confidence": 0.8
+    }
+  ]
+}
+
+Rules:
+- Extract named entities (people, companies, places with proper names)
+- Detect temporal markers and recurrence patterns
+- Mark sensitive topics appropriately
+- Empty array is fine if nothing is extracted`;
+
+  try {
+    const response = await client.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 2048,
+      messages: [{ role: 'user', content: prompt }]
+    });
+
+    const content = response.content[0].text;
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    const result = JSON.parse(jsonMatch ? jsonMatch[0] : content);
+
+    console.log('[Analyze] Mem0 - Extracted', result.memories?.length || 0, 'memories');
+    return result;
+  } catch (err) {
+    console.error('[Analyze] Mem0 extraction error:', err.message);
+    return { memories: [] };
+  }
+}
+
+/**
+ * Mem0 UPDATE PHASE - LLM decides ADD/UPDATE/DELETE/NOOP
+ * @param {Object} fact - Candidate fact to process
+ * @param {Array} similarMemories - Similar existing memories
+ * @param {Anthropic} client - Anthropic client instance
+ * @returns {Object} Decision with operation and reasoning
+ */
+async function runUpdatePhase(fact, similarMemories, client) {
+  const TOOLS = [
+    {
+      name: "add_memory",
+      description: "Add a new memory when no semantically equivalent memory exists",
+      input_schema: {
+        type: "object",
+        properties: {
+          content: { type: "string", description: "Memory content to store" },
+          memory_type: { type: "string", enum: ["entity", "fact", "preference", "event", "goal", "procedure", "decision", "action"] },
+          reasoning: { type: "string", description: "Why this is a new memory worth storing" }
+        },
+        required: ["content", "memory_type", "reasoning"]
+      }
+    },
+    {
+      name: "update_memory",
+      description: "Update an existing memory with new or corrected information",
+      input_schema: {
+        type: "object",
+        properties: {
+          memory_id: { type: "string", description: "UUID of memory to update" },
+          new_content: { type: "string", description: "Updated memory content" },
+          merge_strategy: { type: "string", enum: ["replace", "append", "supersede"] },
+          reasoning: { type: "string", description: "Why and what changed" }
+        },
+        required: ["memory_id", "new_content", "merge_strategy", "reasoning"]
+      }
+    },
+    {
+      name: "delete_memory",
+      description: "Delete a memory contradicted by new info or user request",
+      input_schema: {
+        type: "object",
+        properties: {
+          memory_id: { type: "string", description: "UUID to delete" },
+          hard_delete: { type: "boolean", description: "True only for explicit user deletion requests" },
+          reasoning: { type: "string", description: "Why delete" }
+        },
+        required: ["memory_id", "hard_delete", "reasoning"]
+      }
+    },
+    {
+      name: "no_operation",
+      description: "No change - info already exists, is trivial, or conversational noise",
+      input_schema: {
+        type: "object",
+        properties: {
+          reasoning: { type: "string", description: "Why no operation needed" },
+          existing_memory_id: { type: "string", description: "ID if info already exists" }
+        },
+        required: ["reasoning"]
+      }
+    }
+  ];
+
+  let prompt = `## NEW INFORMATION TO PROCESS
+**Content**: "${fact.content || fact.name}"
+**Type**: ${fact.memory_type || 'unknown'}
+**Importance**: ${fact.importance || 'medium'}
+${fact.is_historical ? '**Historical**: Yes\n' : ''}
+${fact.recurrence_pattern ? `**Recurrence**: ${JSON.stringify(fact.recurrence_pattern)}\n` : ''}
+
+## EXISTING SIMILAR MEMORIES
+`;
+
+  if (similarMemories && similarMemories.length > 0) {
+    similarMemories.forEach((mem, i) => {
+      prompt += `### Memory ${i + 1}
+- **ID**: ${mem.id}
+- **Content**: "${mem.summary || mem.name}"
+- **Similarity**: ${((mem.similarity || 0) * 100).toFixed(1)}%
+`;
+    });
+  } else {
+    prompt += `No similar existing memories found.\n`;
+  }
+
+  prompt += `\nDecide: add_memory, update_memory, delete_memory, or no_operation. Call exactly ONE tool.`;
+
+  try {
+    const response = await client.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1024,
+      system: `You are a memory manager deciding how to handle new information.
+- ADD: No similar memory exists and info is worth storing
+- UPDATE: Similar memory exists and needs updating (replace/append/supersede)
+- DELETE: Info contradicts existing memory
+- NOOP: Info already exists or is trivial`,
+      tools: TOOLS,
+      messages: [{ role: 'user', content: prompt }]
+    });
+
+    const toolUse = response.content.find(c => c.type === 'tool_use');
+    if (!toolUse) {
+      return { operation: 'NOOP', reasoning: 'No tool called' };
+    }
+
+    return {
+      operation: toolUse.name.replace('_memory', '').toUpperCase().replace('NO_OPERATION', 'NOOP'),
+      input: toolUse.input,
+      reasoning: toolUse.input.reasoning
+    };
+  } catch (err) {
+    console.error('[Analyze] Mem0 UPDATE PHASE error:', err.message);
+    return { operation: 'NOOP', reasoning: 'Error in UPDATE PHASE' };
+  }
+}
+
+/**
+ * Execute Mem0 memory operation (ADD/UPDATE/DELETE)
+ */
+async function executeMemoryOperation(supabaseClient, userId, operation, input, fact, sourceNoteId) {
+  if (!supabaseClient || !userId) return null;
+
+  const startTime = Date.now();
+
+  try {
+    if (operation === 'ADD') {
+      // Generate embedding for the new memory
+      const embedding = await generateEmbedding(input.content || fact.content || fact.name);
+
+      const { data, error } = await supabaseClient
+        .from('user_entities')
+        .insert({
+          user_id: userId,
+          name: fact.name || input.content?.slice(0, 100) || 'Memory',
+          entity_type: fact.entity_type || 'other',
+          memory_type: input.memory_type || fact.memory_type || 'fact',
+          summary: input.content || fact.content,
+          importance: fact.importance || 'medium',
+          importance_score: { critical: 1.0, high: 0.8, medium: 0.5, low: 0.3, trivial: 0.1 }[fact.importance] || 0.5,
+          is_historical: fact.is_historical || false,
+          recurrence_pattern: fact.recurrence_pattern || null,
+          sensitivity_level: fact.sensitivity_level || 'normal',
+          embedding: embedding,
+          status: 'active',
+          version: 1,
+          mention_count: 1,
+          first_mentioned_at: new Date().toISOString(),
+          last_mentioned_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Log to audit trail
+      await logMemoryOperation(supabaseClient, userId, 'ADD', fact, input, data.id, sourceNoteId, Date.now() - startTime);
+
+      console.log('[Analyze] Mem0 ADD:', input.content?.slice(0, 50) || fact.name);
+      return { operation: 'ADD', entity_id: data.id };
+
+    } else if (operation === 'UPDATE') {
+      const { memory_id, new_content, merge_strategy } = input;
+
+      // Fetch existing
+      const { data: existing } = await supabaseClient
+        .from('user_entities')
+        .select('*')
+        .eq('id', memory_id)
+        .single();
+
+      if (!existing) return null;
+
+      const oldVersion = existing.version || 1;
+      const newEmbedding = await generateEmbedding(new_content);
+
+      if (merge_strategy === 'supersede') {
+        // Mark old as historical, create new
+        await supabaseClient
+          .from('user_entities')
+          .update({ is_historical: true, status: 'superseded' })
+          .eq('id', memory_id);
+
+        const { data: newEntity } = await supabaseClient
+          .from('user_entities')
+          .insert({
+            ...existing,
+            id: undefined,
+            summary: new_content,
+            embedding: newEmbedding,
+            is_historical: false,
+            status: 'active',
+            version: oldVersion + 1,
+            supersedes_id: memory_id
+          })
+          .select()
+          .single();
+
+        await logMemoryOperation(supabaseClient, userId, 'UPDATE', fact, input, newEntity.id, sourceNoteId, Date.now() - startTime, { strategy: 'supersede', old_id: memory_id });
+        return { operation: 'UPDATE', strategy: 'supersede', new_id: newEntity.id };
+
+      } else {
+        // Replace or append
+        const finalContent = merge_strategy === 'append'
+          ? `${existing.summary}. ${new_content}`
+          : new_content;
+
+        await supabaseClient
+          .from('user_entities')
+          .update({
+            summary: finalContent,
+            embedding: newEmbedding,
+            version: oldVersion + 1,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', memory_id);
+
+        await logMemoryOperation(supabaseClient, userId, 'UPDATE', fact, input, memory_id, sourceNoteId, Date.now() - startTime, { strategy: merge_strategy });
+        return { operation: 'UPDATE', strategy: merge_strategy, entity_id: memory_id };
+      }
+
+    } else if (operation === 'DELETE') {
+      const { memory_id, hard_delete } = input;
+
+      if (hard_delete) {
+        await supabaseClient.from('user_entities').delete().eq('id', memory_id);
+      } else {
+        await supabaseClient.from('user_entities').update({ status: 'archived' }).eq('id', memory_id);
+      }
+
+      await logMemoryOperation(supabaseClient, userId, 'DELETE', fact, input, memory_id, sourceNoteId, Date.now() - startTime, { hard_delete });
+      return { operation: 'DELETE', entity_id: memory_id };
+    }
+
+    return null;
+  } catch (err) {
+    console.error('[Analyze] Mem0 execute error:', err.message);
+    return null;
+  }
+}
+
+/**
+ * Log memory operation to audit trail
+ */
+async function logMemoryOperation(supabaseClient, userId, operation, fact, input, entityId, sourceNoteId, processingTime, extra = {}) {
+  try {
+    await supabaseClient.from('memory_operations').insert({
+      user_id: userId,
+      operation,
+      candidate_fact: fact.content || fact.name,
+      candidate_memory_type: fact.memory_type,
+      llm_reasoning: input.reasoning,
+      entity_id: entityId,
+      merge_strategy: extra.strategy,
+      source_note_id: sourceNoteId,
+      processing_time_ms: processingTime
+    });
+  } catch (err) {
+    console.warn('[Analyze] Mem0 audit log error:', err.message);
+  }
+}
+
+/**
+ * Run full Mem0 pipeline: Extract → Find Similar → UPDATE PHASE → Execute
+ */
+async function runMem0Pipeline(noteContent, userId, client, supabaseClient, knownEntities = [], sourceNoteId = null) {
+  if (!userId || !supabaseClient) {
+    console.log('[Analyze] Mem0 - Skipping (no userId or supabase)');
+    return { processed: 0, results: [] };
+  }
+
+  console.log('[Analyze] Mem0 - Starting enhanced memory pipeline');
+  const results = [];
+
+  try {
+    // Step 1: Enhanced extraction
+    const extraction = await extractEnhancedMemories(noteContent, client, knownEntities);
+    const memories = extraction.memories || [];
+
+    if (memories.length === 0) {
+      console.log('[Analyze] Mem0 - No memories extracted');
+      return { processed: 0, results: [] };
+    }
+
+    // Step 2: Process each memory through UPDATE PHASE
+    for (const fact of memories) {
+      try {
+        // Generate embedding for similarity search
+        const factContent = fact.content || fact.name;
+        const embedding = await generateEmbedding(factContent);
+
+        // Find similar memories
+        let similarMemories = [];
+        if (embedding) {
+          const { data } = await supabaseClient.rpc('match_entities', {
+            query_embedding: embedding,
+            match_threshold: 0.5,
+            match_count: 5,
+            p_user_id: userId
+          });
+          similarMemories = data || [];
+        }
+
+        // Run UPDATE PHASE
+        const decision = await runUpdatePhase(fact, similarMemories, client);
+        console.log('[Analyze] Mem0 decision for', fact.name, ':', decision.operation);
+
+        // Execute the operation
+        if (decision.operation !== 'NOOP') {
+          const execResult = await executeMemoryOperation(
+            supabaseClient, userId, decision.operation, decision.input, fact, sourceNoteId
+          );
+          results.push({ fact: fact.name, ...decision, executed: !!execResult });
+        } else {
+          results.push({ fact: fact.name, ...decision, executed: false });
+          // Log NOOP to audit trail
+          await logMemoryOperation(supabaseClient, userId, 'NOOP', fact, { reasoning: decision.reasoning }, null, sourceNoteId, 0);
+        }
+
+      } catch (factErr) {
+        console.error('[Analyze] Mem0 fact processing error:', factErr.message);
+        results.push({ fact: fact.name, operation: 'ERROR', error: factErr.message });
+      }
+    }
+
+    console.log('[Analyze] Mem0 - Processed', results.length, 'memories');
+    return { processed: results.length, results };
+
+  } catch (err) {
+    console.error('[Analyze] Mem0 pipeline error:', err.message);
+    return { processed: 0, results: [], error: err.message };
+  }
+}
+
 /**
  * Phase 11: Build personalization context string from onboarding data
  * This gets injected into the Claude prompt so the AI knows the user
@@ -1336,6 +1789,20 @@ SHOW understanding, don't just REPEAT.
 
     result.learning = learning;
     console.log('[Analyze] Phase 12 - Learning data:', JSON.stringify(learning));
+
+    // ═══════════════════════════════════════════
+    // MEM0 MEMORY PIPELINE (async, non-blocking)
+    // Run after response to avoid blocking user
+    // ═══════════════════════════════════════════
+    if (userId && supabase) {
+      runMem0Pipeline(cleanedInput, userId, client, supabase, context.knownEntities || [])
+        .then(pipelineResult => {
+          console.log('[Analyze] Mem0 pipeline completed:', JSON.stringify(pipelineResult));
+        })
+        .catch(err => {
+          console.error('[Analyze] Mem0 pipeline error:', err.message);
+        });
+    }
 
     return res.status(200).json(result);
 
