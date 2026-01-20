@@ -1795,19 +1795,21 @@ SHOW understanding, don't just REPEAT.
     console.log('[Analyze] Phase 12 - Learning data:', JSON.stringify(learning));
 
     // ═══════════════════════════════════════════
-    // MEM0 MEMORY PIPELINE (async, non-blocking)
-    // Run after response to avoid blocking user
+    // MEM0 MEMORY PIPELINE
+    // Must await because Vercel kills serverless
+    // functions after response is sent
     // ═══════════════════════════════════════════
     console.log('[Analyze] Mem0 - Pre-check: userId=', userId, 'supabase=', !!supabase);
     if (userId && supabase) {
       console.log('[Analyze] Mem0 - Starting pipeline for user:', userId);
-      runMem0Pipeline(cleanedInput, userId, client, supabase, context.knownEntities || [])
-        .then(pipelineResult => {
-          console.log('[Analyze] Mem0 pipeline completed:', JSON.stringify(pipelineResult));
-        })
-        .catch(err => {
-          console.error('[Analyze] Mem0 pipeline error:', err.message, err.stack);
-        });
+      try {
+        const pipelineResult = await runMem0Pipeline(cleanedInput, userId, client, supabase, context.knownEntities || []);
+        console.log('[Analyze] Mem0 pipeline completed:', JSON.stringify(pipelineResult));
+        result.mem0 = pipelineResult;
+      } catch (err) {
+        console.error('[Analyze] Mem0 pipeline error:', err.message, err.stack);
+        result.mem0 = { error: err.message };
+      }
     } else {
       console.log('[Analyze] Mem0 - Skipped: no userId or supabase client');
     }
