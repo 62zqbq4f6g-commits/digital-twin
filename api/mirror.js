@@ -620,40 +620,97 @@ async function checkMilestoneSignal(user_id, recentNoteCount) {
  * Get user context for response generation
  */
 async function getUserContext(user_id) {
-  // Get recent notes
-  const { data: recentNotes } = await supabase
+  console.log('[mirror] Fetching context for user:', user_id);
+
+  // Get recent notes - fetch more for better context
+  const { data: recentNotes, error: notesError } = await supabase
     .from('notes')
     .select('id, content, created_at, classification')
     .eq('user_id', user_id)
     .is('deleted_at', null)
     .order('created_at', { ascending: false })
-    .limit(10);
+    .limit(20);
+
+  if (notesError) {
+    console.error('[mirror] Error fetching notes:', notesError);
+  } else {
+    console.log('[mirror] Fetched notes count:', recentNotes?.length || 0);
+  }
 
   // Get entities
-  const { data: entities } = await supabase
+  const { data: entities, error: entitiesError } = await supabase
     .from('user_entities')
     .select('name, entity_type, relationship, compressed_context')
     .eq('user_id', user_id)
     .order('mention_count', { ascending: false })
-    .limit(10);
+    .limit(15);
+
+  if (entitiesError) {
+    console.error('[mirror] Error fetching entities:', entitiesError);
+  } else {
+    console.log('[mirror] Fetched entities count:', entities?.length || 0);
+  }
+
+  // Get user patterns
+  const { data: patterns, error: patternsError } = await supabase
+    .from('user_patterns')
+    .select('pattern_type, description, short_description, confidence, status')
+    .eq('user_id', user_id)
+    .gte('confidence', 0.6)
+    .order('confidence', { ascending: false })
+    .limit(5);
+
+  if (patternsError) {
+    console.error('[mirror] Error fetching patterns:', patternsError);
+  }
 
   // Get user profile
   const { data: profile } = await supabase
     .from('user_profiles')
     .select('name')
     .eq('user_id', user_id)
-    .single();
+    .maybeSingle();
 
   // Get onboarding data (graceful fallback if missing)
   const onboarding = await getOnboardingContext(user_id);
 
-  return {
+  // Merge onboarding people with entities
+  let allPeople = [...(entities || [])];
+  if (onboarding?.people && Array.isArray(onboarding.people)) {
+    for (const person of onboarding.people) {
+      // Add seeded people if not already in entities
+      const exists = allPeople.some(e =>
+        e.name.toLowerCase() === person.name?.toLowerCase()
+      );
+      if (!exists && person.name) {
+        allPeople.push({
+          name: person.name,
+          entity_type: 'person',
+          relationship: person.context || person.relationship || 'known person',
+          compressed_context: null
+        });
+      }
+    }
+  }
+
+  const contextResult = {
     notes: recentNotes || [],
-    entities: entities || [],
+    entities: allPeople,
+    patterns: patterns || [],
     userName: onboarding?.name || profile?.name || 'there',
     onboarding: onboarding,
-    hasContext: !!(onboarding || (recentNotes && recentNotes.length > 0) || (entities && entities.length > 0))
+    hasContext: !!((recentNotes && recentNotes.length > 0) || (allPeople && allPeople.length > 0) || onboarding)
   };
+
+  console.log('[mirror] Context summary:', {
+    notesCount: contextResult.notes.length,
+    entitiesCount: contextResult.entities.length,
+    patternsCount: contextResult.patterns.length,
+    userName: contextResult.userName,
+    hasContext: contextResult.hasContext
+  });
+
+  return contextResult;
 }
 
 /**
@@ -813,22 +870,51 @@ function findReferencedNotes(content, notes) {
  * Build system prompt for MIRROR conversation
  */
 function buildSystemPrompt(context, insightType = 'reflection_prompt') {
-  const { notes, entities, userName } = context;
+  const { notes, entities, patterns, userName, onboarding } = context;
 
+  // Build rich notes context - use more notes with longer snippets
   const notesContext = notes.length > 0
-    ? notes.slice(0, 5).map(n => {
+    ? notes.slice(0, 10).map(n => {
         const date = new Date(n.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        const snippet = (n.content || '').substring(0, 100);
-        return `- ${date}: "${snippet}..."`;
+        const snippet = (n.content || '').substring(0, 250).trim();
+        const category = n.classification ? ` [${n.classification}]` : '';
+        return `- ${date}${category}: "${snippet}${snippet.length >= 250 ? '...' : ''}"`;
       }).join('\n')
     : 'No recent notes yet.';
 
+  // Build entities/people context
   const entitiesContext = entities.length > 0
-    ? entities.slice(0, 5).map(e => `- ${e.name} (${e.entity_type}${e.relationship ? `, ${e.relationship}` : ''})`).join('\n')
-    : 'No known entities yet.';
+    ? entities.slice(0, 10).map(e => {
+        const context = e.compressed_context ? ` — ${e.compressed_context}` : '';
+        return `- ${e.name} (${e.entity_type}${e.relationship ? `, ${e.relationship}` : ''})${context}`;
+      }).join('\n')
+    : 'No known people or topics yet.';
+
+  // Build patterns context
+  const patternsContext = patterns && patterns.length > 0
+    ? patterns.map(p => `- ${p.short_description || p.description} (${Math.round(p.confidence * 100)}% confidence)`).join('\n')
+    : null;
+
+  // Build onboarding context
+  const onboardingContext = onboarding
+    ? `Life season: ${onboarding.lifeSeasons?.join(', ') || 'unknown'}
+Currently focused on: ${onboarding.focus?.join(', ') || 'various things'}`
+    : null;
 
   // Insight type specific instructions
   const insightInstructions = getInsightTypeInstructions(insightType);
+
+  // Build the full context block
+  let userContextBlock = `<user_context>
+User's name: ${userName}
+${onboardingContext ? onboardingContext + '\n' : ''}
+Recent notes (what they've been writing about):
+${notesContext}
+
+People and topics in their world:
+${entitiesContext}
+${patternsContext ? `\nObserved patterns:\n${patternsContext}` : ''}
+</user_context>`;
 
   return `You are Inscript — a thoughtful companion who knows ${userName}'s world and helps them understand themselves.
 
@@ -846,21 +932,18 @@ THE CREEPY LINE - NEVER CROSS IT:
 ❌ "You should talk to Marcus" → ✅ "What would it look like to talk to Marcus?"
 ❌ "Based on my analysis..." → ✅ "From what you've shared..."
 
-WHAT YOU KNOW ABOUT ${userName.toUpperCase()}:
-
-Recent notes:
-${notesContext}
-
-Key people/entities:
-${entitiesContext}
+${userContextBlock}
 
 ${insightInstructions}
 
 CONVERSATION RULES:
 1. Never more than 3 sentences before inviting response
-2. Reference specific dates/notes when making connections
+2. Reference specific dates/notes when making connections — USE THE ACTUAL CONTENT from their notes above
 3. Allow user to redirect anytime
 4. Match their energy - quick message = brief response
+5. When asked about what they've written, ALWAYS reference specific notes from the context above
+
+IMPORTANT: You have access to ${userName}'s actual notes above. When they ask what they've been writing about or mention a topic, reference the specific content from their notes. Never say you don't have their entries — you do, they're listed above.
 
 Remember: You're their mirror, not their therapist. Reflect, don't prescribe.`;
 }
