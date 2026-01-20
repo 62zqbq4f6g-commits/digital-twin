@@ -296,7 +296,7 @@ async function executeMemoryOperation(supabaseClient, userId, operation, input, 
 
   if (!supabaseClient || !userId) {
     console.log('[Analyze] executeMemoryOperation: missing supabaseClient or userId');
-    return null;
+    return { skipped: true, reason: `missing: supabaseClient=${!!supabaseClient}, userId=${!!userId}` };
   }
 
   const startTime = Date.now();
