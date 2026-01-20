@@ -19,10 +19,21 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'userId and query required' });
   }
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
-  );
+  // Support both env var naming conventions
+  const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl || !supabaseKey) {
+    console.error('[memory-search] Missing Supabase credentials');
+    return res.status(500).json({ error: 'Database not configured' });
+  }
+
+  if (!process.env.OPENAI_API_KEY) {
+    console.error('[memory-search] Missing OPENAI_API_KEY');
+    return res.status(500).json({ error: 'Embedding service not configured' });
+  }
+
+  const supabase = createClient(supabaseUrl, supabaseKey);
 
   try {
     // Detect special query patterns
@@ -675,9 +686,19 @@ async function generateEmbedding(text) {
     },
     body: JSON.stringify({
       model: 'text-embedding-3-small',
-      input: text
+      input: text.substring(0, 8000) // Max 8k chars for safety
     })
   });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('[memory-search] OpenAI embedding error:', errorText);
+    throw new Error('Embedding generation failed');
+  }
+
   const data = await response.json();
+  if (!data.data?.[0]?.embedding) {
+    throw new Error('Invalid embedding response');
+  }
   return data.data[0].embedding;
 }

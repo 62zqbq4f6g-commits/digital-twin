@@ -19,10 +19,16 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'userId required' });
   }
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
-  );
+  // Support both env var naming conventions
+  const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl || !supabaseKey) {
+    console.error('[memory-consolidate] Missing Supabase credentials');
+    return res.status(500).json({ error: 'Database not configured' });
+  }
+
+  const supabase = createClient(supabaseUrl, supabaseKey);
 
   try {
     // Find all active entities with embeddings
