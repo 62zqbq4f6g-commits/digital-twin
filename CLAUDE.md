@@ -380,6 +380,12 @@ git log --oneline -5
 
 ---
 
+<!--
+  ⚠️ PROTECTED SECTION - DO NOT REMOVE OR SHORTEN
+  This UI Guidelines section must be preserved in all edits.
+  It ensures consistent, accessible UI across the codebase.
+-->
+
 # UI GUIDELINES
 
 Opinionated constraints for building Inscript interfaces. Based on rams.ai audit + ui-skills.com principles.
