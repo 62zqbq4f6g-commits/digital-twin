@@ -65,6 +65,11 @@ class Mirror {
       this.noteCount = data.noteCount || 0;
       this.messages = data.previousMessages || [];
 
+      // Track MIRROR opened
+      if (typeof SignalTracker !== 'undefined') {
+        SignalTracker.trackMirrorOpened(this.conversationId, data.opening?.type || 'presence');
+      }
+
       // Add opening message if new conversation
       if (data.isNewConversation && data.opening?.message) {
         this.messages.push({
@@ -100,6 +105,11 @@ class Mirror {
       type: 'response'
     });
 
+    // Track user message
+    if (typeof SignalTracker !== 'undefined') {
+      SignalTracker.trackMirrorMessage(this.conversationId, 'user', content.trim().length);
+    }
+
     this.isLoading = true;
     this.render();
     this.scrollToBottom();
@@ -131,6 +141,11 @@ class Mirror {
         type: data.response.insightType,
         referencedNotes: data.response.referencedNotes
       });
+
+      // Track Inscript response
+      if (typeof SignalTracker !== 'undefined') {
+        SignalTracker.trackMirrorMessage(this.conversationId, 'inscript', data.response.content?.length || 0);
+      }
 
       this.isLoading = false;
       this.render();
