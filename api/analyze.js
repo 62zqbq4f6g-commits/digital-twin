@@ -292,7 +292,12 @@ ${fact.recurrence_pattern ? `**Recurrence**: ${JSON.stringify(fact.recurrence_pa
  * Execute Mem0 memory operation (ADD/UPDATE/DELETE)
  */
 async function executeMemoryOperation(supabaseClient, userId, operation, input, fact, sourceNoteId) {
-  if (!supabaseClient || !userId) return null;
+  console.log('[Analyze] executeMemoryOperation called:', { operation, userId: !!userId, supabaseClient: !!supabaseClient });
+
+  if (!supabaseClient || !userId) {
+    console.log('[Analyze] executeMemoryOperation: missing supabaseClient or userId');
+    return null;
+  }
 
   const startTime = Date.now();
 
@@ -300,31 +305,38 @@ async function executeMemoryOperation(supabaseClient, userId, operation, input, 
     if (operation === 'ADD') {
       // Generate embedding for the new memory
       const embedding = await generateEmbedding(input.content || fact.content || fact.name);
+      console.log('[Analyze] Mem0 ADD - embedding generated:', !!embedding);
 
+      const insertData = {
+        user_id: userId,
+        name: fact.name || input.content?.slice(0, 100) || 'Memory',
+        entity_type: fact.entity_type || 'other',
+        memory_type: input.memory_type || fact.memory_type || 'fact',
+        summary: input.content || fact.content,
+        importance: fact.importance || 'medium',
+        importance_score: { critical: 1.0, high: 0.8, medium: 0.5, low: 0.3, trivial: 0.1 }[fact.importance] || 0.5,
+        is_historical: fact.is_historical || false,
+        recurrence_pattern: fact.recurrence_pattern || null,
+        sensitivity_level: fact.sensitivity_level || 'normal',
+        embedding: embedding,
+        status: 'active',
+        version: 1,
+        mention_count: 1,
+        first_mentioned_at: new Date().toISOString(),
+        last_mentioned_at: new Date().toISOString()
+      };
+
+      console.log('[Analyze] Mem0 ADD - inserting:', insertData.name);
       const { data, error } = await supabaseClient
         .from('user_entities')
-        .insert({
-          user_id: userId,
-          name: fact.name || input.content?.slice(0, 100) || 'Memory',
-          entity_type: fact.entity_type || 'other',
-          memory_type: input.memory_type || fact.memory_type || 'fact',
-          summary: input.content || fact.content,
-          importance: fact.importance || 'medium',
-          importance_score: { critical: 1.0, high: 0.8, medium: 0.5, low: 0.3, trivial: 0.1 }[fact.importance] || 0.5,
-          is_historical: fact.is_historical || false,
-          recurrence_pattern: fact.recurrence_pattern || null,
-          sensitivity_level: fact.sensitivity_level || 'normal',
-          embedding: embedding,
-          status: 'active',
-          version: 1,
-          mention_count: 1,
-          first_mentioned_at: new Date().toISOString(),
-          last_mentioned_at: new Date().toISOString()
-        })
+        .insert(insertData)
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('[Analyze] Mem0 ADD - insert error:', error.message, error.code, error.details);
+        throw error;
+      }
 
       // Log to audit trail
       await logMemoryOperation(supabaseClient, userId, 'ADD', fact, input, data.id, sourceNoteId, Date.now() - startTime);
