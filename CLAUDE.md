@@ -380,6 +380,89 @@ git log --oneline -5
 
 ---
 
+# UI GUIDELINES
+
+Opinionated constraints for building Inscript interfaces. Based on rams.ai audit + ui-skills.com principles.
+
+## Accessibility (A11y)
+
+### MUST
+- Add `role="button"` `tabindex="0"` to clickable non-button elements
+- Add `keydown` handler (Enter/Space) on elements with `onclick`
+- Add `aria-label` to icon-only buttons (×, ←, →, ✕)
+- Add `aria-label` to inputs that rely on placeholder for labeling
+- Add Escape key listener to close all modals
+- Use `<button>` for interactive controls, not `<div onclick>`
+- Ensure 4.5:1 color contrast ratio for text
+- Provide visible focus states (border-color change is acceptable)
+
+### NEVER
+- Remove focus outline without visible replacement
+- Use color alone to convey information
+- Create touch targets smaller than 44×44px
+- Skip heading levels (h1 → h3)
+- Use `tabindex` values greater than 0
+
+## Design System
+
+### MUST — Colors
+```css
+/* Paper */     --paper (#FFF), --paper-warm (#FAFAFA)
+/* Ink */       --ink (#000), --ink-rich (#1A1A1A), --ink-soft (#333)
+/* Silver */    --silver-50 through --silver-900
+/* Semantic */  --error (#8B0000), --success (#065F46) — sparingly
+```
+
+### MUST — Typography
+```css
+--font-display    Playfair Display    Headlines
+--font-editorial  Cormorant Garamond  AI voice (italic)
+--font-body       Inter               Body text
+--font-mono       JetBrains Mono      Timestamps, data
+```
+
+### MUST — Spacing
+Use only: 4px, 8px, 12px, 16px, 24px, 32px, 48px, 64px
+
+### NEVER
+- Introduce new colors outside the palette
+- Use green for success (use black for monochrome)
+- Use emojis in UI elements
+- Use decorative shadows (use 1px borders)
+- Mix font families in the same component
+
+## Components
+
+### MUST
+- Use existing component patterns first
+- Ensure hover, active, and focus states on all interactive elements
+- Use solid black primary buttons, outline secondary
+
+### Patterns
+```javascript
+// Entity links — make names clickable
+<span class="entity-link" role="button" tabindex="0"
+      data-entity="${name}" onclick="..." onkeydown="...">
+
+// Knowledge Pulse — call after save
+window.KnowledgePulse.show(learning);
+
+// Modals — overlay click + close button + Escape key
+```
+
+## Review Checklist
+
+Before submitting UI code:
+- [ ] All clickable elements keyboard accessible
+- [ ] All icon-only buttons have aria-labels
+- [ ] Colors from approved palette only
+- [ ] Spacing uses defined scale
+- [ ] Works in dark mode
+- [ ] Works on mobile (375px)
+- [ ] Follows existing codebase patterns
+
+---
+
 # CRITICAL REMINDERS
 
 1. **NEVER read ui.js in full** — Use grep only
