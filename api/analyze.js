@@ -307,10 +307,14 @@ async function executeMemoryOperation(supabaseClient, userId, operation, input, 
       const embedding = await generateEmbedding(input.content || fact.content || fact.name);
       console.log('[Analyze] Mem0 ADD - embedding generated:', !!embedding);
 
+      // Map entity_type to valid database values: person, project, place, pet, organization, concept
+      const validEntityTypes = ['person', 'project', 'place', 'pet', 'organization', 'concept'];
+      const entityType = validEntityTypes.includes(fact.entity_type) ? fact.entity_type : 'concept';
+
       const insertData = {
         user_id: userId,
         name: fact.name || input.content?.slice(0, 100) || 'Memory',
-        entity_type: fact.entity_type || 'other',
+        entity_type: entityType,
         memory_type: input.memory_type || fact.memory_type || 'fact',
         summary: input.content || fact.content,
         importance: fact.importance || 'medium',
@@ -497,9 +501,10 @@ async function runMem0Pipeline(noteContent, userId, client, supabaseClient, know
             const execResult = await executeMemoryOperation(
               supabaseClient, userId, decision.operation, decision.input, fact, sourceNoteId
             );
-            results.push({ fact: fact.name, ...decision, executed: !!execResult, execResult });
+            results.push({ fact: fact.name, operation: decision.operation, executed: !!execResult });
           } catch (execErr) {
-            results.push({ fact: fact.name, ...decision, executed: false, execError: execErr.message });
+            console.error('[Analyze] Mem0 exec error:', execErr.message);
+            results.push({ fact: fact.name, operation: decision.operation, executed: false });
           }
         } else {
           results.push({ fact: fact.name, ...decision, executed: false });
