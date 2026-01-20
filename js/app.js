@@ -145,6 +145,13 @@ const App = {
         });
       }
 
+      // 11. PHASE 13A: Trigger pattern detection (non-blocking)
+      if (Sync?.user?.id) {
+        this.detectPatterns(Sync.user.id, analysis?.learning).catch(err => {
+          console.warn('[App] Phase 13A pattern detection failed:', err);
+        });
+      }
+
       return savedNote;
 
     } catch (error) {
@@ -342,6 +349,46 @@ const App = {
       console.log('Database initialized');
     } catch (error) {
       console.error('Failed to initialize database:', error);
+    }
+  },
+
+  /**
+   * Phase 13A: Detect patterns from notes
+   * Runs in background after note save
+   * @param {string} userId - User ID
+   * @param {Object} learning - Learning data from analysis
+   */
+  async detectPatterns(userId, learning) {
+    try {
+      console.log('[App] Phase 13A - Running pattern detection for user:', userId);
+
+      const response = await fetch('/api/detect-patterns', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userId })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Pattern detection failed: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log('[App] Phase 13A - Pattern detection result:', result);
+
+      // If new patterns were detected, update Knowledge Pulse
+      if (result.detected && result.detected.length > 0 && window.KnowledgePulse) {
+        // Add patterns to existing learning data and re-show pulse
+        const enhancedLearning = {
+          ...(learning || {}),
+          patterns_detected: result.detected
+        };
+        console.log('[App] Phase 13A - New patterns detected, updating Knowledge Pulse');
+        window.KnowledgePulse.show(enhancedLearning);
+      }
+
+    } catch (error) {
+      console.warn('[App] Phase 13A - Pattern detection error:', error);
+      // Non-blocking, don't throw
     }
   }
 };

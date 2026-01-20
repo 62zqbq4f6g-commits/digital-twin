@@ -66,7 +66,8 @@ class KnowledgePulse {
   isEmpty(learning) {
     return !learning.entities_extracted?.length &&
            !learning.themes_detected?.length &&
-           !learning.similar_notes?.length;
+           !learning.similar_notes?.length &&
+           !learning.patterns_detected?.length;
   }
 
   buildItems(learning) {
@@ -113,6 +114,18 @@ class KnowledgePulse {
       `);
     }
 
+    // Phase 13A: Detected patterns
+    if (learning.patterns_detected?.length && items.length < 3) {
+      const pattern = learning.patterns_detected[0];
+      const patternText = pattern.shortDescription || pattern.short_description || 'a pattern';
+      items.push(`
+        <div class="pulse-item pulse-item-pattern" data-pattern-id="${pattern.id || ''}">
+          <span class="pulse-item-icon">○</span>
+          <span class="pulse-item-text">Noticed: ${this.escapeHtml(patternText)}</span>
+        </div>
+      `);
+    }
+
     return items;
   }
 
@@ -121,6 +134,16 @@ class KnowledgePulse {
     if (window.EntityCards) {
       window.EntityCards.open(entityName);
     }
+  }
+
+  /**
+   * Escape HTML to prevent XSS
+   */
+  escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
   }
 }
 
