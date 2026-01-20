@@ -26,6 +26,7 @@
   <!-- Styles -->
   <link rel="stylesheet" href="css/styles.css?v=804">
   <link rel="stylesheet" href="css/design-system.css?v=804">
+  <link rel="stylesheet" href="css/mirror.css?v=800">
 </head>
 <body>
   <!-- Loading Overlay -->
@@ -361,6 +362,13 @@
         </div>
       </section>
 
+      <!-- MIRROR Screen - Phase 13B -->
+      <section id="screen-mirror" class="screen hidden">
+        <div id="mirror-container" class="mirror-container">
+          <!-- Populated by Mirror.js -->
+        </div>
+      </section>
+
       <!-- Actions Screen (Phase 4.1 - Simplified) -->
       <section id="screen-actions" class="screen hidden">
         <!-- Actions List - all content rendered by JS -->
@@ -558,8 +566,8 @@
       </div>
     </div>
 
-    <!-- Bottom Navigation - Phase 4C: 3 tabs only -->
-    <nav class="nav nav-three-tabs">
+    <!-- Bottom Navigation - Phase 13B: 4 tabs with MIRROR -->
+    <nav class="nav nav-four-tabs">
       <button class="nav-tab active" data-screen="notes">
         <span class="nav-label">NOTES</span>
       </button>
@@ -568,6 +576,9 @@
       </button>
       <button class="nav-tab" data-screen="twin">
         <span class="nav-label">TWIN</span>
+      </button>
+      <button class="nav-tab" data-screen="mirror">
+        <span class="nav-label">MIRROR</span>
       </button>
     </nav>
   </div>
@@ -616,6 +627,7 @@
   <script src="js/settings.js?v=700"></script>
   <script src="js/knowledge-pulse.js?v=800"></script>
   <script src="js/entity-cards.js?v=800"></script>
+  <script src="js/mirror.js?v=800"></script>
   <script>
     // Environment variables - loaded from API
     window.ENV = {

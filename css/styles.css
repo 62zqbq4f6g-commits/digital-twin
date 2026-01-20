@@ -421,6 +421,29 @@ body {
   font-weight: 600;
 }
 
+/* Phase 13B: 4-tab navigation for MIRROR */
+.nav-four-tabs {
+  justify-content: stretch;
+  height: 56px;
+}
+
+.nav-four-tabs .nav-tab {
+  flex-direction: row;
+  gap: 0;
+  padding: 0 8px;
+}
+
+.nav-four-tabs .nav-label {
+  font-size: 0.5625rem; /* 9px - slightly smaller for 4 tabs */
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.nav-four-tabs .nav-tab.active .nav-label {
+  font-weight: 600;
+}
+
 /* ==========================================================================
    Toast Notification
    ========================================================================== */

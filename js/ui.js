@@ -344,6 +344,11 @@ const UI = {
       if (typeof ActionsUI !== 'undefined') {
         ActionsUI.refresh();
       }
+    } else if (screenName === 'mirror') {
+      // Phase 13B: Open MIRROR conversation
+      if (typeof Mirror !== 'undefined' && window.Mirror) {
+        window.Mirror.open();
+      }
     }
   },
 
