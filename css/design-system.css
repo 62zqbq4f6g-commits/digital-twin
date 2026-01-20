@@ -349,7 +349,7 @@
 }
 
 .input-new::placeholder {
-  color: var(--ink-400);
+  color: var(--ink-500);
   font-style: italic;
 }
 
@@ -373,7 +373,7 @@
 }
 
 .textarea-new::placeholder {
-  color: var(--ink-400);
+  color: var(--ink-500);
   font-style: italic;
 }
 
@@ -2395,7 +2395,7 @@
   font-family: var(--font-body);
   font-size: 14px;
   font-weight: 500;
-  color: var(--success);
+  color: var(--ink);
   margin-bottom: 12px;
   display: flex;
   align-items: center;

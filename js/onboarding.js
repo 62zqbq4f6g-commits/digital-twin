@@ -227,7 +227,7 @@ window.Onboarding = {
     return `
       <div class="onboarding-screen onboarding-name">
         <div class="onboarding-header">
-          <button class="onboarding-back" data-action="back">←</button>
+          <button class="onboarding-back" data-action="back" aria-label="Go back">←</button>
           <span class="onboarding-progress">1 of 6</span>
         </div>
 
@@ -241,6 +241,7 @@ window.Onboarding = {
             placeholder="Your name"
             value="${this.data.name}"
             autocomplete="off"
+            aria-label="Your name"
           >
 
           <button class="onboarding-btn onboarding-btn-primary" data-action="next" ${!this.data.name ? 'disabled' : ''}>
@@ -258,7 +259,7 @@ window.Onboarding = {
     return `
       <div class="onboarding-screen onboarding-seasons">
         <div class="onboarding-header">
-          <button class="onboarding-back" data-action="back">←</button>
+          <button class="onboarding-back" data-action="back" aria-label="Go back">←</button>
           <span class="onboarding-progress">2 of 6</span>
         </div>
 
@@ -293,7 +294,7 @@ window.Onboarding = {
     return `
       <div class="onboarding-screen onboarding-focus">
         <div class="onboarding-header">
-          <button class="onboarding-back" data-action="back">←</button>
+          <button class="onboarding-back" data-action="back" aria-label="Go back">←</button>
           <span class="onboarding-progress">3 of 6</span>
         </div>
 
@@ -331,7 +332,7 @@ window.Onboarding = {
     return `
       <div class="onboarding-screen onboarding-depth">
         <div class="onboarding-header">
-          <button class="onboarding-back" data-action="back">←</button>
+          <button class="onboarding-back" data-action="back" aria-label="Go back">←</button>
           <span class="onboarding-progress">4 of 6</span>
         </div>
 
@@ -343,6 +344,7 @@ window.Onboarding = {
             id="onboarding-depth"
             placeholder="Even a few words helps me understand your world."
             rows="4"
+            aria-label="Your answer"
           >${this.data.depth_answer}</textarea>
 
           <button class="onboarding-btn onboarding-btn-primary" data-action="next">
@@ -365,7 +367,7 @@ window.Onboarding = {
     return `
       <div class="onboarding-screen onboarding-people">
         <div class="onboarding-header">
-          <button class="onboarding-back" data-action="back">←</button>
+          <button class="onboarding-back" data-action="back" aria-label="Go back">←</button>
           <span class="onboarding-progress">5 of 6</span>
         </div>
 
@@ -413,6 +415,7 @@ window.Onboarding = {
           placeholder="e.g., Marcus — close friend"
           value="${value}"
           data-index="${index}"
+          aria-label="Person name and relationship"
         >
       </div>
     `;
@@ -425,7 +428,7 @@ window.Onboarding = {
     return `
       <div class="onboarding-screen onboarding-privacy">
         <div class="onboarding-header">
-          <button class="onboarding-back" data-action="back">←</button>
+          <button class="onboarding-back" data-action="back" aria-label="Go back">←</button>
           <span class="onboarding-progress">6 of 6</span>
         </div>
 

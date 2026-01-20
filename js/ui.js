@@ -40,7 +40,23 @@ const UI = {
     this.setupNotesSearch();
     this.setupNoteDetail();
     this.setupSettings();
+    this.setupGlobalKeyboardListeners(); // A11y: Global keyboard handlers
     this.showScreen('notes'); // Phase 4C: Default to notes
+  },
+
+  /**
+   * Set up global keyboard listeners for accessibility
+   */
+  setupGlobalKeyboardListeners() {
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        // Close any open modals
+        this.closeEntityEditor();
+        this.closeCreateEntityModal();
+        this.closeCameraSheet();
+        this.closeNoteDetail();
+      }
+    });
   },
 
   /**
@@ -997,12 +1013,20 @@ const UI = {
 
     notesList.innerHTML = html;
 
-    // Add click handlers to note cards
+    // Add click and keyboard handlers to note cards
     notesList.querySelectorAll('.note-card').forEach(card => {
       card.addEventListener('click', () => {
         const noteId = card.dataset.noteId;
         console.log('[UI] Note card clicked, noteId:', noteId);
         this.openNoteDetail(noteId);
+      });
+      // Keyboard accessibility: Enter/Space to open note
+      card.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          const noteId = card.dataset.noteId;
+          this.openNoteDetail(noteId);
+        }
       });
     });
   },
@@ -1049,7 +1073,7 @@ const UI = {
     const imageData = note.imageData || note.input?.image_thumbnail || note.input?.image_url || note.input?.image_data;
 
     return `
-      <div class="note-card ${imageData ? 'has-thumbnail' : ''}" data-note-id="${note.id}">
+      <div class="note-card ${imageData ? 'has-thumbnail' : ''}" data-note-id="${note.id}" role="button" tabindex="0" aria-label="${this.escapeHtml(title)}">
         ${imageData ? `<div class="note-card-thumbnail"><img src="${imageData}" alt="" /></div>` : ''}
         <div class="note-card-content">
           <div class="category-badge">
@@ -1800,7 +1824,11 @@ const UI = {
             ${allEntities.map(e => `
               <span class="entity-chip entity-chip-${e.type}"
                     onclick="UI.openEntityByName('${this.escapeHtml(e.name)}', '${e.type}')"
-                    title="Click to edit">
+                    onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();UI.openEntityByName('${this.escapeHtml(e.name)}', '${e.type}')}"
+                    role="button"
+                    tabindex="0"
+                    title="Click to edit"
+                    aria-label="Edit ${this.escapeHtml(e.name)}">
                 ${this.escapeHtml(e.name)}
               </span>
             `).join('')}
@@ -4416,7 +4444,7 @@ const UI = {
       preview.innerHTML = `
         <div class="preview-thumbnail">
           <img src="${e.target.result}" alt="Preview">
-          <button class="remove-image" onclick="UI.removeImagePreview()">×</button>
+          <button class="remove-image" onclick="UI.removeImagePreview()" aria-label="Remove image">×</button>
         </div>
       `;
       preview.style.display = 'block';
@@ -4507,7 +4535,7 @@ const UI = {
       <div class="modal-content">
         <div class="modal-header">
           <h3>Edit Entity</h3>
-          <button class="close-btn" onclick="UI.closeEntityEditor()">&times;</button>
+          <button class="close-btn" onclick="UI.closeEntityEditor()" aria-label="Close">&times;</button>
         </div>
         <div class="modal-body">
           <div class="field">
@@ -4649,7 +4677,7 @@ const UI = {
       <div class="modal-content">
         <div class="modal-header">
           <h3>Add Entity</h3>
-          <button class="close-btn" onclick="UI.closeCreateEntityModal()">&times;</button>
+          <button class="close-btn" onclick="UI.closeCreateEntityModal()" aria-label="Close">&times;</button>
         </div>
         <div class="modal-body">
           <p style="margin-bottom: 16px; color: var(--text-secondary);">
