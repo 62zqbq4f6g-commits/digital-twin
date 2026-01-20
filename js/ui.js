@@ -1704,9 +1704,36 @@ const UI = {
       // Show detail screen
       document.getElementById('screen-note-detail').classList.remove('hidden');
 
+      // Phase 13D: Load inline pattern verification (async, don't block)
+      this.loadInlinePattern(note);
+
     } catch (error) {
       console.error('Failed to open note detail:', error);
       this.showToast('Failed to open note');
+    }
+  },
+
+  /**
+   * Phase 13D: Load inline pattern verification for note detail
+   */
+  async loadInlinePattern(note) {
+    try {
+      if (typeof PatternVerification === 'undefined') return;
+
+      const container = document.getElementById('inline-pattern-container');
+      if (!container) return;
+
+      // Get note content for context
+      const noteContent = container.dataset.noteContent || '';
+      if (!noteContent) return;
+
+      // Check for surfaceable pattern
+      const pattern = await PatternVerification.getSurfaceablePattern(noteContent);
+      if (pattern) {
+        container.innerHTML = PatternVerification.renderInlineVerification(pattern);
+      }
+    } catch (error) {
+      console.warn('[UI] Failed to load inline pattern:', error);
     }
   },
 
@@ -2106,6 +2133,10 @@ const UI = {
           </div>
         `;
       }
+
+      // Phase 13D: Inline pattern verification placeholder
+      // Will be populated async after render
+      html += `<div id="inline-pattern-container" data-note-content="${this.escapeHtml((analysis.whatYouShared || '').substring(0, 200))}"></div>`;
 
       // A QUESTION FOR YOU section
       const question = analysis.question || analysis.questionToSitWith;

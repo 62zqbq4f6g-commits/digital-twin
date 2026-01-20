@@ -84,6 +84,9 @@ const TwinUI = {
       // Update Learning section (Phase 8)
       await this.renderLearningSection();
 
+      // Phase 13: Update Patterns I've Noticed section
+      await this.updatePatternsSection13();
+
       // Update confidence meter
       this.updateConfidence(summary.confidence);
 
@@ -531,6 +534,32 @@ const TwinUI = {
 
     } catch (error) {
       console.error('[TwinUI] Error updating patterns:', error);
+      container.innerHTML = '<p class="twin-empty">Error loading patterns</p>';
+    }
+  },
+
+  /**
+   * Phase 13: Update Patterns I've Noticed section using PatternVerification
+   */
+  async updatePatternsSection13() {
+    const container = document.getElementById('twin-patterns-container');
+    if (!container) return;
+
+    try {
+      // Check if PatternVerification is available
+      if (typeof PatternVerification === 'undefined') {
+        console.warn('[TwinUI] PatternVerification not available');
+        return;
+      }
+
+      // Load patterns
+      await PatternVerification.loadPatterns();
+
+      // Render the section
+      container.innerHTML = PatternVerification.renderTwinSection();
+
+    } catch (error) {
+      console.error('[TwinUI] Error updating Phase 13 patterns:', error);
       container.innerHTML = '<p class="twin-empty">Error loading patterns</p>';
     }
   },
