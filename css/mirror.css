@@ -450,12 +450,19 @@
   padding: 48px 24px;
 }
 
+.mirror-error-icon {
+  font-size: 32px;
+  color: var(--silver-400, #A3A3A3);
+  margin-bottom: 16px;
+}
+
 .mirror-error p,
 .mirror-auth-required p {
   font-family: var(--font-body, Inter, sans-serif);
   font-size: 15px;
   color: var(--ink-soft, #333333);
   margin: 0 0 16px 0;
+  max-width: 280px;
 }
 
 .mirror-retry-btn {
@@ -496,6 +503,55 @@
   .mirror-welcome-text {
     font-size: 16px;
   }
+}
+
+/* =====================================================
+   ACCESSIBILITY
+   ===================================================== */
+
+/* Screen reader only */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Focus visible styles */
+.mirror-input:focus-visible,
+.mirror-send-btn:focus-visible,
+.mirror-prompt-btn:focus-visible,
+.mirror-refresh-btn:focus-visible {
+  outline: 2px solid var(--ink, #000000);
+  outline-offset: 2px;
+}
+
+[data-theme="dark"] .mirror-input:focus-visible,
+[data-theme="dark"] .mirror-send-btn:focus-visible,
+[data-theme="dark"] .mirror-prompt-btn:focus-visible,
+[data-theme="dark"] .mirror-refresh-btn:focus-visible {
+  outline-color: var(--paper, #FFFFFF);
+}
+
+/* Skip link for keyboard navigation */
+.mirror-skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  padding: 8px 16px;
+  background: var(--ink, #000000);
+  color: var(--paper, #FFFFFF);
+  z-index: 100;
+  transition: top 150ms ease;
+}
+
+.mirror-skip-link:focus {
+  top: 0;
 }
 
 /* =====================================================

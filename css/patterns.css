@@ -478,6 +478,38 @@
 }
 
 /* =====================================================
+   ACCESSIBILITY
+   ===================================================== */
+
+/* Enhanced focus styles for pattern buttons */
+.pattern-btn:focus-visible {
+  outline: 2px solid var(--ink, #000000);
+  outline-offset: 2px;
+}
+
+[data-theme="dark"] .pattern-btn:focus-visible {
+  outline-color: var(--paper, #FFFFFF);
+}
+
+.pattern-feedback-input:focus-visible {
+  outline: 2px solid var(--ink, #000000);
+  outline-offset: 0;
+}
+
+[data-theme="dark"] .pattern-feedback-input:focus-visible {
+  outline-color: var(--paper, #FFFFFF);
+}
+
+/* Pattern cards keyboard focus */
+.pattern-card:focus-within {
+  box-shadow: 0 0 0 2px var(--ink, #000000);
+}
+
+[data-theme="dark"] .pattern-card:focus-within {
+  box-shadow: 0 0 0 2px var(--paper, #FFFFFF);
+}
+
+/* =====================================================
    REDUCED MOTION
    ===================================================== */
 

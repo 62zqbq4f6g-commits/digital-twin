@@ -307,7 +307,7 @@ class Mirror {
           ` : ''}
         </header>
 
-        <div class="mirror-conversation" id="mirror-conversation">
+        <div class="mirror-conversation" id="mirror-conversation" role="log" aria-live="polite" aria-label="Conversation with your digital twin">
           ${!hasMessages && isNewUser ? this.renderNewUserState() : ''}
           ${!hasMessages && !isNewUser ? this.renderEmptyState() : ''}
           ${this.renderMessages()}
@@ -404,7 +404,7 @@ class Mirror {
     }
 
     return `
-      <div class="mirror-message ${isInscript ? 'mirror-message-inscript' : 'mirror-message-user'}">
+      <div class="mirror-message ${isInscript ? 'mirror-message-inscript' : 'mirror-message-user'}" role="article" aria-label="${isInscript ? 'Inscript says' : 'You said'}">
         <div class="mirror-bubble ${bubbleClass}">
           <p class="mirror-bubble-text">${this.escapeHtml(msg.content)}</p>
           ${buttonsHtml}
@@ -418,11 +418,12 @@ class Mirror {
    */
   renderTypingIndicator() {
     return `
-      <div class="mirror-message mirror-message-inscript">
+      <div class="mirror-message mirror-message-inscript" role="status" aria-label="Inscript is thinking">
         <div class="mirror-bubble mirror-bubble-inscript mirror-typing">
-          <span class="mirror-typing-dot"></span>
-          <span class="mirror-typing-dot"></span>
-          <span class="mirror-typing-dot"></span>
+          <span class="mirror-typing-dot" aria-hidden="true"></span>
+          <span class="mirror-typing-dot" aria-hidden="true"></span>
+          <span class="mirror-typing-dot" aria-hidden="true"></span>
+          <span class="sr-only">Inscript is thinking...</span>
         </div>
       </div>
     `;
@@ -473,12 +474,24 @@ class Mirror {
         <header class="mirror-header">
           <h2 class="mirror-title">MIRROR</h2>
         </header>
-        <div class="mirror-error">
+        <div class="mirror-error" role="alert">
+          <div class="mirror-error-icon" aria-hidden="true">⚠</div>
           <p>${this.escapeHtml(message)}</p>
-          <button class="mirror-retry-btn" onclick="window.Mirror.open()">Try again</button>
+          <button class="mirror-retry-btn" onclick="window.Mirror.open()" aria-label="Retry connection">Try again</button>
         </div>
       </div>
     `;
+  }
+
+  /**
+   * Show a temporary toast message
+   */
+  showToast(message, type = 'info') {
+    if (typeof UI !== 'undefined' && UI.showToast) {
+      UI.showToast(message);
+    } else {
+      console.log(`[Mirror Toast] ${message}`);
+    }
   }
 
   /**
