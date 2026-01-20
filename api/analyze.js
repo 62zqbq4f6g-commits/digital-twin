@@ -10,12 +10,16 @@ const Anthropic = require('@anthropic-ai/sdk');
 const { createClient } = require('@supabase/supabase-js');
 
 // Initialize Supabase client for fetching user context
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
+// Try both common env variable naming conventions
+const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 let supabase = null;
 
 if (supabaseUrl && supabaseServiceKey) {
   supabase = createClient(supabaseUrl, supabaseServiceKey);
+  console.log('[Analyze] Supabase client initialized');
+} else {
+  console.warn('[Analyze] Supabase not initialized - missing URL:', !!supabaseUrl, 'KEY:', !!supabaseServiceKey);
 }
 
 /**
@@ -1794,14 +1798,18 @@ SHOW understanding, don't just REPEAT.
     // MEM0 MEMORY PIPELINE (async, non-blocking)
     // Run after response to avoid blocking user
     // ═══════════════════════════════════════════
+    console.log('[Analyze] Mem0 - Pre-check: userId=', userId, 'supabase=', !!supabase);
     if (userId && supabase) {
+      console.log('[Analyze] Mem0 - Starting pipeline for user:', userId);
       runMem0Pipeline(cleanedInput, userId, client, supabase, context.knownEntities || [])
         .then(pipelineResult => {
           console.log('[Analyze] Mem0 pipeline completed:', JSON.stringify(pipelineResult));
         })
         .catch(err => {
-          console.error('[Analyze] Mem0 pipeline error:', err.message);
+          console.error('[Analyze] Mem0 pipeline error:', err.message, err.stack);
         });
+    } else {
+      console.log('[Analyze] Mem0 - Skipped: no userId or supabase client');
     }
 
     return res.status(200).json(result);
