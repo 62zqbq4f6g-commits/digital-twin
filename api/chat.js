@@ -1,9 +1,68 @@
 /**
  * /api/chat - Phase 4B: Socratic dialogue for notes
  * Provides thoughtful follow-up questions and reflections
+ * Enhanced with Mem0 memory context for personalization
  */
 
 const Anthropic = require('@anthropic-ai/sdk');
+const { createClient } = require('@supabase/supabase-js');
+
+// Initialize Supabase client
+const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+let supabase = null;
+
+if (supabaseUrl && supabaseServiceKey) {
+  supabase = createClient(supabaseUrl, supabaseServiceKey);
+}
+
+/**
+ * Get memory context for personalized chat
+ */
+async function getMemoryContextForChat(userId) {
+  if (!supabase || !userId) return '';
+
+  try {
+    // Get category summaries
+    const { data: summaries } = await supabase
+      .from('category_summaries')
+      .select('category, summary')
+      .eq('user_id', userId)
+      .order('updated_at', { ascending: false })
+      .limit(3);
+
+    // Get top entities
+    const { data: entities } = await supabase
+      .from('user_entities')
+      .select('name, entity_type, relationship, context_notes')
+      .eq('user_id', userId)
+      .eq('status', 'active')
+      .order('importance_score', { ascending: false })
+      .limit(8);
+
+    const parts = [];
+
+    if (summaries?.length > 0) {
+      parts.push('What you know about them:');
+      summaries.forEach(s => {
+        parts.push(`- ${s.category.replace('_', ' ')}: ${s.summary}`);
+      });
+    }
+
+    if (entities?.length > 0) {
+      parts.push('\nKey people/things in their world:');
+      entities.forEach(e => {
+        const rel = e.relationship ? ` (${e.relationship})` : '';
+        parts.push(`- ${e.name}${rel}`);
+      });
+    }
+
+    return parts.length > 0 ? parts.join('\n') : '';
+  } catch (err) {
+    console.warn('[Chat] Memory context error:', err.message);
+    return '';
+  }
+}
 
 module.exports = async function handler(req, res) {
   // CORS headers
@@ -19,7 +78,7 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { noteContent, noteAnalysis, chatHistory, userMessage, mode } = req.body;
+  const { noteContent, noteAnalysis, chatHistory, userMessage, mode, userId } = req.body;
 
   if (!noteContent || !userMessage) {
     return res.status(400).json({ error: 'Missing required fields' });
@@ -30,7 +89,13 @@ module.exports = async function handler(req, res) {
       apiKey: process.env.ANTHROPIC_API_KEY
     });
 
-    const systemPrompt = buildChatSystemPrompt(noteContent, noteAnalysis, mode);
+    // Get memory context for personalization
+    const memoryContext = userId ? await getMemoryContextForChat(userId) : '';
+    if (memoryContext) {
+      console.log('[Chat] Retrieved memory context for user:', userId);
+    }
+
+    const systemPrompt = buildChatSystemPrompt(noteContent, noteAnalysis, mode, memoryContext);
     const messages = buildChatMessages(chatHistory, userMessage);
 
     const response = await client.messages.create({
@@ -60,8 +125,9 @@ module.exports = async function handler(req, res) {
 /**
  * Build the system prompt for Socratic dialogue
  * Supports 4 modes: clarify, expand, challenge, decide
+ * Enhanced with memory context for personalization
  */
-function buildChatSystemPrompt(noteContent, noteAnalysis, mode) {
+function buildChatSystemPrompt(noteContent, noteAnalysis, mode, memoryContext = '') {
   const analysis = noteAnalysis || {};
   const isDecision = analysis.decision?.isDecision;
   const isPersonal = analysis.noteType === 'personal';
@@ -69,8 +135,17 @@ function buildChatSystemPrompt(noteContent, noteAnalysis, mode) {
   // Mode-specific instructions
   const modeInstructions = getModeInstructions(mode);
 
-  let prompt = `You are a thoughtful companion helping someone think through their thoughts. Your role is to be a Socratic guide - asking questions that help them discover insights, not telling them what to think.
+  // Memory context section
+  const memorySection = memoryContext ? `
+## What You Know About This Person
 
+${memoryContext}
+
+Use this context naturally in your responses - reference people and patterns you know about when relevant.
+` : '';
+
+  let prompt = `You are a thoughtful companion helping someone think through their thoughts. Your role is to be a Socratic guide - asking questions that help them discover insights, not telling them what to think.
+${memorySection}
 ## The Context
 
 The user recorded this thought:

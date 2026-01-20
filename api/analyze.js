@@ -53,6 +53,91 @@ async function getUserOnboardingContext(userId) {
 }
 
 // ═══════════════════════════════════════════════════════════
+// MEM0 GAP INTEGRATION: MEMORY CONTEXT RETRIEVAL
+// Retrieves category summaries + top entities for enhanced personalization
+// ═══════════════════════════════════════════════════════════
+
+/**
+ * Retrieve memory context for analysis
+ * Uses tiered approach: category summaries first, then top entities
+ * @param {string} userId - User ID
+ * @param {string} noteContent - The note being analyzed
+ * @returns {Object} Memory context with formatted string and stats
+ */
+async function getMemoryContext(userId, noteContent) {
+  if (!supabase || !userId) {
+    return { formatted: '', stats: { summaries: 0, entities: 0 } };
+  }
+
+  try {
+    const results = { summaries: [], entities: [], formatted: '' };
+
+    // TIER 1: Get category summaries (most efficient)
+    const { data: summaries, error: summaryError } = await supabase
+      .from('category_summaries')
+      .select('category, summary, entity_count, updated_at')
+      .eq('user_id', userId)
+      .order('updated_at', { ascending: false })
+      .limit(5);
+
+    if (!summaryError && summaries?.length > 0) {
+      results.summaries = summaries;
+      console.log(`[Analyze] Memory: Found ${summaries.length} category summaries`);
+    }
+
+    // TIER 2: Get top entities by importance
+    const { data: entities, error: entityError } = await supabase
+      .from('user_entities')
+      .select('name, entity_type, summary, relationship, importance, context_notes, updated_at')
+      .eq('user_id', userId)
+      .eq('status', 'active')
+      .order('importance_score', { ascending: false })
+      .order('mention_count', { ascending: false })
+      .limit(10);
+
+    if (!entityError && entities?.length > 0) {
+      results.entities = entities;
+      console.log(`[Analyze] Memory: Found ${entities.length} top entities`);
+    }
+
+    // Format memory context
+    const parts = [];
+
+    // Add category summaries
+    if (results.summaries.length > 0) {
+      parts.push('What I know about you:');
+      results.summaries.forEach(s => {
+        parts.push(`[${s.category.replace('_', ' ').toUpperCase()}]: ${s.summary}`);
+      });
+      parts.push('');
+    }
+
+    // Add top entities with context
+    if (results.entities.length > 0) {
+      parts.push('People and things in your world:');
+      results.entities.forEach(e => {
+        const relationship = e.relationship ? ` (${e.relationship})` : '';
+        const context = e.context_notes?.slice(-1)?.[0] || e.summary || '';
+        const contextSnippet = context ? ` — ${context.substring(0, 100)}` : '';
+        parts.push(`- ${e.name}${relationship}${contextSnippet}`);
+      });
+    }
+
+    results.formatted = parts.join('\n');
+    results.stats = {
+      summaries: results.summaries.length,
+      entities: results.entities.length
+    };
+
+    return results;
+
+  } catch (err) {
+    console.error('[Analyze] Memory context error:', err.message);
+    return { formatted: '', stats: { summaries: 0, entities: 0 } };
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
 // MEM0 BUILD 7: INTELLIGENT MEMORY INTEGRATION
 // Enhanced extraction + UPDATE PHASE (ADD/UPDATE/DELETE/NOOP)
 // ═══════════════════════════════════════════════════════════
@@ -538,11 +623,131 @@ async function runMem0Pipeline(noteContent, userId, client, supabaseClient, know
     }
 
     console.log('[Analyze] Mem0 - Processed', results.length, 'memories');
+
+    // Update category summaries if we processed any memories
+    if (results.length > 0 && results.some(r => r.executed)) {
+      await updateCategorySummariesAfterExtraction(userId, memories, supabaseClient);
+    }
+
     return { processed: results.length, results };
 
   } catch (err) {
     console.error('[Analyze] Mem0 pipeline error:', err.message);
     return { processed: 0, results: [], error: err.message };
+  }
+}
+
+/**
+ * MEM0 GAP 1: Update category summaries after entity extraction
+ * Calls evolve-summary logic to rewrite summaries
+ */
+async function updateCategorySummariesAfterExtraction(userId, memories, supabaseClient) {
+  if (!userId || !supabaseClient || !memories?.length) return;
+
+  const Anthropic = require('@anthropic-ai/sdk');
+  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+  // Category keywords for classification
+  const CATEGORY_KEYWORDS = {
+    work_life: ['work', 'job', 'office', 'meeting', 'project', 'deadline', 'boss', 'colleague', 'career', 'company', 'startup'],
+    personal_life: ['home', 'weekend', 'hobby', 'vacation', 'relax', 'fun', 'house', 'apartment'],
+    health_wellness: ['health', 'exercise', 'workout', 'gym', 'sleep', 'diet', 'stress', 'therapy', 'doctor'],
+    relationships: ['friend', 'family', 'partner', 'spouse', 'dating', 'marriage', 'parent', 'child', 'relationship'],
+    goals_aspirations: ['goal', 'dream', 'aspiration', 'plan', 'future', 'ambition', 'want', 'achieve'],
+    preferences: ['like', 'love', 'prefer', 'favorite', 'enjoy', 'hate', 'dislike'],
+    projects: ['project', 'build', 'create', 'develop', 'launch', 'ship', 'product', 'app'],
+    challenges: ['challenge', 'problem', 'struggle', 'difficulty', 'obstacle', 'worry', 'stuck']
+  };
+
+  // Classify each memory into a category
+  function classifyMemory(memory) {
+    const text = [memory.name || '', memory.content || ''].join(' ').toLowerCase();
+    let maxScore = 0;
+    let bestCategory = 'general';
+
+    for (const [category, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
+      const score = keywords.filter(kw => text.includes(kw)).length;
+      if (score > maxScore) {
+        maxScore = score;
+        bestCategory = category;
+      }
+    }
+    return maxScore >= 1 ? bestCategory : 'general';
+  }
+
+  // Group memories by category
+  const memoriesByCategory = {};
+  for (const memory of memories) {
+    const category = classifyMemory(memory);
+    if (!memoriesByCategory[category]) memoriesByCategory[category] = [];
+    memoriesByCategory[category].push(memory);
+  }
+
+  // Process each category
+  for (const [category, categoryMemories] of Object.entries(memoriesByCategory)) {
+    if (categoryMemories.length === 0) continue;
+
+    try {
+      // Get existing summary
+      const { data: existing } = await supabaseClient
+        .from('category_summaries')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('category', category)
+        .single();
+
+      // Build context for summary evolution
+      const entityContext = categoryMemories.map(m =>
+        `- ${m.name}: ${m.content || 'mentioned'}`
+      ).join('\n');
+
+      const prompt = `You are maintaining a personal knowledge summary for a user's ${category.replace('_', ' ')} category.
+
+${existing?.summary ? `CURRENT SUMMARY:\n${existing.summary}\n\n` : 'No existing summary yet.\n\n'}NEW INFORMATION:
+${entityContext}
+
+Write a new, cohesive prose summary (2-4 sentences) that incorporates ALL relevant information.
+- If new info CONTRADICTS existing info, use the new info
+- Keep it personal and warm
+- Focus on what matters most
+
+Write ONLY the new summary:`;
+
+      const response = await client.messages.create({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 200,
+        messages: [{ role: 'user', content: prompt }]
+      });
+
+      const newSummary = response.content[0]?.text?.trim();
+      if (!newSummary) continue;
+
+      // Upsert the summary
+      if (existing) {
+        await supabaseClient
+          .from('category_summaries')
+          .update({
+            summary: newSummary,
+            entity_count: (existing.entity_count || 0) + categoryMemories.length,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existing.id);
+      } else {
+        await supabaseClient
+          .from('category_summaries')
+          .insert({
+            user_id: userId,
+            category,
+            summary: newSummary,
+            entity_count: categoryMemories.length
+          });
+      }
+
+      console.log(`[Analyze] Mem0 - Updated ${category} summary`);
+
+    } catch (err) {
+      console.warn(`[Analyze] Mem0 - Summary update error for ${category}:`, err.message);
+    }
   }
 }
 
@@ -1449,6 +1654,27 @@ module.exports = async function handler(req, res) {
       // Inject into context for downstream use
       context.personalizationContext = onboardingContext;
       context.onboardingData = onboarding;
+    }
+  }
+
+  // ═══════════════════════════════════════════
+  // MEM0 GAP: ENHANCED MEMORY CONTEXT
+  // Category summaries + top entities
+  // ═══════════════════════════════════════════
+  if (userId) {
+    const memoryContext = await getMemoryContext(userId, input?.content || '');
+    if (memoryContext.formatted) {
+      // Append memory context to personalization
+      if (context.personalizationContext) {
+        // Insert before closing </user_context> tag
+        context.personalizationContext = context.personalizationContext.replace(
+          '</user_context>',
+          `\n${memoryContext.formatted}\n</user_context>`
+        );
+      } else {
+        context.personalizationContext = `<user_context>\n${memoryContext.formatted}\n</user_context>`;
+      }
+      console.log('[Analyze] Mem0 - Added memory context:', memoryContext.stats);
     }
   }
 
