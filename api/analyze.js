@@ -492,10 +492,14 @@ async function runMem0Pipeline(noteContent, userId, client, supabaseClient, know
 
         // Execute the operation
         if (decision.operation !== 'NOOP') {
-          const execResult = await executeMemoryOperation(
-            supabaseClient, userId, decision.operation, decision.input, fact, sourceNoteId
-          );
-          results.push({ fact: fact.name, ...decision, executed: !!execResult });
+          try {
+            const execResult = await executeMemoryOperation(
+              supabaseClient, userId, decision.operation, decision.input, fact, sourceNoteId
+            );
+            results.push({ fact: fact.name, ...decision, executed: !!execResult, execResult });
+          } catch (execErr) {
+            results.push({ fact: fact.name, ...decision, executed: false, execError: execErr.message });
+          }
         } else {
           results.push({ fact: fact.name, ...decision, executed: false });
           // Log NOOP to audit trail
