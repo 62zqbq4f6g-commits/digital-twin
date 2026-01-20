@@ -546,6 +546,182 @@ async function checkMilestoneSignal(user_id, recentNoteCount) {
 }
 
 /**
+ * MEM0 BUILD 7: Build type-aware context for MIRROR conversations
+ * Uses enhanced search with memory types for richer context
+ */
+async function buildMirrorContext(user_id, query = '') {
+  try {
+    // Check if we have a query to generate embedding for
+    let embedding = null;
+    if (query && query.length > 10) {
+      try {
+        const embResponse = await fetch('https://api.openai.com/v1/embeddings', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
+          },
+          body: JSON.stringify({
+            model: 'text-embedding-3-small',
+            input: query
+          })
+        });
+        const embData = await embResponse.json();
+        embedding = embData.data?.[0]?.embedding;
+      } catch (e) {
+        console.log('[mirror] Embedding generation failed, using fallback:', e.message);
+      }
+    }
+
+    // Get user preferences
+    const { data: prefs } = await supabase
+      .from('memory_preferences')
+      .select('*')
+      .eq('user_id', user_id)
+      .maybeSingle();
+
+    // Detect if query asks about history/past
+    const includeHistorical = query && /used to|previously|in the past|history|changed/i.test(query);
+
+    let memories = [];
+
+    // Try enhanced search if we have embedding
+    if (embedding) {
+      const { data: searchResults } = await supabase.rpc('match_entities_enhanced', {
+        query_embedding: embedding,
+        match_threshold: 0.35,
+        match_count: 20,
+        p_user_id: user_id,
+        p_include_historical: includeHistorical,
+        p_exclude_expired: true,
+        p_sensitivity_max: prefs?.default_sensitivity_level || 'normal'
+      });
+      memories = searchResults || [];
+    }
+
+    // Fallback: get recent entities if no embedding search
+    if (!memories.length) {
+      const { data: fallbackEntities } = await supabase
+        .from('user_entities')
+        .select('*')
+        .eq('user_id', user_id)
+        .eq('status', 'active')
+        .order('updated_at', { ascending: false })
+        .limit(20);
+      memories = fallbackEntities || [];
+    }
+
+    if (!memories.length) {
+      return { context: '', memories: [], stats: { total: 0 } };
+    }
+
+    // Prioritize by type for better context
+    const prioritized = {
+      preferences: memories.filter(m => m.memory_type === 'preference'),
+      goals: memories.filter(m => m.memory_type === 'goal' && !m.is_historical),
+      facts: memories.filter(m => m.memory_type === 'fact'),
+      entities: memories.filter(m => m.memory_type === 'entity' || !m.memory_type),
+      events: memories.filter(m => m.memory_type === 'event'),
+      decisions: memories.filter(m => m.memory_type === 'decision'),
+      historical: memories.filter(m => m.is_historical)
+    };
+
+    // Build context sections
+    let context = '';
+
+    if (prioritized.preferences.length) {
+      context += `\n<user_preferences>\n`;
+      prioritized.preferences.forEach(p => {
+        context += `- ${p.summary || p.name}\n`;
+      });
+      context += `</user_preferences>\n`;
+    }
+
+    if (prioritized.goals.length) {
+      context += `\n<active_goals>\n`;
+      prioritized.goals.forEach(g => {
+        const deadline = g.expires_at ? ` (deadline: ${new Date(g.expires_at).toLocaleDateString()})` : '';
+        context += `- ${g.summary || g.name}${deadline}\n`;
+      });
+      context += `</active_goals>\n`;
+    }
+
+    if (prioritized.entities.length) {
+      context += `\n<relevant_context>\n`;
+      prioritized.entities.forEach(e => {
+        const sentiment = (e.sentiment_average || 0) > 0.3 ? '(positive)' :
+                         (e.sentiment_average || 0) < -0.3 ? '(negative)' : '';
+        context += `- ${e.name}: ${e.summary || e.relationship || 'known'} ${sentiment}\n`;
+      });
+      context += `</relevant_context>\n`;
+    }
+
+    if (prioritized.facts.length) {
+      context += `\n<known_facts>\n`;
+      prioritized.facts.forEach(f => {
+        context += `- ${f.summary || f.name}\n`;
+      });
+      context += `</known_facts>\n`;
+    }
+
+    if (prioritized.events.length) {
+      context += `\n<upcoming_events>\n`;
+      prioritized.events.forEach(e => {
+        const dateStr = e.effective_from ? new Date(e.effective_from).toLocaleDateString() : '';
+        context += `- ${e.summary || e.name}${dateStr ? ` (${dateStr})` : ''}\n`;
+      });
+      context += `</upcoming_events>\n`;
+    }
+
+    if (includeHistorical && prioritized.historical.length) {
+      context += `\n<historical_context>\n`;
+      prioritized.historical.forEach(h => {
+        context += `- Previously: ${h.summary || h.name}\n`;
+      });
+      context += `</historical_context>\n`;
+    }
+
+    // Get related entities via graph if main entity detected
+    const mainEntity = memories.find(m => m.entity_type === 'person' && (m.similarity || 0) > 0.6);
+    if (mainEntity) {
+      try {
+        const { data: connections } = await supabase.rpc('traverse_entity_graph', {
+          p_entity_id: mainEntity.id,
+          p_user_id: user_id,
+          p_max_depth: 1,
+          p_min_strength: 0.4
+        });
+
+        if (connections?.length) {
+          context += `\n<related_context>\n`;
+          context += `${mainEntity.name}'s connections:\n`;
+          connections.forEach(c => {
+            context += `- ${(c.relationship_types || []).join(' → ')} ${c.entity_name}\n`;
+          });
+          context += `</related_context>\n`;
+        }
+      } catch (e) {
+        console.log('[mirror] Graph traversal not available:', e.message);
+      }
+    }
+
+    return {
+      context,
+      memories: memories.map(m => m.id),
+      stats: {
+        total: memories.length,
+        by_type: Object.fromEntries(
+          Object.entries(prioritized).map(([k, v]) => [k, v.length]).filter(([, v]) => v > 0)
+        )
+      }
+    };
+  } catch (error) {
+    console.error('[mirror] buildMirrorContext error:', error);
+    return { context: '', memories: [], stats: { total: 0 } };
+  }
+}
+
+/**
  * Get user context for response generation
  */
 async function getUserContext(user_id) {
@@ -565,12 +741,13 @@ async function getUserContext(user_id) {
     console.log('[mirror] User note count:', noteCount || 0);
   }
 
-  // Get entities
+  // Get entities with Mem0 enhancements
   const { data: entities, error: entitiesError } = await supabase
     .from('user_entities')
-    .select('name, entity_type, relationship, context_notes, mention_count')
+    .select('name, entity_type, memory_type, relationship, context_notes, mention_count, sentiment_average, is_historical, importance')
     .eq('user_id', user_id)
-    .order('mention_count', { ascending: false })
+    .eq('status', 'active')
+    .order('importance_score', { ascending: false })
     .limit(15);
 
   if (entitiesError) {
@@ -673,11 +850,22 @@ async function getOnboardingContext(user_id) {
 /**
  * Generate Inscript response using Claude
  * Implements 5 insight types: Connection, Pattern, Reflection prompt, Reframe, Summary
+ * MEM0 BUILD 7: Enhanced with type-aware context
  */
 async function generateResponse(user_id, userMessage, history, context, additionalContext) {
+  // MEM0 BUILD 7: Get type-aware context based on user's message
+  const mirrorContext = await buildMirrorContext(user_id, userMessage);
+
+  // Merge enhanced context with existing context
+  const enhancedContext = {
+    ...context,
+    mem0Context: mirrorContext.context,
+    mem0Stats: mirrorContext.stats
+  };
+
   // Analyze the conversation to determine best insight type
-  const insightType = analyzeForInsightType(userMessage, history, context);
-  const systemPrompt = buildSystemPrompt(context, insightType);
+  const insightType = analyzeForInsightType(userMessage, history, enhancedContext);
+  const systemPrompt = buildSystemPrompt(enhancedContext, insightType);
   const messages = buildConversationMessages(history, userMessage);
 
   try {
@@ -843,6 +1031,9 @@ Currently focused on: ${onboarding.focus?.join(', ') || 'various things'}`
   // Insight type specific instructions
   const insightInstructions = getInsightTypeInstructions(insightType);
 
+  // MEM0 BUILD 7: Include type-aware context if available
+  const mem0Context = context.mem0Context || '';
+
   // Build the full context block
   let userContextBlock = `<user_context>
 User's name: ${userName}
@@ -852,7 +1043,8 @@ Note activity: ${notesContext}
 People and topics from their notes:
 ${entitiesContext}
 ${patternsContext ? `\nObserved patterns:\n${patternsContext}` : ''}
-</user_context>`;
+</user_context>
+${mem0Context ? `\n<enhanced_memory_context>\n${mem0Context}</enhanced_memory_context>` : ''}`;
 
   return `You are Inscript — a thoughtful companion who knows ${userName}'s world and helps them understand themselves.
 
