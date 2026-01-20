@@ -142,10 +142,16 @@ Return JSON only (no markdown):
       "is_historical": false,
       "recurrence_pattern": null,
       "sensitivity_level": "normal|sensitive|private",
+      "sentiment": 0.0,
       "confidence": 0.8
     }
   ]
 }
+
+Sentiment guidelines:
+- Range: -1.0 (very negative) to 1.0 (very positive)
+- 0.0 = neutral/factual
+- Examples: "lost job" = -0.8, "got promoted" = 0.8, "meeting scheduled" = 0.0
 
 Rules:
 - Extract named entities (people, companies, places with proper names)
@@ -322,6 +328,7 @@ async function executeMemoryOperation(supabaseClient, userId, operation, input, 
         is_historical: fact.is_historical || false,
         recurrence_pattern: fact.recurrence_pattern || null,
         sensitivity_level: fact.sensitivity_level || 'normal',
+        sentiment_average: fact.sentiment ?? 0.0,
         embedding: embedding,
         status: 'active',
         version: 1,
@@ -370,6 +377,11 @@ async function executeMemoryOperation(supabaseClient, userId, operation, input, 
           .update({ is_historical: true, status: 'superseded' })
           .eq('id', memory_id);
 
+        // Compute updated sentiment average (exponential moving average)
+        const oldSentiment = existing.sentiment_average ?? 0;
+        const newSentiment = fact.sentiment ?? 0;
+        const updatedSentiment = oldSentiment * 0.7 + newSentiment * 0.3;
+
         const { data: newEntity } = await supabaseClient
           .from('user_entities')
           .insert({
@@ -377,6 +389,7 @@ async function executeMemoryOperation(supabaseClient, userId, operation, input, 
             id: undefined,
             summary: new_content,
             embedding: newEmbedding,
+            sentiment_average: updatedSentiment,
             is_historical: false,
             status: 'active',
             version: oldVersion + 1,
@@ -394,11 +407,17 @@ async function executeMemoryOperation(supabaseClient, userId, operation, input, 
           ? `${existing.summary}. ${new_content}`
           : new_content;
 
+        // Update sentiment average with exponential moving average
+        const oldSentiment = existing.sentiment_average ?? 0;
+        const newSentiment = fact.sentiment ?? 0;
+        const updatedSentiment = oldSentiment * 0.7 + newSentiment * 0.3;
+
         await supabaseClient
           .from('user_entities')
           .update({
             summary: finalContent,
             embedding: newEmbedding,
+            sentiment_average: updatedSentiment,
             version: oldVersion + 1,
             updated_at: new Date().toISOString()
           })
