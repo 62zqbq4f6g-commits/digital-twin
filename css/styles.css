@@ -454,11 +454,14 @@ body {
   left: 50%;
   transform: translateX(-50%);
   padding: var(--space-sm) var(--space-lg);
-  background-color: var(--color-black);
-  color: var(--color-white);
+  /* Design guidelines: white bg, black reserved for buttons only */
+  background: white;
+  color: #333;
+  border: 1px solid #e0e0e0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   font-size: var(--text-caption);
   font-weight: var(--weight-medium);
-  border-radius: var(--radius-full);
+  border-radius: 4px;
   opacity: 0;
   transition: opacity var(--transition-fast);
   z-index: 200;
@@ -6526,19 +6529,22 @@ body {
    Vogue minimalist: black on white, no shadows
    ───────────────────────────────────────── */
 
+/* Design guidelines: white bg, black reserved for buttons only */
 .actions-toast {
   position: fixed;
   bottom: 100px;
   left: 50%;
   transform: translateX(-50%) translateY(20px);
-  background: var(--color-black);
-  color: var(--color-white);
+  background: white;
+  color: #333;
+  border: 1px solid #e0e0e0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   font-family: var(--font-sans);
   font-size: 0.85rem;
   font-weight: 400;
   letter-spacing: 0.01em;
   padding: 0.75rem 1.5rem;
-  border-radius: 8px;
+  border-radius: 4px;
   opacity: 0;
   transition: opacity 0.3s ease, transform 0.3s ease;
   z-index: 9999;
@@ -6561,7 +6567,7 @@ body {
 .toast-undo-btn {
   background: transparent;
   border: none;
-  color: var(--color-white);
+  color: #333;
   font-family: var(--font-sans);
   font-size: 0.85rem;
   font-weight: 500;
@@ -7006,19 +7012,22 @@ body {
 }
 
 /* Phase 4.5.6: Toast notification - refined */
+/* Design guidelines: white bg, black reserved for buttons only */
 .toast {
   position: fixed;
   bottom: 100px;
   left: 50%;
   transform: translateX(-50%);
   padding: 0.65rem 1.25rem;
-  background: var(--color-black);
-  color: var(--color-white);
+  background: white;
+  color: #333;
+  border: 1px solid #e0e0e0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   font-family: var(--font-sans);
   font-size: 0.75rem;
   font-weight: 400;
   letter-spacing: 0.1em;
-  border-radius: 2px;
+  border-radius: 4px;
   z-index: 10000;
   animation: toastFade 0.25s ease;
 }
@@ -7513,14 +7522,19 @@ body {
   transform: translateY(0);
 }
 
+/* Design guidelines: white bg, black reserved for buttons only */
 .toast-v2.toast-error {
-  background: var(--color-black);
-  color: var(--color-white);
+  background: white;
+  color: #333;
+  border: 1px solid #e0e0e0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .toast-v2.toast-success {
-  background: var(--color-black);
-  color: var(--color-white);
+  background: white;
+  color: #333;
+  border: 1px solid #e0e0e0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .toast-v2 .toast-message {
@@ -7533,8 +7547,8 @@ body {
 
 .toast-v2 .toast-btn {
   background: transparent;
-  border: 1px solid var(--color-white);
-  color: var(--color-white);
+  border: 1px solid #333;
+  color: #333;
   padding: 8px 16px;
   border-radius: 4px;
   font-family: var(--font-sans);
@@ -7545,7 +7559,7 @@ body {
 }
 
 .toast-v2 .toast-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.05);
 }
 
 /* ==================== */
