@@ -502,21 +502,43 @@
    LOADING & ERROR STATES
    ===================================================== */
 
-/* Elegant three-dot pulse loader - Vogue minimalist */
+/* Elegant loading with contextual messages - Vogue minimalist */
 .mirror-loading {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  min-height: 200px;
+  background: white;
+  padding: 40px 20px;
+}
+
+/* Contextual loading message - editorial style */
+.mirror-loading-message {
+  color: var(--silver-500, #737373);
+  font-family: var(--font-editorial, 'Cormorant Garamond', Georgia, serif);
+  font-size: 1rem;
+  font-style: italic;
+  letter-spacing: 0.02em;
+  text-align: center;
+  min-height: 1.4em;
+  transition: opacity 0.15s ease;
+}
+
+/* Three-dot pulse animation container */
+.mirror-loading-dots {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  min-height: 200px;
-  background: white;
 }
 
 .mirror-loading-dot {
-  width: 6px;
-  height: 6px;
-  background: #ccc;
+  width: 5px;
+  height: 5px;
+  background: var(--silver-300, #D4D4D4);
   border-radius: 50%;
   animation: mirrorPulse 1.2s ease-in-out infinite;
 }

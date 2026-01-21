@@ -413,6 +413,7 @@ const UI = {
   },
 
   // Phase 11.2: Editorial loading messages (poetic, lowercase, Cormorant Garamond)
+  // Now uses LoadingMessages utility for random rotation
   LOADING_MESSAGES: {
     note: "sitting with this...",
     voice: "listening closely...",
@@ -428,14 +429,37 @@ const UI = {
 
   /**
    * Phase 9.3: Show loading overlay with contextual message
-   * @param {string} type - Type of loading (note, voice, image, reflect, save, auth, onboarding, delete)
+   * Now uses LoadingMessages utility for random, contextual messages
+   * @param {string} type - Type of loading (note, voice, image, reflect, save, auth, onboarding, delete, analysis, chat)
    */
   showLoading(type = 'note') {
     const overlay = document.getElementById('loading-overlay');
     const textEl = document.getElementById('loading-text');
     if (!overlay) return;
 
-    const message = this.LOADING_MESSAGES[type] || this.LOADING_MESSAGES.note;
+    // Use LoadingMessages if available, with fallback to static messages
+    let message;
+    if (typeof LoadingMessages !== 'undefined') {
+      // Map type to LoadingMessages context
+      const contextMap = {
+        note: 'analysis',
+        analyze: 'analysis',
+        reflect: 'analysis',
+        voice: 'voice',
+        image: 'image',
+        chat: 'chat',
+        save: 'generic',
+        auth: 'generic',
+        onboarding: 'generic',
+        delete: 'generic',
+        sync: 'generic'
+      };
+      const context = contextMap[type] || 'generic';
+      message = LoadingMessages.get(context);
+    } else {
+      message = this.LOADING_MESSAGES[type] || this.LOADING_MESSAGES.note;
+    }
+
     if (textEl) textEl.textContent = message;
     overlay.classList.add('visible');
   },

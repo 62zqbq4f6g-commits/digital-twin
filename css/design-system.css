@@ -1566,6 +1566,64 @@
 }
 
 /* =============================================================================
+   Contextual Loading Messages
+   ============================================================================= */
+
+.loading-message-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 40px 20px;
+}
+
+.loading-message {
+  color: var(--silver-500, #737373);
+  font-family: var(--font-editorial, 'Cormorant Garamond', Georgia, serif);
+  font-size: 1rem;
+  font-style: italic;
+  letter-spacing: 0.02em;
+  text-align: center;
+  min-height: 1.4em;
+  transition: opacity 0.15s ease;
+}
+
+.loading-dots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.loading-dots .dot {
+  width: 5px;
+  height: 5px;
+  background: var(--silver-300, #D4D4D4);
+  border-radius: 50%;
+  animation: loadingPulse 1.2s ease-in-out infinite;
+}
+
+.loading-dots .dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.loading-dots .dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes loadingPulse {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* =============================================================================
    Phase 9.3: Toast Component
    ============================================================================= */
 

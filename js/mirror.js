@@ -326,8 +326,13 @@ class Mirror {
 
     if (this.isLoading && this.messages.length === 0) {
       this.container.innerHTML = this.renderLoading();
+      // Start message rotation after DOM update
+      requestAnimationFrame(() => this.startLoadingRotation());
       return;
     }
+
+    // Stop rotation when no longer in loading state
+    this.stopLoadingRotation();
 
     const isNewUser = this.noteCount < 5;
     const hasMessages = this.messages.length > 0;
@@ -466,21 +471,52 @@ class Mirror {
   }
 
   /**
-   * Render loading state
+   * Render loading state with contextual messages
    */
   renderLoading() {
+    // Get initial message
+    const message = typeof LoadingMessages !== 'undefined'
+      ? LoadingMessages.get('mirror')
+      : 'reflecting...';
+
     return `
       <div class="mirror-wrapper">
         <header class="mirror-header">
           <h2 class="mirror-title">MIRROR</h2>
         </header>
         <div class="mirror-loading">
-          <span class="mirror-loading-dot"></span>
-          <span class="mirror-loading-dot"></span>
-          <span class="mirror-loading-dot"></span>
+          <span class="mirror-loading-message">${message}</span>
+          <span class="mirror-loading-dots">
+            <span class="mirror-loading-dot"></span>
+            <span class="mirror-loading-dot"></span>
+            <span class="mirror-loading-dot"></span>
+          </span>
         </div>
       </div>
     `;
+  }
+
+  /**
+   * Start loading message rotation
+   */
+  startLoadingRotation() {
+    // Stop any existing rotation
+    this.stopLoadingRotation();
+
+    const messageEl = document.querySelector('.mirror-loading-message');
+    if (messageEl && typeof LoadingMessages !== 'undefined') {
+      this._loadingRotationCleanup = LoadingMessages.startRotation('mirror', messageEl, 3000);
+    }
+  }
+
+  /**
+   * Stop loading message rotation
+   */
+  stopLoadingRotation() {
+    if (this._loadingRotationCleanup) {
+      this._loadingRotationCleanup();
+      this._loadingRotationCleanup = null;
+    }
   }
 
   /**
