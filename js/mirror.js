@@ -439,7 +439,9 @@ class Mirror {
           <h2 class="mirror-title">MIRROR</h2>
         </header>
         <div class="mirror-loading">
-          <div class="mirror-loading-spinner"></div>
+          <span class="mirror-loading-dot"></span>
+          <span class="mirror-loading-dot"></span>
+          <span class="mirror-loading-dot"></span>
         </div>
       </div>
     `;
