@@ -12,6 +12,8 @@ class Mirror {
     this.isLoading = false;
     this.noteCount = 0;
     this.container = null;
+    // Track notes created this session for immediate context
+    this.sessionNotes = [];
   }
 
   /**
@@ -33,6 +35,38 @@ class Mirror {
    */
   attachEventListeners() {
     // Input handling is done dynamically after render
+
+    // Listen for new notes to track in session (for immediate MIRROR context)
+    window.addEventListener('note-saved', async (e) => {
+      try {
+        const noteId = e.detail?.noteId;
+        if (!noteId) return;
+
+        // Get note from local DB (before encryption, so we have content)
+        const note = await DB.get('notes', noteId);
+        if (!note) return;
+
+        // Extract content from note
+        const content = note.input?.raw_text || note.analysis?.cleanedInput || '';
+        if (!content || content.length < 10) return;
+
+        // Add to session notes (keep last 5)
+        this.sessionNotes.push({
+          content: content.substring(0, 500), // Limit size
+          timestamp: note.created_at || new Date().toISOString(),
+          title: note.analysis?.title || 'Recent note'
+        });
+
+        // Keep only last 5 session notes
+        if (this.sessionNotes.length > 5) {
+          this.sessionNotes.shift();
+        }
+
+        console.log('[Mirror] Session note tracked:', this.sessionNotes.length, 'notes');
+      } catch (err) {
+        console.warn('[Mirror] Failed to track session note:', err.message);
+      }
+    });
   }
 
   /**
@@ -122,7 +156,9 @@ class Mirror {
           user_id: Sync.user.id,
           conversation_id: this.conversationId,
           message: content.trim(),
-          context
+          context,
+          // Include recent session notes for immediate context
+          recentSessionNotes: this.sessionNotes
         })
       });
 

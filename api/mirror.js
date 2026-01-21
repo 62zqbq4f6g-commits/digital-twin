@@ -145,10 +145,15 @@ async function handleOpen(req, res, user_id) {
  * Handle user message and generate response
  */
 async function handleMessage(req, res, user_id) {
-  const { conversation_id, message, context } = req.body;
+  const { conversation_id, message, context, recentSessionNotes } = req.body;
 
   if (!conversation_id || !message) {
     return res.status(400).json({ error: 'conversation_id and message required' });
+  }
+
+  // Log session notes if present (for debugging)
+  if (recentSessionNotes?.length > 0) {
+    console.log('[mirror] Received', recentSessionNotes.length, 'session notes from client');
   }
 
   // Verify conversation belongs to user
@@ -185,6 +190,9 @@ async function handleMessage(req, res, user_id) {
 
   // Get user context (recent notes, entities)
   const userContext = await getUserContext(user_id);
+
+  // Add session notes to context (client-side notes not yet in server DB)
+  userContext.recentSessionNotes = recentSessionNotes || [];
 
   // Generate Inscript response
   const response = await generateResponse(user_id, message, history || [], userContext, context);
@@ -994,15 +1002,21 @@ function findReferencedEntities(content, entities) {
 /**
  * Build system prompt for MIRROR conversation
  * Note: User notes are E2E encrypted, so we use extracted entities for context
+ * Session notes are passed from client-side for immediate context
  */
 function buildSystemPrompt(context, insightType = 'reflection_prompt') {
-  const { noteCount, entities, patterns, userName, onboarding } = context;
+  const { noteCount, entities, patterns, userName, onboarding, recentSessionNotes } = context;
 
   // Note: Notes are E2E encrypted - we can't read content server-side
   // Instead, we use extracted entities which capture key people/topics from notes
   const notesContext = noteCount > 0
     ? `User has written ${noteCount} notes. Their key topics and people are extracted below.`
     : 'No notes yet - this is a new user.';
+
+  // Build session notes context (client-side notes for immediate context)
+  const sessionNotesContext = recentSessionNotes && recentSessionNotes.length > 0
+    ? recentSessionNotes.map((n, i) => `${i + 1}. "${n.content}" (${n.title || 'recent'})`).join('\n')
+    : null;
 
   // Build entities/people context - this is our primary source of note context
   // since notes are E2E encrypted and we can't read content server-side
@@ -1039,7 +1053,7 @@ Currently focused on: ${onboarding.focus?.join(', ') || 'various things'}`
 User's name: ${userName}
 ${onboardingContext ? onboardingContext + '\n' : ''}
 Note activity: ${notesContext}
-
+${sessionNotesContext ? `\nRECENT NOTES FROM THIS SESSION (highest priority - just written):\n${sessionNotesContext}\n` : ''}
 People and topics from their notes:
 ${entitiesContext}
 ${patternsContext ? `\nObserved patterns:\n${patternsContext}` : ''}
@@ -1066,14 +1080,31 @@ ${userContextBlock}
 
 ${insightInstructions}
 
+PERSONALIZATION IS MANDATORY:
+When making any recommendations (food, activities, places, approaches):
+1. ALWAYS connect to what you know about them from their notes and context
+2. Reference their preferences, experiences, relationships, current situation
+3. Example: "Given that you just arrived in Bangkok (from your note), and knowing you..."
+4. Example: "Since you mentioned traveling for work, here's something practical..."
+5. Never give generic recommendations - make them personal
+
+HANDLING LOCATION/RESTAURANT REQUESTS:
+When asked for specific addresses, restaurant names, or location data:
+1. Acknowledge honestly that you can't look up real-time business listings
+2. Give them EXACTLY what to search: "Search Google Maps for '[specific dish] near [area they mentioned]'"
+3. Describe what to look for: "Look for places with [specific signs of quality]"
+4. Suggest specific neighborhoods, areas, or landmarks if you know the city
+5. Recommend specific dish names to order, price ranges, what the experience should feel like
+6. Example: "I can't pull up addresses, but search 'som tam Sukhumvit Soi 38' - famous street food area. Look for stalls with mortars out front. Try som tam Thai first (sweeter), budget 50-80 baht."
+
 CONVERSATION RULES:
 1. Never more than 3 sentences before inviting response
-2. Reference the people, topics, and context you know about them from their entities above
-3. Allow user to redirect anytime
-4. Match their energy - quick message = brief response
-5. When asked what they've been writing about, reference the people and topics you know about (listed above with context from their notes)
+2. Reference the people, topics, and context you know about them
+3. CRITICAL: If they have recent session notes, reference those FIRST - they just wrote them
+4. Allow user to redirect anytime
+5. Match their energy - quick message = brief response
 
-IMPORTANT: You know the key people and topics from ${userName}'s notes (listed above). When they ask what they've been writing about, reference these specific people and topics, including any context excerpts. If entities have context notes, those are direct quotes or summaries from their actual writing.
+IMPORTANT: Recent session notes (if present above) are what they JUST wrote - reference these immediately and naturally. Don't say "I don't see that note yet" if it's in your context.
 
 Remember: You're their mirror, not their therapist. Reflect, don't prescribe.`;
 }
