@@ -231,7 +231,7 @@ class PatternVerification {
             <span class="pattern-card-icon">✓</span>
             <span class="pattern-card-label">CONFIRMED</span>
           </div>
-          <p class="pattern-card-text">${this.escapeHtml(pattern.short_description || pattern.description)}</p>
+          <p class="pattern-card-text">${this.escapeHtml(pattern.shortDescription || pattern.description)}</p>
         </div>
       `;
     }
@@ -243,7 +243,7 @@ class PatternVerification {
             <span class="pattern-card-icon">×</span>
             <span class="pattern-card-label">DISMISSED</span>
           </div>
-          <p class="pattern-card-text">${this.escapeHtml(pattern.short_description || pattern.description)}</p>
+          <p class="pattern-card-text">${this.escapeHtml(pattern.shortDescription || pattern.description)}</p>
         </div>
       `;
     }
@@ -253,7 +253,7 @@ class PatternVerification {
       <div class="pattern-card" data-pattern-id="${pattern.id}">
         <div class="pattern-card-header">
           <span class="pattern-card-icon">◆</span>
-          <span class="pattern-card-title">${this.escapeHtml(pattern.short_description || 'Pattern detected')}</span>
+          <span class="pattern-card-title">${this.escapeHtml(pattern.shortDescription || 'Pattern detected')}</span>
         </div>
         <p class="pattern-card-text">${this.escapeHtml(pattern.description)}</p>
 

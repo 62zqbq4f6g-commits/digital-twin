@@ -552,6 +552,13 @@ const TwinUI = {
         return;
       }
 
+      // Ensure Sync.user is available before loading patterns
+      if (!Sync?.user?.id) {
+        console.log('[TwinUI] Waiting for user authentication...');
+        container.innerHTML = '<p class="twin-empty">Loading patterns...</p>';
+        return;
+      }
+
       // Load patterns
       await PatternVerification.loadPatterns();
 
