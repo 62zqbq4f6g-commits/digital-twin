@@ -62,6 +62,12 @@ Set sensitivity_level:
 - General knowledge: "What's the capital of France?"
 - Already known information (check context)
 - Passwords, SSNs, credit card numbers (NEVER store)
+- Job titles alone without a name (e.g., "Senior Engineer", "CEO", "Product Manager")
+- Generic roles: "my boss", "a friend", "someone"
+
+IMPORTANT: Job titles should be in the description/relationship field, not as entity names.
+- CORRECT: {"name": "Sarah", "entity_type": "person", "content": "Sarah is a Senior Engineer at Google"}
+- WRONG: {"name": "Senior Engineer", "entity_type": "person", ...}
 
 ## OUTPUT FORMAT
 
@@ -153,6 +159,7 @@ Return JSON:
 Rules:
 - Only extract named entities (people, companies, places with proper names)
 - Do not extract generic terms like "the meeting" or "my work"
+- NEVER extract job titles as people (Senior Engineer, CEO, Product Manager are NOT names)
 - For people, include first names even without last names (e.g., "Sarah", "Marcus")
 - Detect changes like "Sarah left Google" or "moved to Brooklyn"
 - Detect temporal markers for future/past events

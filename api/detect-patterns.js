@@ -7,9 +7,10 @@
 
 const { createClient } = require('@supabase/supabase-js');
 
+const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = createClient(
   process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
+  supabaseKey
 );
 
 // Minimum requirements for pattern detection

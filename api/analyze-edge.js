@@ -79,6 +79,15 @@ export default async function handler(req, ctx) {
     t0 = Date.now();
     const reflection = await generateReflection(anthropic, content, memoryContext, onboardingData);
     console.log(`[Analyze-Edge] Reflection: ${Date.now() - t0}ms`);
+    console.log(`[Analyze-Edge] Reflection result:`, JSON.stringify(reflection, null, 2));
+
+    // Validate reflection has required fields
+    const heard = reflection?.what_i_heard || reflection?.heard || 'Reflection captured.';
+    const noticed = reflection?.what_i_noticed || reflection?.noticed || '';
+    const question = reflection?.question || '';
+
+    console.log(`[Analyze-Edge] Mapped - heard: ${heard?.substring(0, 50)}...`);
+    console.log(`[Analyze-Edge] Mapped - noticed: ${noticed?.substring(0, 50)}...`);
 
     const criticalPathTime = Date.now() - startTime;
     console.log(`[Analyze-Edge] === CRITICAL PATH COMPLETE: ${criticalPathTime}ms ===`);
@@ -103,12 +112,12 @@ export default async function handler(req, ctx) {
       JSON.stringify({
         // Tiered response format (Phase 8.8)
         tier: 2,
-        heard: reflection.what_i_heard,
-        noticed: reflection.what_i_noticed,
-        question: reflection.question,
+        heard: heard,
+        noticed: noticed,
+        question: question,
         // Standard fields
         title: generateTitle(content),
-        summary: reflection.what_i_heard,
+        summary: heard,
         cleanedInput: content,
         category: 'personal_reflection',
         type: 'observation',
@@ -261,6 +270,7 @@ GOOD question: "What wellness activities do you think would resonate most with y
     });
 
     const text = message.content[0]?.type === 'text' ? message.content[0].text : '{}';
+    console.log('[Analyze-Edge] Raw LLM response:', text.substring(0, 300));
 
     // Try to parse JSON, handle various formats
     try {
@@ -275,13 +285,17 @@ GOOD question: "What wellness activities do you think would resonate most with y
       if (cleanText.endsWith('```')) {
         cleanText = cleanText.slice(0, -3);
       }
+      cleanText = cleanText.trim();
 
-      return JSON.parse(cleanText.trim());
-    } catch {
+      const parsed = JSON.parse(cleanText);
+      console.log('[Analyze-Edge] Parsed JSON keys:', Object.keys(parsed));
+      return parsed;
+    } catch (parseError) {
       // If JSON parse fails, create structured response from text
-      console.warn('[Analyze-Edge] JSON parse failed, using text:', text.substring(0, 100));
+      console.warn('[Analyze-Edge] JSON parse failed:', parseError.message);
+      console.warn('[Analyze-Edge] Raw text was:', text.substring(0, 200));
       return {
-        what_i_heard: text,
+        what_i_heard: text.length > 0 ? text : 'I received your note.',
         what_i_noticed: '',
         question: ''
       };
@@ -368,14 +382,34 @@ async function extractEntities(anthropic, content) {
       model: 'claude-sonnet-4-20250514',
       max_tokens: 500,
       temperature: 0,
-      system: `Extract entities (people, places, organizations, projects) from the note.
+      system: `Extract named entities from the note.
+
+ENTITY TYPES:
+- person: Named individuals with actual names (e.g., "Sarah", "Marcus Chen", "TestPerson Alpha")
+- organization: Companies, institutions, teams (e.g., "Google", "Anthropic", "Microsoft")
+- place: Locations, cities, countries (e.g., "Bangkok", "New York", "Phuket")
+- project: Named projects or products (e.g., "Project Alpha", "Inscript")
+
+CRITICAL RULES:
+1. ONLY extract entities with specific names - not generic terms
+2. DO NOT extract job titles alone (e.g., "Senior Engineer", "CEO", "Product Manager")
+3. DO NOT extract generic roles without names
+4. If "Senior Engineer at Google" appears, extract "Google" (organization) NOT "Senior Engineer" (person)
+5. If a name appears with a job title, the person IS the name, the title goes in description
+
 Return ONLY valid JSON:
 {
   "entities": [
-    { "name": "string", "entity_type": "person|place|organization|project", "description": "brief context" }
+    { "name": "string", "entity_type": "person|place|organization|project", "description": "brief context including role/title" }
   ]
 }
-If no entities found, return { "entities": [] }
+
+EXAMPLES:
+Note: "Had coffee with Sarah, she's a Senior Engineer at Google"
+Correct: [{"name": "Sarah", "entity_type": "person", "description": "Senior Engineer at Google"}, {"name": "Google", "entity_type": "organization", "description": "Sarah works here"}]
+Wrong: [{"name": "Senior Engineer", "entity_type": "person", ...}]
+
+If no named entities found, return { "entities": [] }
 DO NOT include any text before or after the JSON.`,
       messages: [
         { role: 'user', content: `Note: "${content}"` }
