@@ -42,7 +42,7 @@ module.exports = async function handler(req, res) {
     // Fetch recent notes for pattern analysis
     const { data: notes, error: notesError } = await supabase
       .from('notes')
-      .select('id, created_at, content, classification')
+      .select('id, created_at')
       .eq('user_id', user_id)
       .is('deleted_at', null)
       .order('created_at', { ascending: false })
