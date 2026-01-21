@@ -41,7 +41,7 @@ BEGIN
   ) THEN
     ALTER TABLE entity_relationships
     ADD CONSTRAINT unique_relationship
-    UNIQUE (source_entity_id, target_entity_id, relationship_type);
+    UNIQUE (subject_entity_id, object_entity_id, predicate);
   END IF;
 END $$;
 
@@ -49,16 +49,16 @@ END $$;
 -- Indexes for graph traversal
 -- =====================================================
 
-CREATE INDEX IF NOT EXISTS idx_relationships_source
-ON entity_relationships(source_entity_id)
+CREATE INDEX IF NOT EXISTS idx_relationships_subject
+ON entity_relationships(subject_entity_id)
 WHERE is_active = true;
 
-CREATE INDEX IF NOT EXISTS idx_relationships_target
-ON entity_relationships(target_entity_id)
+CREATE INDEX IF NOT EXISTS idx_relationships_object
+ON entity_relationships(object_entity_id)
 WHERE is_active = true;
 
-CREATE INDEX IF NOT EXISTS idx_relationships_type
-ON entity_relationships(relationship_type);
+CREATE INDEX IF NOT EXISTS idx_relationships_predicate
+ON entity_relationships(predicate);
 
 CREATE INDEX IF NOT EXISTS idx_relationships_strength
 ON entity_relationships(strength DESC)
@@ -228,23 +228,23 @@ WITH RECURSIVE graph_traversal AS (
   -- Recursive case: follow relationships
   SELECT
     CASE
-      WHEN r.source_entity_id = gt.entity_id THEN r.target_entity_id
-      ELSE r.source_entity_id
+      WHEN r.subject_entity_id = gt.entity_id THEN r.object_entity_id
+      ELSE r.subject_entity_id
     END as entity_id,
     e.name as entity_name,
     e.entity_type,
     gt.relationship_path || e.name,
-    gt.relationship_types || r.relationship_type,
+    gt.relationship_types || r.predicate,
     gt.total_strength * COALESCE(r.strength, 0.5),
     gt.depth + 1
   FROM graph_traversal gt
   JOIN entity_relationships r ON (
-    r.source_entity_id = gt.entity_id OR r.target_entity_id = gt.entity_id
+    r.subject_entity_id = gt.entity_id OR r.object_entity_id = gt.entity_id
   )
   JOIN user_entities e ON (
     e.id = CASE
-      WHEN r.source_entity_id = gt.entity_id THEN r.target_entity_id
-      ELSE r.source_entity_id
+      WHEN r.subject_entity_id = gt.entity_id THEN r.object_entity_id
+      ELSE r.subject_entity_id
     END
   )
   WHERE gt.depth < p_max_depth
@@ -273,9 +273,9 @@ $$ LANGUAGE sql;
 -- =====================================================
 
 CREATE OR REPLACE FUNCTION update_relationship_strength(
-  p_source_entity_id UUID,
-  p_target_entity_id UUID,
-  p_relationship_type TEXT,
+  p_subject_entity_id UUID,
+  p_object_entity_id UUID,
+  p_predicate TEXT,
   p_strength_boost FLOAT DEFAULT 0.1
 )
 RETURNS VOID AS $$
@@ -284,30 +284,30 @@ BEGIN
   SET
     strength = LEAST(1.0, COALESCE(strength, 0.5) + p_strength_boost),
     updated_at = NOW()
-  WHERE source_entity_id = p_source_entity_id
-    AND target_entity_id = p_target_entity_id
-    AND relationship_type = p_relationship_type;
+  WHERE subject_entity_id = p_subject_entity_id
+    AND object_entity_id = p_object_entity_id
+    AND predicate = p_predicate;
 
   -- If no rows updated, relationship doesn't exist - could create it here
   IF NOT FOUND THEN
     INSERT INTO entity_relationships (
-      source_entity_id,
-      target_entity_id,
-      relationship_type,
+      subject_entity_id,
+      object_entity_id,
+      predicate,
       strength,
       is_active,
       user_id
     )
     SELECT
-      p_source_entity_id,
-      p_target_entity_id,
-      p_relationship_type,
+      p_subject_entity_id,
+      p_object_entity_id,
+      p_predicate,
       0.5 + p_strength_boost,
       true,
       e.user_id
     FROM user_entities e
-    WHERE e.id = p_source_entity_id
-    ON CONFLICT (source_entity_id, target_entity_id, relationship_type)
+    WHERE e.id = p_subject_entity_id
+    ON CONFLICT (subject_entity_id, object_entity_id, predicate)
     DO UPDATE SET
       strength = LEAST(1.0, entity_relationships.strength + p_strength_boost),
       updated_at = NOW();

@@ -2,9 +2,10 @@
 
 ## Your mirror in code.
 
-**Version:** 8.0.0  
-**Date:** January 19, 2026  
+**Version:** 8.1.0
+**Date:** January 21, 2026
 **Category:** Personal AI Memory
+**Status:** Production Ready — Mem0 Parity Achieved
 
 ---
 
@@ -157,8 +158,8 @@ You can export or delete your data at any time.
 
 | Phase | Action | Status |
 |-------|--------|--------|
-| **Now** | Use enterprise LLM with no-training guarantee | 🔲 |
-| **Now** | Implement Settings privacy page | 🔲 |
+| **Now** | Use enterprise LLM with no-training guarantee | ✅ |
+| **Now** | Implement Settings privacy page | ✅ |
 | **Soon** | Create formal privacy policy | 🔲 |
 | **Soon** | Add data export functionality | 🔲 |
 | **Soon** | Add complete data deletion | 🔲 |
@@ -222,7 +223,43 @@ User A's patterns → User B shows similar → System infers earlier → Pattern
 
 ---
 
-# PART 5: AHA MOMENT STRATEGY
+# PART 5: MEMORY SYSTEM (Mem0 Parity)
+
+## Architecture
+
+Inscript now has a production-grade memory system achieving Mem0 parity:
+
+### Three-Tier Retrieval
+1. **Tier 1: Category Summaries** — Fast, LLM-generated summaries by life area
+2. **Tier 2: Top Entities** — Key people, projects, themes with context
+3. **Tier 3: Full Hybrid** — Vector + keyword search for specific queries
+
+### Memory Operations
+Every note triggers intelligent memory operations:
+- **ADD** — New entity discovered
+- **UPDATE** — Existing entity context enriched
+- **DELETE** — Entity no longer relevant
+- **NOOP** — No memory changes needed
+
+### Automated Maintenance
+- Time decay (memories fade naturally)
+- Importance classification (trivial → critical)
+- Summary evolution (LLM rewrites, not appends)
+
+## The Result
+
+When user mentions Marcus, the AI knows:
+- Relationship: close friend
+- Context: career advisor, mentioned during decisions
+- History: 12 mentions across 8 notes
+- Pattern: appears when processing big choices
+
+This enables responses like:
+> "That's significant, given how close you two are."
+
+---
+
+# PART 6: AHA MOMENT STRATEGY
 
 ## The Challenge
 
@@ -252,9 +289,9 @@ Inscript's core value requires TIME. You can't demonstrate "I know your world" o
 
 ---
 
-# PART 6: ONBOARDING FLOW
+# PART 7: ONBOARDING FLOW
 
-## The 7-Screen Flow
+## The 8-Screen Flow (Screens 0-7)
 
 ### Screen 0: Welcome
 ```
@@ -340,7 +377,7 @@ Slow animation (2.5 seconds).
 
 ---
 
-# PART 7: SWITCHING COSTS
+# PART 8: SWITCHING COSTS
 
 ## The 5 Switching Costs
 
@@ -372,7 +409,7 @@ Switching Cost = Time Invested × Data Accumulated × Trust Built
 
 ---
 
-# PART 8: COMPETITIVE MOAT
+# PART 9: COMPETITIVE MOAT
 
 | Competitor | Can They Copy? | Why Not? |
 |------------|---------------|----------|
@@ -387,7 +424,7 @@ A user who has used Inscript for 6 months cannot switch to a competitor without 
 
 ---
 
-# PART 9: SUCCESS METRICS
+# PART 10: SUCCESS METRICS
 
 ## Activation Metrics
 
@@ -409,7 +446,7 @@ A user who has used Inscript for 6 months cannot switch to a competitor without 
 
 ---
 
-# PART 10: THE EXPERIENCE TIMELINE
+# PART 11: THE EXPERIENCE TIMELINE
 
 | Day | Experience |
 |-----|------------|
@@ -427,7 +464,8 @@ A user who has used Inscript for 6 months cannot switch to a competitor without 
 - **Name:** Inscript
 - **Tagline:** Your mirror in code
 - **Category:** Personal AI Memory
-- **Version:** 8.0.0
+- **Version:** 8.1.0
+- **Status:** Production Ready — Mem0 Parity Achieved
 
 ## Key URLs (To Be Determined)
 - App: inscript.app (check availability)
@@ -444,5 +482,6 @@ A user who has used Inscript for 6 months cannot switch to a competitor without 
 
 ---
 
-*Document Version: 1.0*
-*Last Updated: January 19, 2026*
+*Document Version: 2.0*
+*Last Updated: January 21, 2026*
+*Status: Mem0 Parity Achieved*

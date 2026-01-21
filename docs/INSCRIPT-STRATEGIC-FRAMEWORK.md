@@ -2,9 +2,9 @@
 
 ## Onboarding, Data Loops, Moat & Competitive Strategy
 
-**Version:** 2.0  
-**Date:** January 20, 2026  
-**Status:** v8.0.0 Live  
+**Version:** 3.0
+**Date:** January 21, 2026
+**Status:** v8.1.0 Live — Mem0 Parity Achieved
 **Goal:** Create defensible product-market fit through engineered experiences, proprietary data loops, and insurmountable switching costs
 
 ---
@@ -376,7 +376,51 @@ User A's patterns → User B shows similar → System infers earlier → Pattern
 
 ---
 
-# PART 5: SWITCHING COSTS
+# PART 5: MEMORY SYSTEM ARCHITECTURE
+
+## Overview (Mem0 Parity Achieved)
+
+The memory system powers all data loops with a production-grade three-tier architecture.
+
+## Three-Tier Retrieval
+
+```
+Query → Tier 1 (Summaries) → Sufficient? → Use
+                ↓ No
+        Tier 2 (Entities) → Sufficient? → Use
+                ↓ No
+        Tier 3 (Full Hybrid) → Use
+```
+
+| Tier | Source | Speed | Use Case |
+|------|--------|-------|----------|
+| **1** | Category Summaries | ~50ms | Broad context, general queries |
+| **2** | Top Entities | ~100ms | People/project-specific queries |
+| **3** | Full Hybrid | ~300ms | Specific, detailed queries |
+
+## Memory Operations
+
+Every note triggers intelligent classification:
+
+| Operation | When | Example |
+|-----------|------|---------|
+| **ADD** | New entity discovered | "Met Alex at the conference" |
+| **UPDATE** | Existing entity enriched | "Marcus gave great advice again" |
+| **DELETE** | Entity no longer relevant | "Ended partnership with Jake" |
+| **NOOP** | No memory changes needed | "Had a quiet Sunday" |
+
+## Automated Maintenance
+
+| Process | Schedule | Purpose |
+|---------|----------|---------|
+| Time decay | Daily | Memories fade naturally |
+| Importance classification | On note save | Rate trivial → critical |
+| Summary evolution | Weekly | LLM rewrites category summaries |
+| Memory consolidation | Monthly | Archive + compress old memories |
+
+---
+
+# PART 6: SWITCHING COSTS
 
 ## The 5 Switching Costs
 
@@ -489,7 +533,7 @@ Switching Cost = Time Invested × Data Accumulated × Trust Built
 
 ---
 
-# PART 6: THE AHA MOMENT STRATEGY
+# PART 7: THE AHA MOMENT STRATEGY
 
 ## The Challenge
 
@@ -521,7 +565,7 @@ This is the "holy shit, it knows" moment working in production.
 
 ---
 
-# PART 7: PRIVACY FOUNDATION
+# PART 8: PRIVACY FOUNDATION
 
 ## The Promise
 
@@ -554,16 +598,17 @@ Your world is yours alone.
 
 | Phase | Action | Status |
 |-------|--------|--------|
-| Now | Enterprise LLM with no-training guarantee | ✅ |
-| Now | Privacy screen in onboarding | ✅ |
-| Soon | Formal privacy policy page | 🔲 |
-| Soon | Data export functionality | 🔲 |
-| Soon | Complete data deletion | 🔲 |
-| Future | Client-side encryption option | 🔲 |
+| Now | Enterprise LLM with no-training guarantee | ✅ Complete |
+| Now | Privacy screen in onboarding | ✅ Complete |
+| Now | Row-level security on all tables | ✅ Complete |
+| Soon | Formal privacy policy page | 🔲 Planned |
+| Soon | Data export functionality | 🔲 Planned |
+| Soon | Complete data deletion | 🔲 Planned |
+| Future | Client-side encryption option | 🔲 Future |
 
 ---
 
-# PART 8: BRAND IDENTITY
+# PART 9: BRAND IDENTITY
 
 ## Visual Identity
 
@@ -607,12 +652,13 @@ Your world is yours alone.
 
 ---
 
-# PART 9: COMPETITIVE MOAT SUMMARY
+# PART 10: COMPETITIVE MOAT SUMMARY
 
 | Moat Type | How We Build It |
 |-----------|-----------------|
 | **Data moat** | Accumulated memory per user |
 | **Learning moat** | Feedback loops improve quality |
+| **Memory moat** | Three-tier retrieval, time decay, context assembly ✅ |
 | **Network moat** | Cross-user pattern intelligence (future) |
 | **Switching cost moat** | Memory + preferences + history |
 | **Brand moat** | Own "Personal AI Memory" category |
@@ -631,10 +677,11 @@ Your world is yours alone.
 
 ---
 
-# PART 10: IMPLEMENTATION ROADMAP
+# PART 11: IMPLEMENTATION ROADMAP
 
-## Completed (Phase 11) ✅
+## Completed ✅
 
+### Phase 11: Personalization Foundation
 | Feature | Status |
 |---------|--------|
 | Inscript rebrand | ✅ Live |
@@ -644,28 +691,42 @@ Your world is yours alone.
 | AI context injection | ✅ Live |
 | First note personalization | ✅ Verified |
 
-## Next (Phase 12)
+### Phase 13: Memory System (Mem0 Parity)
+| Feature | Status |
+|---------|--------|
+| Query Synthesis | ✅ Entity detection, query expansion |
+| Summary Evolution | ✅ LLM-powered rewriting |
+| Hybrid Retrieval | ✅ Vector + keyword fusion |
+| Tiered Retrieval | ✅ Category → Entity → Full |
+| Context Assembly | ✅ Token-limited with time decay |
+| MIRROR Tab | ✅ Conversational AI interface |
+| Pattern Detection | ✅ Behavioral pattern recognition |
+| Knowledge Pulse | ✅ Learning visibility after save |
+| Entity Cards | ✅ Click name → see context |
+
+## Next (Phase 14: Production Hardening)
 
 | Priority | Feature | Impact |
 |----------|---------|--------|
-| **P0** | Knowledge Pulse | Makes learning visible after every save |
-| **P0** | Entity Cards | Click name → see accumulated knowledge |
-| **P1** | Pattern verification UI | Collaborative learning |
-| **P1** | "What does Inscript know?" query | Big aha enablement |
+| **P0** | Production testing of memory system | Verify all integrations |
+| **P0** | Fix any integration bugs found | System stability |
+| **P1** | Add error tracking (Sentry) | Observability |
+| **P1** | Performance monitoring | System health |
 
-## Medium-term (Phase 13+)
+## Medium-term (Phase 15+)
 
 | Priority | Feature | Impact |
 |----------|---------|--------|
-| P1 | Memory depth visualization | Switching cost awareness |
-| P1 | "Remember when" retrospectives | Temporal value |
+| P0 | Vogue minimalist redesign | Experience transformation |
+| P1 | Split ui.js into modules | Maintainability |
 | P1 | Memory milestones (30/90/365 days) | Investment celebration |
+| P1 | "What does Inscript know?" query | Big aha enablement |
+| P2 | Memory visualization | Switching cost awareness |
 | P2 | Cross-user pattern intelligence | Network effects |
-| P2 | Category content/community | Brand moat |
 
 ---
 
-# PART 11: THE EXPERIENCE TIMELINE
+# PART 12: THE EXPERIENCE TIMELINE
 
 | Day | Experience |
 |-----|------------|
@@ -698,6 +759,6 @@ Inscript's Moat = Accumulated Memory × Trained Preferences × Intimate Voice ×
 
 ---
 
-*Strategic Framework v2.0*
-*Locked: January 20, 2026*
-*Status: v8.0.0 Live*
+*Strategic Framework v3.0*
+*Updated: January 21, 2026*
+*Status: v8.1.0 Live — Mem0 Parity Achieved*

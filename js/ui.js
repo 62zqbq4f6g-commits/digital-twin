@@ -1269,7 +1269,7 @@ const UI = {
         window.showUpdatingOverlay?.();
 
         try {
-          const response = await fetch('/api/analyze', {
+          const response = await fetch('/api/analyze-edge', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

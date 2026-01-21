@@ -232,7 +232,7 @@ const Analyzer = {
       const currentUserId = Sync.user?.id || null;
       console.log('[Analyzer] Phase 11 - Sending userId:', currentUserId);
 
-      const response = await fetch('/api/analyze', {
+      const response = await fetch('/api/analyze-edge', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

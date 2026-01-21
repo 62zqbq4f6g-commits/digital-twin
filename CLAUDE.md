@@ -1,6 +1,10 @@
 # CLAUDE.md — Inscript Developer Guide
 
-## Version 8.0.0 | January 20, 2026
+## Version 8.1.0 | January 21, 2026
+
+> **Phase:** Mem0 Parity Complete
+> **Status:** Production Ready
+> **Last Updated:** January 21, 2026
 
 ---
 
@@ -11,9 +15,283 @@
 | **App Name** | Inscript |
 | **Tagline** | Your mirror in code |
 | **Category** | Personal AI Memory |
-| **Version** | 8.0.0 |
+| **Version** | 8.1.0 |
 | **Production URL** | https://digital-twin-ecru.vercel.app |
 | **Working Directory** | `/Users/airoxthebox/Projects/digital-twin` |
+
+---
+
+# PROJECT STATUS
+
+## Completed Milestones
+
+| Phase | Description | Status |
+|-------|-------------|--------|
+| Phase 8 | Intelligent Twin | ✅ Complete |
+| Phase 9 | Personalization | ✅ Complete |
+| Phase 10 | Entity Extraction & Relationships | ✅ Complete |
+| Phase 11 | Inscript Rebrand + Onboarding | ✅ Complete |
+| Phase 13 | Patterns & MIRROR Tab | ✅ Complete |
+| **Mem0 Parity** | Full Memory Architecture | ✅ **100% Complete** |
+
+## What's Working in Production (January 21, 2026)
+
+| Feature | Status |
+|---------|--------|
+| Login / Sign up | ✅ Live |
+| 8-screen onboarding flow | ✅ Live |
+| Note creation (text, voice, image) | ✅ Live |
+| AI reflection with memory context | ✅ Live |
+| Seeded people → AI context injection | ✅ Live |
+| Entity extraction (ADD/UPDATE/DELETE/NOOP) | ✅ Live |
+| Category summaries (Tier 1) | ✅ Live |
+| Tiered memory retrieval | ✅ Live |
+| Sentiment tracking | ✅ Live |
+| Feedback loop | ✅ Live |
+| Actions tab | ✅ Live |
+| TWIN tab | ✅ Live |
+| MIRROR tab | ✅ Live |
+| Cloud sync (E2E encrypted) | ✅ Live |
+| PIN authentication | ✅ Live |
+
+---
+
+# ARCHITECTURE OVERVIEW
+
+## Stack
+
+| Layer | Technology |
+|-------|------------|
+| **Frontend** | Vanilla JS, mobile-responsive PWA |
+| **Backend** | Vercel serverless functions (Node.js) |
+| **Database** | Supabase (Postgres + pgvector) |
+| **AI** | Anthropic Claude (Sonnet) + OpenAI embeddings |
+| **Memory System** | Full Mem0 architecture (6 gaps closed) |
+| **Auth** | Supabase Auth + PIN encryption |
+
+## System Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         USER                                    │
+└────────────────────────────────┬────────────────────────────────┘
+                                 │
+                                 ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    index.html + js/*.js                         │
+│    (Notes Tab | Actions Tab | TWIN Tab | MIRROR Tab)            │
+└────────────────────────────────┬────────────────────────────────┘
+                                 │
+         ┌───────────────────────┼───────────────────────┐
+         ▼                       ▼                       ▼
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│  js/app.js      │    │  js/sync.js     │    │  js/pin.js      │
+│  (Pipeline)     │    │  (Cloud)        │    │  (Encryption)   │
+└────────┬────────┘    └────────┬────────┘    └─────────────────┘
+         │                      │
+         ▼                      ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    api/*.js (Vercel)                            │
+│  analyze | chat | memory-retrieve | tiered-retrieval | etc.     │
+└────────────────────────────────┬────────────────────────────────┘
+                                 │
+         ┌───────────────────────┼───────────────────────┐
+         ▼                       ▼                       ▼
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│  Supabase       │    │  Anthropic      │    │  OpenAI         │
+│  PostgreSQL     │    │  Claude API     │    │  Embeddings     │
+│  + pgvector     │    │                 │    │                 │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+```
+
+---
+
+# KEY FILES
+
+## Frontend (js/)
+
+| File | Purpose |
+|------|---------|
+| `js/app.js` | Application entry point, version (8.0.0) |
+| `js/ui.js` | Main UI (4,800+ lines - needs split) |
+| `js/entities.js` | Entity management and display |
+| `js/entity-memory.js` | Memory operations (CRUD) |
+| `js/context.js` | Context building for AI |
+| `js/embeddings.js` | Semantic search client |
+| `js/analyzer.js` | Analysis orchestration |
+| `js/onboarding.js` | 8-screen onboarding flow |
+| `js/twin-ui.js` | TWIN tab UI |
+| `js/mirror.js` | MIRROR tab UI |
+| `js/actions-ui.js` | Actions tab |
+| `js/signal-tracker.js` | Pattern signal tracking |
+| `js/pattern-verification.js` | Pattern verification UI |
+| `js/sync.js` | Cloud sync (E2E encrypted) |
+| `js/pin.js` | PIN authentication |
+| `js/auth.js` | Supabase auth wrapper |
+| `js/knowledge-pulse.js` | Learning feedback UI |
+| `js/entity-cards.js` | Entity detail cards |
+
+## Backend (api/)
+
+### Core Analysis
+
+| File | Purpose |
+|------|---------|
+| `api/analyze.js` | Main reflection + memory context injection (3,600+ lines) |
+| `api/chat.js` | Socratic dialogue with memory context |
+| `api/vision.js` | Image analysis (Claude Vision) |
+
+### Memory System (Mem0 Architecture)
+
+| File | Purpose |
+|------|---------|
+| `api/memory-retrieve.js` | **Unified retrieval orchestration** - THE entry point |
+| `api/tiered-retrieval.js` | Category summaries → entities → full retrieval |
+| `api/assemble-context.js` | Token-limited context with time decay scoring |
+| `api/synthesize-query.js` | Query understanding and entity detection |
+| `api/hybrid-retrieval.js` | Vector + keyword search fusion |
+| `api/evolve-summary.js` | LLM-powered summary rewriting |
+| `api/memory-update.js` | Memory CRUD operations |
+| `api/memory-search.js` | Semantic memory search |
+| `api/memory-consolidate.js` | Duplicate detection and merging |
+
+### Entity Processing
+
+| File | Purpose |
+|------|---------|
+| `api/extract-entities.js` | LLM entity extraction |
+| `api/classify-importance.js` | Entity importance scoring |
+| `api/infer-connections.js` | Cross-memory reasoning |
+| `api/compress-memory.js` | LLM memory compression |
+
+### Other APIs
+
+| File | Purpose |
+|------|---------|
+| `api/embed.js` | OpenAI embeddings |
+| `api/patterns.js` | Pattern detection |
+| `api/signals.js` | Signal processing |
+| `api/mirror.js` | MIRROR conversation |
+| `api/user-patterns.js` | User pattern management |
+| `api/digest.js` | Weekly digest generation |
+| `api/recovery.js` | PIN recovery email |
+| `api/refine.js` | Text refinement |
+| `api/env.js` | Public Supabase config |
+
+---
+
+# DATABASE TABLES
+
+## Core Tables
+
+| Table | Purpose |
+|-------|---------|
+| `notes` | Encrypted note storage |
+| `onboarding_data` | User onboarding (name, seasons, focus, people) |
+| `user_entities` | Extracted entities with importance/sentiment |
+| `note_embeddings` | pgvector embeddings for semantic search |
+| `entity_relationships` | Relationship graph between entities |
+| `category_summaries` | Pre-computed summaries per category |
+| `user_feedback` | Thumbs up/down on reflections |
+| `user_learning_profile` | Learned preferences |
+| `user_profiles` | Legacy profile data |
+| `user_salts` | Encryption salts |
+
+## Memory System Tables
+
+| Table | Purpose |
+|-------|---------|
+| `memory_inferences` | Cross-memory reasoning results |
+| `entity_sentiment_history` | Sentiment tracking over time |
+| `memory_jobs` | Async processing queue |
+| `detected_patterns` | Pattern detection results |
+
+## Phase 13 Tables
+
+| Table | Purpose |
+|-------|---------|
+| `user_patterns` | User behavioral patterns |
+| `mirror_conversations` | MIRROR chat history |
+| `mirror_sessions` | MIRROR session tracking |
+
+---
+
+# CRON JOBS
+
+Four automated maintenance jobs (requires `pg_cron` extension):
+
+| Job | Schedule | Purpose |
+|-----|----------|---------|
+| `cleanup-expired-memories` | Daily 3 AM UTC | Archive expired memories |
+| `weekly-memory-decay` | Sunday 4 AM UTC | Decay importance scores by tier |
+| `nightly-consolidation` | Daily 2 AM UTC | Flag potential duplicates |
+| `monthly-reindex` | 1st of month 5 AM UTC | Archive stale memories, update stats |
+
+### Decay Schedule
+
+| Importance | Starts After | Decay Rate |
+|------------|--------------|------------|
+| trivial | 7 days | -20%/week |
+| low | 14 days | -15%/week |
+| medium | 30 days | -10%/week |
+| high | 90 days | -5%/week |
+| critical | Never | 0% |
+
+---
+
+# ENVIRONMENT VARIABLES
+
+## Required for Local Development
+
+```bash
+# Anthropic (AI reflections)
+ANTHROPIC_API_KEY=sk-ant-...
+
+# OpenAI (embeddings)
+OPENAI_API_KEY=sk-...
+
+# Supabase
+SUPABASE_URL=https://xxx.supabase.co
+NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
+SUPABASE_ANON_KEY=eyJ...
+SUPABASE_SERVICE_KEY=eyJ...
+SUPABASE_SERVICE_ROLE_KEY=eyJ...
+
+# Optional: PIN recovery
+RESEND_API_KEY=re_...
+```
+
+## Vercel Environment Variables
+
+All of the above must be configured in Vercel Project Settings.
+
+---
+
+# COMMANDS
+
+```bash
+# Production URL
+https://digital-twin-ecru.vercel.app
+
+# Local development
+vercel dev --listen 3001
+
+# Deploy to production
+git add -A && git commit -m "message" && git push origin main
+
+# Force deploy
+vercel --prod
+
+# Check version (browser console)
+APP_VERSION  // "8.0.0"
+
+# Search codebase (avoid reading large files)
+grep -rn "functionName" js/*.js api/*.js
+
+# Git status
+git status
+git log --oneline -5
+```
 
 ---
 
@@ -27,13 +305,6 @@ We're creating a new category: **Personal AI Memory**
 
 > "Inscript is the first AI that actually remembers you.
 > Not just your notes — your world."
-
-## Core Value Proposition
-
-Inscript learns:
-- The **people** in your life
-- The **patterns** you can't see
-- The **context** that makes you *you*
 
 ## The Flywheel
 
@@ -50,33 +321,6 @@ Input → Learn → Demonstrate → Trust → More Input → Smarter
 - Never sold or shared
 - Delete means delete
 - This is non-negotiable
-
----
-
-# CURRENT STATE (Phase 11 Complete)
-
-## What's Working in Production
-
-| Feature | Status |
-|---------|--------|
-| Login / Sign up | ✅ Live |
-| 8-screen onboarding flow | ✅ Live |
-| Note creation (text, voice, image) | ✅ Live |
-| AI reflection with personalization | ✅ Live |
-| Seeded people → AI context injection | ✅ Verified |
-| Entity extraction | ✅ Live |
-| Feedback loop | ✅ Live |
-| Actions tab | ✅ Live |
-| TWIN tab | ✅ Live |
-| Cloud sync (E2E encrypted) | ✅ Live |
-| PIN authentication | ✅ Live |
-
-## The Critical Test — PASSED
-
-When user wrote about Marcus, the AI responded:
-> "I noticed you're holding input from Marcus—**your close friend**—alongside Sarah's pivot thinking..."
-
-This is the "holy shit, it knows" moment working in production.
 
 ---
 
@@ -101,151 +345,30 @@ This is the "holy shit, it knows" moment working in production.
   --ink-soft: #333333;
 
   /* Silver scale */
-  --silver-50: #F9F9F9;
-  --silver-100: #F5F5F5;
-  --silver-200: #E5E5E5;
-  --silver-300: #D4D4D4;
-  --silver-400: #A3A3A3;
-  --silver-500: #737373;
-  --silver-600: #525252;
-  --silver-700: #404040;
-  --silver-800: #262626;
-  --silver-900: #171717;
+  --silver-50 through --silver-900
 
   /* Semantic (minimal — color is earned) */
   --error: #8B0000;
-  --error-soft: #FEE2E2;
   --success: #065F46;
-  --success-soft: #D1FAE5;
 }
 ```
 
 ## Typography
 
-```css
-:root {
-  /* Font families */
-  --font-display: 'Playfair Display', Georgia, serif;
-  --font-editorial: 'Cormorant Garamond', Georgia, serif;
-  --font-body: 'Inter', -apple-system, sans-serif;
-  --font-mono: 'JetBrains Mono', 'SF Mono', monospace;
-}
-```
-
 | Use Case | Font |
 |----------|------|
 | Large headlines, app name | Playfair Display |
-| AI reflections, insights, quotes | Cormorant Garamond (italic) |
-| UI elements, buttons, labels | Inter |
-| Timestamps, data, metrics | JetBrains Mono |
+| AI reflections, insights | Cormorant Garamond (italic) |
+| UI elements, buttons | Inter |
+| Timestamps, data | JetBrains Mono |
 
 ## Design Principles
 
-1. **Black, white, silver only** — No color accents. Color is earned (errors only).
+1. **Black, white, silver only** — No color accents
 2. **Typography-first** — Let the words carry the design
 3. **Thin lines** — 1px borders, no shadows
 4. **Generous whitespace** — Thoughts need room to breathe
 5. **Subtle motion** — Things appear, they don't bounce
-
----
-
-# FILE STRUCTURE
-
-## Key Files
-
-```
-/
-├── index.html              # Main app entry
-├── api/
-│   ├── analyze.js          # Main reflection endpoint (3,128 lines)
-│   ├── chat.js             # "Go deeper" conversation
-│   ├── vision.js           # Image analysis (Claude Vision)
-│   ├── extract-entities.js # Entity extraction
-│   ├── embed.js            # OpenAI embeddings
-│   ├── infer-connections.js
-│   ├── classify-importance.js
-│   └── compress-memory.js
-├── js/
-│   ├── ui.js               # Main UI (4,824 lines — SPLIT NEEDED)
-│   ├── app.js              # Application entry point
-│   ├── onboarding.js       # 8-screen onboarding flow
-│   ├── analyzer.js         # Analysis orchestration
-│   ├── entities.js         # Entity management
-│   ├── entity-memory.js    # Memory operations
-│   ├── twin-ui.js          # TWIN tab
-│   ├── actions-ui.js       # Actions tab
-│   ├── sync.js             # Cloud sync
-│   └── pin.js              # PIN authentication
-├── css/
-│   ├── design-system.css   # Variables and tokens
-│   └── styles.css          # Main styles (8,280 lines)
-└── supabase/
-    └── migrations/         # Database migrations
-```
-
-## Large File Warning
-
-⚠️ **ui.js is 4,824 lines** — DO NOT read in full. Use grep.
-
-```bash
-# Find functions
-grep -n "^function \|^const \|^async function " js/ui.js | head -50
-
-# Find specific functionality
-grep -n "renderNote\|showModal\|handleSubmit" js/ui.js
-```
-
----
-
-# ONBOARDING DATA
-
-## 8-Screen Flow
-
-| # | Screen | Captures |
-|---|--------|----------|
-| 0 | Welcome | - |
-| 1 | Name | User's name |
-| 2 | Seasons | Life season (building, transition, healing, etc.) |
-| 3 | Focus | What's on their mind (max 3) |
-| 4 | Depth | Contextual question + answer |
-| 5 | People | Seed 1-3 people with relationships |
-| 6 | Privacy | Privacy promise |
-| 7 | Wow | First note prompt |
-
-## Database Schema
-
-```sql
-CREATE TABLE onboarding_data (
-  id UUID PRIMARY KEY,
-  user_id UUID REFERENCES auth.users(id) UNIQUE,
-  name TEXT NOT NULL,
-  life_seasons TEXT[],           -- Multi-select
-  mental_focus TEXT[],           -- Max 3
-  depth_question TEXT,           -- Which question was asked
-  depth_answer TEXT,             -- Their answer
-  seeded_people JSONB,           -- [{name, context}]
-  completed_at TIMESTAMP,
-  created_at TIMESTAMP DEFAULT NOW()
-);
-```
-
-## AI Context Injection
-
-The AI receives this context in every analysis:
-
-```xml
-<user_context>
-User's name: Test
-Life season: Building something new
-Currently focused on: work, decisions, future
-
-People in their world:
-- Marcus (close friend)
-- Sarah (cofounder)
-</user_context>
-```
-
-**Implementation:** `api/analyze.js` lines 9-91 contain `getUserOnboardingContext()` and `buildOnboardingContextPrompt()` functions.
 
 ---
 
@@ -255,8 +378,6 @@ People in their world:
 
 ### HEARD (Always)
 Prove you understood. Be specific. Quote their words.
-- BAD: "Sounds like a busy day"
-- GOOD: "The product launch delay and friction with Jamie — that's a lot for one day"
 
 ### NOTICED (When memory is relevant)
 Connect to what you know about their world.
@@ -265,207 +386,40 @@ Connect to what you know about their world.
 
 ### OFFERED (When valuable)
 A question, connection, or gentle observation.
-- "What made the conversation with Jamie feel different this time?"
 
 ## Forbidden Phrases
 
-Never use:
-- "I can see..."
-- "It seems like..."
-- "Based on my analysis..."
-- "As an AI..."
-- "I understand that..."
-- "Based on my records..."
-
-## Quality Rules
-
-1. Be SPECIFIC — Reference actual details from their note
-2. Use memory NATURALLY — Don't announce "Based on my memory..."
-3. Match their energy — Quick note = quick response
-4. Ask ONE question maximum
-5. Sound like a thoughtful friend, not a therapist or AI
-
----
-
-# DATABASE SCHEMA
-
-## Core Tables
-
-| Table | Purpose |
-|-------|---------|
-| `notes` | Encrypted note storage |
-| `onboarding_data` | Phase 11 onboarding (name, seasons, focus, people) |
-| `user_entities` | Extracted people, places, themes |
-| `note_embeddings` | Vector embeddings for semantic search |
-| `entity_relationships` | Connections between entities |
-| `user_feedback` | Thumbs up/down on reflections |
-| `user_learning_profile` | Learned preferences |
-
-## RLS Policy
-
-All tables have Row Level Security enabled. Users can only access their own data.
-
-```sql
-CREATE POLICY "Users can only see own data"
-ON table_name FOR ALL
-USING (auth.uid() = user_id);
-```
-
----
-
-# API ENDPOINTS
-
-| Endpoint | Method | Purpose |
-|----------|--------|---------|
-| `/api/analyze` | POST | Main reflection generation + context injection |
-| `/api/chat` | POST | Conversation about a note |
-| `/api/vision` | POST | Image analysis (Claude Vision) |
-| `/api/extract-entities` | POST | Extract entities from text |
-| `/api/embed` | POST | Generate embeddings |
-| `/api/infer-connections` | POST | Find entity relationships |
-| `/api/classify-importance` | POST | Rate entity importance |
-| `/api/compress-memory` | POST | Summarize old memories |
-
----
-
-# DEVELOPMENT COMMANDS
-
-```bash
-# Production URL
-https://digital-twin-ecru.vercel.app
-
-# Start local dev server
-vercel dev --listen 3001
-
-# Deploy to production
-git add -A && git commit -m "message" && git push origin main
-
-# Force deploy
-vercel --prod
-
-# Check version (browser console)
-APP_VERSION  // "8.0.0"
-
-# Find specific functionality (avoid reading large files)
-grep -rn "functionName" js/*.js api/*.js
-
-# Git status
-git status
-git log --oneline -5
-```
+Never use: "I can see...", "It seems like...", "Based on my analysis...", "As an AI...", "I understand that...", "Based on my records..."
 
 ---
 
 # TECHNICAL DEBT
 
-## Must Fix Before Phase 12
+## Must Fix
 
 | File | Lines | Issue |
 |------|-------|-------|
-| `js/ui.js` | 4,824 | Split into ui-core, ui-notes, ui-twin, ui-modals, ui-onboarding |
-| `api/analyze.js` | 3,128 | Extract prompts to separate files |
-| `css/styles.css` | 8,280 | Modularize by feature |
+| `js/ui.js` | 4,800+ | Must split into modules |
+| `api/analyze.js` | 3,600+ | Extract prompts to separate files |
+| `css/styles.css` | 8,400+ | Modularize by feature |
 
 ---
-
-# NEXT PHASE (12)
-
-| Priority | Task |
-|----------|------|
-| P0 | Split `ui.js` into modules |
-| P1 | Knowledge Pulse (show learning after save) |
-| P1 | Entity Cards (click name → see context) |
-| P2 | "What does Inscript know?" query |
-| P2 | Pattern verification UI |
-
----
-
-<!--
-  ⚠️ PROTECTED SECTION - DO NOT REMOVE OR SHORTEN
-  This UI Guidelines section must be preserved in all edits.
-  It ensures consistent, accessible UI across the codebase.
--->
 
 # UI GUIDELINES
-
-Opinionated constraints for building Inscript interfaces. Based on rams.ai audit + ui-skills.com principles.
 
 ## Accessibility (A11y)
 
 ### MUST
 - Add `role="button"` `tabindex="0"` to clickable non-button elements
 - Add `keydown` handler (Enter/Space) on elements with `onclick`
-- Add `aria-label` to icon-only buttons (×, ←, →, ✕)
-- Add `aria-label` to inputs that rely on placeholder for labeling
+- Add `aria-label` to icon-only buttons
 - Add Escape key listener to close all modals
-- Use `<button>` for interactive controls, not `<div onclick>`
-- Ensure 4.5:1 color contrast ratio for text
-- Provide visible focus states (border-color change is acceptable)
+- Ensure 4.5:1 color contrast ratio
 
 ### NEVER
 - Remove focus outline without visible replacement
 - Use color alone to convey information
 - Create touch targets smaller than 44×44px
-- Skip heading levels (h1 → h3)
-- Use `tabindex` values greater than 0
-
-## Design System
-
-### MUST — Colors
-```css
-/* Paper */     --paper (#FFF), --paper-warm (#FAFAFA)
-/* Ink */       --ink (#000), --ink-rich (#1A1A1A), --ink-soft (#333)
-/* Silver */    --silver-50 through --silver-900
-/* Semantic */  --error (#8B0000), --success (#065F46) — sparingly
-```
-
-### MUST — Typography
-```css
---font-display    Playfair Display    Headlines
---font-editorial  Cormorant Garamond  AI voice (italic)
---font-body       Inter               Body text
---font-mono       JetBrains Mono      Timestamps, data
-```
-
-### MUST — Spacing
-Use only: 4px, 8px, 12px, 16px, 24px, 32px, 48px, 64px
-
-### NEVER
-- Introduce new colors outside the palette
-- Use green for success (use black for monochrome)
-- Use emojis in UI elements
-- Use decorative shadows (use 1px borders)
-- Mix font families in the same component
-
-## Components
-
-### MUST
-- Use existing component patterns first
-- Ensure hover, active, and focus states on all interactive elements
-- Use solid black primary buttons, outline secondary
-
-### Patterns
-```javascript
-// Entity links — make names clickable
-<span class="entity-link" role="button" tabindex="0"
-      data-entity="${name}" onclick="..." onkeydown="...">
-
-// Knowledge Pulse — call after save
-window.KnowledgePulse.show(learning);
-
-// Modals — overlay click + close button + Escape key
-```
-
-## Review Checklist
-
-Before submitting UI code:
-- [ ] All clickable elements keyboard accessible
-- [ ] All icon-only buttons have aria-labels
-- [ ] Colors from approved palette only
-- [ ] Spacing uses defined scale
-- [ ] Works in dark mode
-- [ ] Works on mobile (375px)
-- [ ] Follows existing codebase patterns
 
 ---
 
@@ -485,12 +439,13 @@ Before submitting UI code:
 
 | Version | Phase | Key Changes |
 |---------|-------|-------------|
-| **8.0.0** | 11.0 | Inscript rebrand, 8-screen onboarding, AI context injection, production deploy |
-| 7.8.0 | 10.8 | Intelligent Memory Layer, Mem0 parity |
+| **8.1.0** | Mem0 | Full Mem0 architecture integration, tiered retrieval, category summaries |
+| 8.0.0 | 13.0 | Phase 13: Patterns, MIRROR tab, memory operations |
+| 7.8.0 | 11.0 | Inscript rebrand, 8-screen onboarding |
 | 7.5.0 | 10.3 | Semantic search with pgvector |
 
 ---
 
 *CLAUDE.md — Inscript Developer Guide*
-*Last Updated: January 20, 2026*
+*Last Updated: January 21, 2026*
 *Production: https://digital-twin-ecru.vercel.app*
