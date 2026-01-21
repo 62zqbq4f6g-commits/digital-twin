@@ -886,16 +886,53 @@ const UI = {
   },
 
   /**
-   * Load notes from database
+   * Load notes from database with cache-first strategy
+   * Target: < 100ms to first render
    */
   async loadNotes() {
+    const startTime = performance.now();
+
     try {
-      this.allNotes = await DB.getAllNotes();
-      this.renderNotes();
+      // STEP 1: Show cached notes IMMEDIATELY (synchronous)
+      if (typeof NotesCache !== 'undefined') {
+        const cachedNotes = NotesCache.get();
+        if (cachedNotes && cachedNotes.length > 0) {
+          this.allNotes = cachedNotes;
+          this.renderNotes();
+          console.log(`[UI] Cached notes rendered in ${Math.round(performance.now() - startTime)}ms (${cachedNotes.length} notes)`);
+        }
+      }
+
+      // STEP 2: Fetch fresh notes from IndexedDB (async)
+      const freshNotes = await DB.getAllNotes();
+
+      // STEP 3: Update cache with fresh data
+      if (typeof NotesCache !== 'undefined') {
+        NotesCache.set(freshNotes);
+
+        // STEP 4: Update UI only if data changed
+        if (NotesCache.hasChanged(this.allNotes, freshNotes)) {
+          this.allNotes = freshNotes;
+          this.renderNotes();
+          console.log(`[UI] Fresh notes rendered in ${Math.round(performance.now() - startTime)}ms (${freshNotes.length} notes, data changed)`);
+        } else {
+          // Data unchanged, but still update allNotes for full data
+          this.allNotes = freshNotes;
+          console.log(`[UI] Cache was up to date (${Math.round(performance.now() - startTime)}ms)`);
+        }
+      } else {
+        // No cache module, just render fresh
+        this.allNotes = freshNotes;
+        this.renderNotes();
+      }
+
     } catch (error) {
       console.error('Failed to load notes:', error);
-      this.allNotes = [];
-      this.renderNotes();
+      // If we have cached notes, keep showing them
+      if (!this.allNotes || this.allNotes.length === 0) {
+        this.allNotes = [];
+        this.renderNotes();
+      }
     }
   },
 
@@ -3408,14 +3445,21 @@ const UI = {
   async confirmDeleteNote() {
     if (!this.currentNote) return;
 
+    const noteId = this.currentNote.id;
+
     try {
+      // Remove from cache immediately for instant UI update
+      if (typeof NotesCache !== 'undefined') {
+        NotesCache.removeNote(noteId);
+      }
+
       // Phase 8.7: Use Sync.deleteNote to delete from cloud AND local
       // This prevents deleted notes from reappearing after re-login
       if (typeof Sync !== 'undefined' && Sync.deleteNote) {
-        await Sync.deleteNote(this.currentNote.id);
+        await Sync.deleteNote(noteId);
       } else {
         // Fallback to local-only delete if Sync not available
-        await DB.deleteNote(this.currentNote.id);
+        await DB.deleteNote(noteId);
       }
       this.hideDeleteDialog();
       this.closeNoteDetail();

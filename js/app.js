@@ -83,6 +83,11 @@ const App = {
       const savedNote = await DB.saveNote(note);
       console.log('[App.processNote] Saved note ID:', savedNote.id);
 
+      // Add to notes cache for instant loading
+      if (typeof NotesCache !== 'undefined') {
+        NotesCache.addNote(savedNote);
+      }
+
       // Phase 12: Show Knowledge Pulse with learning data
       if (typeof KnowledgePulse !== 'undefined' && window.KnowledgePulse) {
         console.log('[App] Phase 12 - Showing Knowledge Pulse with learning:', analysis?.learning);
