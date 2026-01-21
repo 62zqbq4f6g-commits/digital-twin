@@ -63,11 +63,31 @@ module.exports = async function handler(req, res) {
     // Detect temporal patterns
     const temporalPatterns = detectTemporalPatterns(notes);
 
+    // DIAGNOSTIC: Log all detected patterns with confidence
+    console.log('[detect-patterns] DIAGNOSTIC - Patterns detected:', temporalPatterns.length);
+    temporalPatterns.forEach((p, i) => {
+      console.log(`[detect-patterns] Pattern ${i + 1}:`, {
+        shortDescription: p.shortDescription,
+        confidence: p.confidence,
+        meetsThreshold: p.confidence >= MIN_CONFIDENCE,
+        evidence: p.evidence
+      });
+    });
+
     // Store new patterns
     const newPatterns = [];
+    const diagnostics = {
+      patternsDetected: temporalPatterns.length,
+      insertAttempts: 0,
+      insertSuccesses: 0,
+      insertErrors: [],
+      existingUpdates: 0,
+      skippedBelowThreshold: 0
+    };
+
     for (const pattern of temporalPatterns) {
       // Check if pattern already exists
-      const { data: existing } = await supabase
+      const { data: existing, error: existingError } = await supabase
         .from('user_patterns')
         .select('id, confidence')
         .eq('user_id', user_id)
@@ -75,10 +95,16 @@ module.exports = async function handler(req, res) {
         .eq('short_description', pattern.shortDescription)
         .single();
 
+      if (existingError && existingError.code !== 'PGRST116') {
+        // PGRST116 = no rows returned, which is expected for new patterns
+        console.log('[detect-patterns] Error checking existing:', existingError);
+      }
+
       if (existing) {
         // Update existing pattern confidence
+        console.log('[detect-patterns] Pattern exists, updating:', pattern.shortDescription);
         if (pattern.confidence > existing.confidence) {
-          await supabase
+          const { error: updateError } = await supabase
             .from('user_patterns')
             .update({
               confidence: pattern.confidence,
@@ -86,9 +112,18 @@ module.exports = async function handler(req, res) {
               updated_at: new Date().toISOString()
             })
             .eq('id', existing.id);
+
+          if (updateError) {
+            console.log('[detect-patterns] Update error:', updateError);
+          } else {
+            diagnostics.existingUpdates++;
+          }
         }
       } else {
         // Insert new pattern
+        console.log('[detect-patterns] Attempting INSERT for:', pattern.shortDescription);
+        diagnostics.insertAttempts++;
+
         const { data: inserted, error: insertError } = await supabase
           .from('user_patterns')
           .insert({
@@ -104,16 +139,27 @@ module.exports = async function handler(req, res) {
           .select()
           .single();
 
-        if (!insertError && inserted) {
+        if (insertError) {
+          console.log('[detect-patterns] INSERT ERROR:', insertError);
+          diagnostics.insertErrors.push({
+            pattern: pattern.shortDescription,
+            error: insertError
+          });
+        } else if (inserted) {
+          console.log('[detect-patterns] INSERT SUCCESS:', inserted.id);
+          diagnostics.insertSuccesses++;
           newPatterns.push(inserted);
         }
       }
     }
 
+    console.log('[detect-patterns] DIAGNOSTIC SUMMARY:', diagnostics);
+
     return res.status(200).json({
       detected: newPatterns,
       total_analyzed: notes.length,
-      patterns_found: temporalPatterns.length
+      patterns_found: temporalPatterns.length,
+      diagnostics // Include diagnostics in response for debugging
     });
 
   } catch (error) {
