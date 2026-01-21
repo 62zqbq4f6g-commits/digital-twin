@@ -402,9 +402,48 @@ async function executeMemoryOperation(supabaseClient, userId, operation, input, 
       const validEntityTypes = ['person', 'project', 'place', 'pet', 'organization', 'concept'];
       const entityType = validEntityTypes.includes(fact.entity_type) ? fact.entity_type : 'concept';
 
+      // DUPLICATE DETECTION: Check for existing entity with similar name
+      const entityName = fact.name || input.content?.slice(0, 100) || 'Memory';
+      const { data: existingEntities } = await supabaseClient
+        .from('user_entities')
+        .select('id, name, entity_type, summary, mention_count')
+        .eq('user_id', userId)
+        .eq('status', 'active')
+        .ilike('name', entityName);
+
+      if (existingEntities?.length > 0) {
+        // Found duplicate - update existing instead of creating new
+        const existing = existingEntities[0];
+        console.log('[Analyze] Mem0 DUPLICATE DETECTED:', entityName, '- merging with existing:', existing.id);
+
+        // Update the existing entity with new information
+        const newContent = input.content || fact.content;
+        const mergedSummary = existing.summary
+          ? `${existing.summary}. ${newContent}`
+          : newContent;
+
+        const { error: updateError } = await supabaseClient
+          .from('user_entities')
+          .update({
+            summary: mergedSummary,
+            mention_count: (existing.mention_count || 1) + 1,
+            last_mentioned_at: new Date().toISOString(),
+            embedding: embedding // Update embedding with new content
+          })
+          .eq('id', existing.id);
+
+        if (updateError) {
+          console.error('[Analyze] Mem0 DUPLICATE merge failed:', updateError.message);
+          // Fall through to create new entity
+        } else {
+          await logMemoryOperation(supabaseClient, userId, 'UPDATE', fact, input, existing.id, sourceNoteId, Date.now() - startTime, { strategy: 'duplicate_merge' });
+          return { operation: 'UPDATE', entity_id: existing.id, strategy: 'duplicate_merge' };
+        }
+      }
+
       const insertData = {
         user_id: userId,
-        name: fact.name || input.content?.slice(0, 100) || 'Memory',
+        name: entityName,
         entity_type: entityType,
         memory_type: input.memory_type || fact.memory_type || 'fact',
         summary: input.content || fact.content,

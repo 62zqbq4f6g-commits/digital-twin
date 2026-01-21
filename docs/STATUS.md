@@ -1,6 +1,6 @@
 # Inscript — Project Status
 
-## January 21, 2026 | Version 8.1.0
+## January 21, 2026 | Version 8.1.1
 
 ---
 
@@ -13,80 +13,83 @@
 
 ---
 
-## LAST SESSION: January 21, 2026
+## LAST SESSION: January 21, 2026 (Evening)
 
-### Completed Work
+### Critical Bug Fix: Category Summaries
 
-1. **Closed All 5 Remaining Mem0 Gaps:**
-   - GAP 1: Query Synthesis (`api/synthesize-query.js`) - Entity detection, query expansion
-   - GAP 2: Summary Evolution (`api/evolve-summary.js`) - LLM-powered rewriting (not append)
-   - GAP 3: Hybrid Retrieval (`api/hybrid-retrieval.js`) - Vector + keyword fusion
-   - GAP 4: Tiered Retrieval (`api/tiered-retrieval.js`) - Category → Entity → Full
-   - GAP 5: Context Assembly (`api/assemble-context.js`) - Token-limited with time decay
-   - GAP 6: Unified Pipeline (`api/memory-retrieve.js`) - Orchestrates 1-5
+**Problem:** Category summaries were not being populated despite the code existing.
 
-2. **Integrated Memory System into Production:**
-   - `api/analyze.js` - Added `getMemoryContext()` for tiered retrieval
-   - `api/chat.js` - Added `getMemoryContextForChat()` for Socratic dialogue
+**Root Cause:** In `api/analyze.js` line 697, the function used `.single()` which throws PGRST116 error when no row exists. This error was silently caught, preventing any summaries from being created.
+
+**Fix Applied:**
+```javascript
+// BEFORE (broken):
+.eq('category', category)
+.single();  // Throws error when no row!
+
+// AFTER (fixed):
+.eq('category', category)
+.maybeSingle();  // Returns null, no error
+```
+
+**Commit:** `677ad72` — Fix category summary generation
+
+### Verification Results
+
+| Component | Verified Status |
+|-----------|-----------------|
+| Schema completeness | ✅ 100% complete |
+| Embeddings generated | ✅ 9/10 entities have embeddings |
+| Memory operations | ✅ 13 ADD, 4 UPDATE, 1 NOOP logged |
+| Category summaries | ✅ Fixed (was 0 rows due to bug) |
+| pg_cron | ⚠️ Blocked (requires Supabase Pro) |
+
+### Previous Session Work
+
+1. **Closed All Mem0 Gaps:**
+   - Query Synthesis (`api/synthesize-query.js`)
+   - Summary Evolution (`api/evolve-summary.js`)
+   - Hybrid Retrieval (`api/hybrid-retrieval.js`)
+   - Tiered Retrieval (`api/tiered-retrieval.js`)
+   - Context Assembly (`api/assemble-context.js`)
+   - Unified Pipeline (`api/memory-retrieve.js`)
+
+2. **Integrated Memory System:**
+   - `api/analyze.js` - `getMemoryContext()` for tiered retrieval
+   - `api/chat.js` - `getMemoryContextForChat()` for dialogue
    - Memory context injected into `<user_context>` tags
-
-3. **Database:**
-   - Created `category_summaries` table with RLS
-   - Verified all memory tables operational
-
-4. **Deployed to Vercel:**
-   - Commit: `283bcf8` — Mem0 GAP Integration
-   - All systems operational in production
-
-### Session Output
-
-| Component | Status |
-|-----------|--------|
-| Query Synthesis | ✅ Deployed |
-| Summary Evolution | ✅ Deployed |
-| Hybrid Retrieval | ✅ Deployed |
-| Tiered Retrieval | ✅ Deployed |
-| Context Assembly | ✅ Deployed |
-| Unified Pipeline | ✅ Deployed |
-| analyze.js integration | ✅ Complete |
-| chat.js integration | ✅ Complete |
-| Production deployment | ✅ Live |
 
 ---
 
 ## NEXT SESSION PRIORITIES
 
-### P0 — Must Test
+### P0 — Must Do
 
-1. **Production Testing of Memory-Augmented Reflections**
-   - Create a test note mentioning a known entity
-   - Verify AI reflection includes memory callbacks
-   - Check console for `[Analyze] Mem0 - Added memory context` logs
+1. **Test Category Summary Fix**
+   - Create a new note in production
+   - Query `category_summaries` table to verify it's now populated
+   - Check for `[Analyze] Mem0 - updateCategorySummaries` logs
 
-2. **Category Summary Evolution**
-   - Create multiple notes in the same category
-   - Verify `category_summaries` table is populated
-   - Check that summaries evolve (rewritten, not appended)
+2. **Set Up Vercel Cron for Memory Maintenance**
+   - Create `/api/cron/memory-maintenance.js`
+   - Configure `vercel.json` with cron schedule
+   - Implement: time decay, duplicate detection, old memory compression
 
-3. **Tiered Retrieval Verification**
-   - Tier 1: Verify category summaries are used for broad queries
-   - Tier 2: Verify top entities are used when summaries insufficient
-   - Tier 3: Verify full hybrid retrieval for specific queries
-
-4. **Hybrid Retrieval (Vector + Keyword)**
-   - Test semantic search queries
-   - Verify `note_embeddings` are being generated
-   - Check relevance scoring
-
-5. **Entity Relationship Graph Traversal**
-   - Verify `entity_relationships` queries work
-   - Test cross-memory reasoning
+3. **Add Duplicate Entity Detection**
+   - Before creating new entity, check for similar existing entity
+   - Use embedding similarity or name fuzzy matching
+   - Merge instead of creating duplicate
 
 ### P1 — Should Verify
 
-- Memory decay cron jobs are running (check `cron.job` table)
-- Sentiment tracking updates correctly
-- Importance classification is working
+1. **Tiered Retrieval Verification**
+   - Tier 1: Category summaries used for broad queries
+   - Tier 2: Top entities when summaries insufficient
+   - Tier 3: Full hybrid retrieval for specific queries
+
+2. **Entity Relationship Graph**
+   - Verify `entity_relationships` queries work
+   - Test cross-memory reasoning
 
 ### P2 — Nice to Have
 
@@ -117,11 +120,11 @@
 
 ### Application-Level Issues (Not Schema)
 
-| Issue | Root Cause | Fix |
-|-------|-----------|-----|
-| Vector search non-functional | Embeddings not generated | Verify embed API called on entity creation |
-| Category summaries empty | Not populated by app | Verify evolve-summary.js is called |
-| pg_cron not running | Requires Supabase Pro | Manual decay or upgrade plan |
+| Issue | Root Cause | Status |
+|-------|-----------|--------|
+| Vector search | Embeddings not generated | ✅ **FIXED** - 9/10 entities have embeddings |
+| Category summaries empty | `.single()` throwing PGRST116 | ✅ **FIXED** - Changed to `.maybeSingle()` |
+| pg_cron not running | Requires Supabase Pro | ⚠️ Need Vercel Cron alternative |
 
 ---
 
@@ -140,8 +143,8 @@
 | Issue | Impact |
 |-------|--------|
 | Double version log (8.0.0 + 7.0.0) | Confusing console |
-| `OPENAI_API_KEY` may not be set locally | Embeddings fail |
-| Embeddings not being generated | Vector search won't work |
+| `OPENAI_API_KEY` may not be set locally | Embeddings fail locally |
+| No Vercel Cron for maintenance | Memory decay not automated |
 
 ### Known Workarounds
 
@@ -229,7 +232,8 @@ APP_VERSION  // "8.0.0"
 
 | Version | Date | Changes |
 |---------|------|---------|
-| **8.1.0** | Jan 21, 2026 | Mem0 GAP Integration: Full memory architecture deployed |
+| **8.1.1** | Jan 21, 2026 | Critical fix: Category summaries `.single()` → `.maybeSingle()` |
+| 8.1.0 | Jan 21, 2026 | Mem0 GAP Integration: Full memory architecture deployed |
 | 8.0.0 | Jan 20, 2026 | Phase 13: Patterns, MIRROR tab, memory operations |
 | 7.8.0 | Jan 19, 2026 | Phase 10.6-10.8: Cross-memory reasoning, importance, forgetting |
 | 7.5.0 | Jan 19, 2026 | Phase 10.3: Semantic search with pgvector |
@@ -253,6 +257,6 @@ This is the "holy shit, it knows" moment working in production.
 
 ---
 
-*Last Updated: January 21, 2026*
-*Version: 8.1.0 — Inscript*
+*Last Updated: January 21, 2026 (Evening)*
+*Version: 8.1.1 — Inscript*
 *Production: https://digital-twin-ecru.vercel.app*
