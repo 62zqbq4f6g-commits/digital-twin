@@ -59,10 +59,11 @@ export default async function handler(req, ctx) {
     // CRITICAL PATH (user waits for this only)
     // ============================================
 
-    // Initialize Supabase
+    // Initialize Supabase (use fallback for env var compatibility)
+    const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
     const supabase = createClient(
       process.env.SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
+      supabaseKey
     );
 
     // Initialize Anthropic
