@@ -406,7 +406,7 @@ async function executeMemoryOperation(supabaseClient, userId, operation, input, 
       const entityName = fact.name || input.content?.slice(0, 100) || 'Memory';
       const { data: existingEntities } = await supabaseClient
         .from('user_entities')
-        .select('id, name, entity_type, summary, mention_count')
+        .select('id, name, entity_type, summary, mention_count, importance_score')
         .eq('user_id', userId)
         .eq('status', 'active')
         .ilike('name', entityName);
@@ -422,12 +422,19 @@ async function executeMemoryOperation(supabaseClient, userId, operation, input, 
           ? `${existing.summary}. ${newContent}`
           : newContent;
 
+        // IMPORTANCE BOOST: Reinforce memory on re-mention
+        // Uses diminishing returns: boost = (1 - current) * 0.3
+        // e.g., 0.5 → 0.65, 0.8 → 0.86, 0.9 → 0.93
+        const currentImportance = existing.importance_score ?? 0.5;
+        const boostedImportance = Math.min(1.0, currentImportance + (1 - currentImportance) * 0.3);
+
         const { error: updateError } = await supabaseClient
           .from('user_entities')
           .update({
             summary: mergedSummary,
             mention_count: (existing.mention_count || 1) + 1,
             last_mentioned_at: new Date().toISOString(),
+            importance_score: boostedImportance,
             embedding: embedding // Update embedding with new content
           })
           .eq('id', existing.id);
@@ -436,7 +443,8 @@ async function executeMemoryOperation(supabaseClient, userId, operation, input, 
           console.error('[Analyze] Mem0 DUPLICATE merge failed:', updateError.message);
           // Fall through to create new entity
         } else {
-          await logMemoryOperation(supabaseClient, userId, 'UPDATE', fact, input, existing.id, sourceNoteId, Date.now() - startTime, { strategy: 'duplicate_merge' });
+          console.log('[Analyze] Mem0 REINFORCED:', entityName, 'importance:', currentImportance.toFixed(2), '→', boostedImportance.toFixed(2));
+          await logMemoryOperation(supabaseClient, userId, 'UPDATE', fact, input, existing.id, sourceNoteId, Date.now() - startTime, { strategy: 'duplicate_merge', importance_boost: boostedImportance - currentImportance });
           return { operation: 'UPDATE', entity_id: existing.id, strategy: 'duplicate_merge' };
         }
       }
@@ -506,6 +514,10 @@ async function executeMemoryOperation(supabaseClient, userId, operation, input, 
         const newSentiment = fact.sentiment ?? 0;
         const updatedSentiment = oldSentiment * 0.7 + newSentiment * 0.3;
 
+        // IMPORTANCE BOOST: Carry forward and boost importance
+        const currentImportance = existing.importance_score ?? 0.5;
+        const boostedImportance = Math.min(1.0, currentImportance + (1 - currentImportance) * 0.3);
+
         const { data: newEntity } = await supabaseClient
           .from('user_entities')
           .insert({
@@ -514,6 +526,9 @@ async function executeMemoryOperation(supabaseClient, userId, operation, input, 
             summary: new_content,
             embedding: newEmbedding,
             sentiment_average: updatedSentiment,
+            importance_score: boostedImportance,
+            mention_count: (existing.mention_count || 1) + 1,
+            last_mentioned_at: new Date().toISOString(),
             is_historical: false,
             status: 'active',
             version: oldVersion + 1,
@@ -522,7 +537,8 @@ async function executeMemoryOperation(supabaseClient, userId, operation, input, 
           .select()
           .single();
 
-        await logMemoryOperation(supabaseClient, userId, 'UPDATE', fact, input, newEntity.id, sourceNoteId, Date.now() - startTime, { strategy: 'supersede', old_id: memory_id });
+        console.log('[Analyze] Mem0 SUPERSEDE REINFORCED:', existing.name, 'importance:', currentImportance.toFixed(2), '→', boostedImportance.toFixed(2));
+        await logMemoryOperation(supabaseClient, userId, 'UPDATE', fact, input, newEntity.id, sourceNoteId, Date.now() - startTime, { strategy: 'supersede', old_id: memory_id, importance_boost: boostedImportance - currentImportance });
         return { operation: 'UPDATE', strategy: 'supersede', new_id: newEntity.id };
 
       } else {
@@ -536,18 +552,26 @@ async function executeMemoryOperation(supabaseClient, userId, operation, input, 
         const newSentiment = fact.sentiment ?? 0;
         const updatedSentiment = oldSentiment * 0.7 + newSentiment * 0.3;
 
+        // IMPORTANCE BOOST: Reinforce memory on update
+        const currentImportance = existing.importance_score ?? 0.5;
+        const boostedImportance = Math.min(1.0, currentImportance + (1 - currentImportance) * 0.3);
+
         await supabaseClient
           .from('user_entities')
           .update({
             summary: finalContent,
             embedding: newEmbedding,
             sentiment_average: updatedSentiment,
+            importance_score: boostedImportance,
+            mention_count: (existing.mention_count || 1) + 1,
+            last_mentioned_at: new Date().toISOString(),
             version: oldVersion + 1,
             updated_at: new Date().toISOString()
           })
           .eq('id', memory_id);
 
-        await logMemoryOperation(supabaseClient, userId, 'UPDATE', fact, input, memory_id, sourceNoteId, Date.now() - startTime, { strategy: merge_strategy });
+        console.log('[Analyze] Mem0 UPDATE REINFORCED:', existing.name, 'importance:', currentImportance.toFixed(2), '→', boostedImportance.toFixed(2));
+        await logMemoryOperation(supabaseClient, userId, 'UPDATE', fact, input, memory_id, sourceNoteId, Date.now() - startTime, { strategy: merge_strategy, importance_boost: boostedImportance - currentImportance });
         return { operation: 'UPDATE', strategy: merge_strategy, entity_id: memory_id };
       }
 

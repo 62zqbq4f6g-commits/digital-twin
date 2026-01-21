@@ -2,17 +2,39 @@
  * MEMORY MAINTENANCE CRON JOB
  * Runs daily to keep the memory system healthy
  *
+ * Philosophy:
+ * - Memories strengthen when mentioned (handled at write-time)
+ * - Memories fade naturally when not accessed (handled here + read-time)
+ * - Very old, low-importance memories get archived
+ *
  * Tasks:
- * 1. Apply time decay to importance_score
- * 2. Archive expired entities
- * 3. Merge duplicate entities (future)
- * 4. Compress old memories into summaries (future)
+ * 1. Apply decay to STALE entities only (not mentioned in 30+ days)
+ * 2. Archive ABANDONED entities (not mentioned in 180+ days + low importance)
+ * 3. Log maintenance results
  */
 
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+// Configuration
+const CONFIG = {
+  // Only decay entities not mentioned in this many days
+  STALE_THRESHOLD_DAYS: 30,
+
+  // Archive entities not mentioned in this many days (with low importance)
+  ARCHIVE_THRESHOLD_DAYS: 180,
+
+  // Only archive if importance_score below this
+  ARCHIVE_IMPORTANCE_THRESHOLD: 0.2,
+
+  // Daily decay rate for stale entities (2% per day)
+  DAILY_DECAY_RATE: 0.98,
+
+  // Floor - never decay below this
+  MIN_IMPORTANCE: 0.1,
+};
 
 export default async function handler(req, res) {
   // Verify request is from Vercel Cron (or allow in development)
@@ -28,99 +50,138 @@ export default async function handler(req, res) {
   console.log('[Memory Cron] Starting memory maintenance...');
   const startTime = Date.now();
   const results = {
-    decayApplied: 0,
+    staleEntitiesDecayed: 0,
     entitiesArchived: 0,
+    expiredEntitiesArchived: 0,
     errors: []
   };
 
   try {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    const now = new Date();
+    const staleDate = new Date(now - CONFIG.STALE_THRESHOLD_DAYS * 24 * 60 * 60 * 1000);
+    const archiveDate = new Date(now - CONFIG.ARCHIVE_THRESHOLD_DAYS * 24 * 60 * 60 * 1000);
+
     // ========================================
-    // TASK 1: Apply Time Decay to importance_score
+    // TASK 1: Decay STALE Entities Only
     // ========================================
-    // Decay formula: new_score = old_score * decay_factor
-    // decay_factor = 0.99 per day (1% decay daily)
-    // After 30 days: score * 0.99^30 = score * 0.74
-    // After 90 days: score * 0.99^90 = score * 0.41
+    // Only apply decay to entities not mentioned in 30+ days
+    // This allows recently-mentioned entities to stay strong
 
-    console.log('[Memory Cron] Applying time decay...');
+    console.log('[Memory Cron] Finding stale entities (not mentioned since', staleDate.toISOString().split('T')[0], ')...');
 
-    const { data: decayResult, error: decayError } = await supabase.rpc('apply_memory_decay');
+    const { data: staleEntities, error: staleError } = await supabase
+      .from('user_entities')
+      .select('id, name, importance_score, last_mentioned_at')
+      .eq('status', 'active')
+      .gt('importance_score', CONFIG.MIN_IMPORTANCE)
+      .lt('last_mentioned_at', staleDate.toISOString());
 
-    if (decayError) {
-      // RPC doesn't exist yet, use manual update
-      console.log('[Memory Cron] RPC not available, using manual decay...');
+    if (staleError) {
+      results.errors.push(`Stale fetch error: ${staleError.message}`);
+    } else if (staleEntities?.length > 0) {
+      console.log(`[Memory Cron] Found ${staleEntities.length} stale entities to decay`);
 
-      // Get all active entities with importance_score > 0.1
-      const { data: entities, error: fetchError } = await supabase
-        .from('user_entities')
-        .select('id, importance_score')
-        .eq('status', 'active')
-        .gt('importance_score', 0.1);
+      for (const entity of staleEntities) {
+        // Calculate days since last mention
+        const lastMention = new Date(entity.last_mentioned_at);
+        const daysSinceLastMention = Math.floor((now - lastMention) / (1000 * 60 * 60 * 24));
+        const daysOfDecay = daysSinceLastMention - CONFIG.STALE_THRESHOLD_DAYS;
 
-      if (fetchError) {
-        results.errors.push(`Decay fetch error: ${fetchError.message}`);
-      } else if (entities?.length > 0) {
-        // Apply 1% daily decay
-        // Formula: new_score = old_score * 0.99
-        // After 30 days: 0.74 of original
-        // After 90 days: 0.41 of original
-        const DAILY_DECAY = 0.99;
-        const MIN_SCORE = 0.1; // Floor to prevent going to zero
+        // Apply decay for each day past the threshold
+        const decayFactor = Math.pow(CONFIG.DAILY_DECAY_RATE, daysOfDecay);
+        const newScore = Math.max(CONFIG.MIN_IMPORTANCE, entity.importance_score * decayFactor);
 
-        for (const entity of entities) {
-          const newScore = Math.max(MIN_SCORE, (entity.importance_score || 0.5) * DAILY_DECAY);
-
+        // Only update if there's meaningful change
+        if (entity.importance_score - newScore > 0.01) {
           const { error: updateError } = await supabase
             .from('user_entities')
             .update({ importance_score: newScore })
             .eq('id', entity.id);
 
           if (!updateError) {
-            results.decayApplied++;
+            results.staleEntitiesDecayed++;
           }
         }
-        console.log(`[Memory Cron] Applied decay to ${results.decayApplied} entities`);
       }
+      console.log(`[Memory Cron] Decayed ${results.staleEntitiesDecayed} stale entities`);
     } else {
-      results.decayApplied = decayResult?.count || 0;
+      console.log('[Memory Cron] No stale entities to decay');
     }
 
     // ========================================
-    // TASK 2: Archive Expired Entities
+    // TASK 2: Archive ABANDONED Entities
     // ========================================
-    console.log('[Memory Cron] Checking for expired entities...');
+    // Entities not mentioned in 180+ days with low importance
 
-    const { data: archived, error: archiveError } = await supabase
+    console.log('[Memory Cron] Finding abandoned entities (not mentioned since', archiveDate.toISOString().split('T')[0], ')...');
+
+    const { data: abandonedEntities, error: abandonedError } = await supabase
       .from('user_entities')
-      .update({ status: 'archived' })
-      .lt('expires_at', new Date().toISOString())
+      .select('id, name')
       .eq('status', 'active')
-      .select('id');
+      .lt('importance_score', CONFIG.ARCHIVE_IMPORTANCE_THRESHOLD)
+      .lt('last_mentioned_at', archiveDate.toISOString());
 
-    if (archiveError) {
-      results.errors.push(`Archive error: ${archiveError.message}`);
+    if (abandonedError) {
+      results.errors.push(`Abandoned fetch error: ${abandonedError.message}`);
+    } else if (abandonedEntities?.length > 0) {
+      console.log(`[Memory Cron] Found ${abandonedEntities.length} abandoned entities to archive`);
+
+      const { error: archiveError } = await supabase
+        .from('user_entities')
+        .update({ status: 'archived' })
+        .in('id', abandonedEntities.map(e => e.id));
+
+      if (archiveError) {
+        results.errors.push(`Archive error: ${archiveError.message}`);
+      } else {
+        results.entitiesArchived = abandonedEntities.length;
+        console.log(`[Memory Cron] Archived ${results.entitiesArchived} abandoned entities`);
+      }
     } else {
-      results.entitiesArchived = archived?.length || 0;
-      if (results.entitiesArchived > 0) {
-        console.log(`[Memory Cron] Archived ${results.entitiesArchived} expired entities`);
+      console.log('[Memory Cron] No abandoned entities to archive');
+    }
+
+    // ========================================
+    // TASK 3: Archive Explicitly Expired Entities
+    // ========================================
+
+    const { data: expiredEntities, error: expiredError } = await supabase
+      .from('user_entities')
+      .select('id')
+      .eq('status', 'active')
+      .lt('expires_at', now.toISOString());
+
+    if (expiredError) {
+      results.errors.push(`Expired fetch error: ${expiredError.message}`);
+    } else if (expiredEntities?.length > 0) {
+      const { error: archiveExpiredError } = await supabase
+        .from('user_entities')
+        .update({ status: 'archived' })
+        .in('id', expiredEntities.map(e => e.id));
+
+      if (!archiveExpiredError) {
+        results.expiredEntitiesArchived = expiredEntities.length;
+        console.log(`[Memory Cron] Archived ${results.expiredEntitiesArchived} expired entities`);
       }
     }
 
     // ========================================
-    // TASK 3: Log Maintenance Results
+    // TASK 4: Log Maintenance Results
     // ========================================
+    const duration = Date.now() - startTime;
+
     const { error: logError } = await supabase
       .from('memory_jobs')
       .insert({
         job_type: 'daily_maintenance',
         status: results.errors.length > 0 ? 'partial' : 'completed',
         result: {
-          decayApplied: results.decayApplied,
-          entitiesArchived: results.entitiesArchived,
-          errors: results.errors,
-          durationMs: Date.now() - startTime
+          ...results,
+          config: CONFIG,
+          durationMs: duration
         }
       });
 
@@ -128,12 +189,12 @@ export default async function handler(req, res) {
       console.warn('[Memory Cron] Could not log job result:', logError.message);
     }
 
-    console.log(`[Memory Cron] Maintenance complete in ${Date.now() - startTime}ms`);
+    console.log(`[Memory Cron] Maintenance complete in ${duration}ms:`, results);
 
     return res.status(200).json({
       success: true,
       ...results,
-      durationMs: Date.now() - startTime
+      durationMs: duration
     });
 
   } catch (err) {
