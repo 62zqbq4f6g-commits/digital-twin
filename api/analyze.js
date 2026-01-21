@@ -642,7 +642,12 @@ async function runMem0Pipeline(noteContent, userId, client, supabaseClient, know
  * Calls evolve-summary logic to rewrite summaries
  */
 async function updateCategorySummariesAfterExtraction(userId, memories, supabaseClient) {
-  if (!userId || !supabaseClient || !memories?.length) return;
+  console.log('[Analyze] Mem0 - updateCategorySummaries called with', memories?.length || 0, 'memories');
+
+  if (!userId || !supabaseClient || !memories?.length) {
+    console.log('[Analyze] Mem0 - updateCategorySummaries skipped: missing data');
+    return;
+  }
 
   const Anthropic = require('@anthropic-ai/sdk');
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -683,18 +688,25 @@ async function updateCategorySummariesAfterExtraction(userId, memories, supabase
     memoriesByCategory[category].push(memory);
   }
 
+  const categories = Object.keys(memoriesByCategory);
+  console.log('[Analyze] Mem0 - Classified into categories:', categories.join(', '));
+
   // Process each category
   for (const [category, categoryMemories] of Object.entries(memoriesByCategory)) {
     if (categoryMemories.length === 0) continue;
 
     try {
-      // Get existing summary
-      const { data: existing } = await supabaseClient
+      // Get existing summary (use maybeSingle to avoid error when no row exists)
+      const { data: existing, error: fetchError } = await supabaseClient
         .from('category_summaries')
         .select('*')
         .eq('user_id', userId)
         .eq('category', category)
-        .single();
+        .maybeSingle();
+
+      if (fetchError) {
+        console.warn(`[Analyze] Mem0 - Error fetching ${category} summary:`, fetchError.message);
+      }
 
       // Build context for summary evolution
       const entityContext = categoryMemories.map(m =>
@@ -724,7 +736,7 @@ Write ONLY the new summary:`;
 
       // Upsert the summary
       if (existing) {
-        await supabaseClient
+        const { error: updateError } = await supabaseClient
           .from('category_summaries')
           .update({
             summary: newSummary,
@@ -732,8 +744,13 @@ Write ONLY the new summary:`;
             updated_at: new Date().toISOString()
           })
           .eq('id', existing.id);
+
+        if (updateError) {
+          console.error(`[Analyze] Mem0 - Error updating ${category} summary:`, updateError.message);
+          continue;
+        }
       } else {
-        await supabaseClient
+        const { error: insertError } = await supabaseClient
           .from('category_summaries')
           .insert({
             user_id: userId,
@@ -741,9 +758,14 @@ Write ONLY the new summary:`;
             summary: newSummary,
             entity_count: categoryMemories.length
           });
+
+        if (insertError) {
+          console.error(`[Analyze] Mem0 - Error inserting ${category} summary:`, insertError.message);
+          continue;
+        }
       }
 
-      console.log(`[Analyze] Mem0 - Updated ${category} summary`);
+      console.log(`[Analyze] Mem0 - Successfully updated ${category} summary (${newSummary.substring(0, 50)}...)`);
 
     } catch (err) {
       console.warn(`[Analyze] Mem0 - Summary update error for ${category}:`, err.message);
