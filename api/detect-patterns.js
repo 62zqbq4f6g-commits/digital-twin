@@ -129,6 +129,7 @@ module.exports = async function handler(req, res) {
           .insert({
             user_id,
             pattern_type: pattern.type,
+            pattern_text: pattern.shortDescription, // Required NOT NULL column
             description: pattern.description,
             short_description: pattern.shortDescription,
             confidence: pattern.confidence,
