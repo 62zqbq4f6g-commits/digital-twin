@@ -1779,7 +1779,7 @@ const UI = {
    */
   async loadInlinePattern(note) {
     try {
-      if (typeof PatternVerification === 'undefined') return;
+      if (typeof window.PatternVerification === 'undefined') return;
 
       const container = document.getElementById('inline-pattern-container');
       if (!container) return;
@@ -1789,9 +1789,9 @@ const UI = {
       if (!noteContent) return;
 
       // Check for surfaceable pattern
-      const pattern = await PatternVerification.getSurfaceablePattern(noteContent);
+      const pattern = await window.PatternVerification.getSurfaceablePattern(noteContent);
       if (pattern) {
-        container.innerHTML = PatternVerification.renderInlineVerification(pattern);
+        container.innerHTML = window.PatternVerification.renderInlineVerification(pattern);
       }
     } catch (error) {
       console.warn('[UI] Failed to load inline pattern:', error);

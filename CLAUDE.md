@@ -21,6 +21,23 @@
 
 ---
 
+# STRATEGIC DIRECTION
+
+> **Core Thesis:** Inscript is building the memory layer for personal AI.
+> Consumer-first. Platform-second. Trust-always.
+
+| Document | Purpose |
+|----------|---------|
+| **`/docs/INSCRIPT-STRATEGIC-BIBLE.md`** | Full strategic guide — the source of truth |
+| **`/docs/INSCRIPT-STRATEGY-ONE-PAGER.md`** | Executive summary |
+| **`/docs/MEMORY-SYSTEM.md`** | Technical memory architecture |
+
+**Current Phase:** Phase 1 — Consumer Love (targeting 10K engaged users)
+
+**Next Milestone:** MCP server integration (Phase 2)
+
+---
+
 # PROJECT STATUS
 
 ## Completed Milestones

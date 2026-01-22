@@ -546,8 +546,8 @@ const TwinUI = {
     if (!container) return;
 
     try {
-      // Check if PatternVerification is available
-      if (typeof PatternVerification === 'undefined') {
+      // Check if PatternVerification instance is available (must use window. to get instance)
+      if (typeof window.PatternVerification === 'undefined') {
         console.warn('[TwinUI] PatternVerification not available');
         return;
       }
@@ -559,11 +559,11 @@ const TwinUI = {
         return;
       }
 
-      // Load patterns
-      await PatternVerification.loadPatterns();
+      // Load patterns using the instance
+      await window.PatternVerification.loadPatterns();
 
       // Render the section
-      container.innerHTML = PatternVerification.renderTwinSection();
+      container.innerHTML = window.PatternVerification.renderTwinSection();
 
     } catch (error) {
       console.error('[TwinUI] Error updating Phase 13 patterns:', error);

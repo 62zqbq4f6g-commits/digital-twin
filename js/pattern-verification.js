@@ -265,8 +265,8 @@ class PatternVerification {
           <span class="pattern-confidence-value">${confidencePercent}%</span>
         </div>
 
-        ${pattern.evidence?.occurrences ? `
-          <p class="pattern-card-evidence">Based on ${pattern.evidence.occurrences} occurrences</p>
+        ${pattern.evidenceCount ? `
+          <p class="pattern-card-evidence">Based on ${pattern.evidenceCount} occurrences</p>
         ` : ''}
 
         <div class="pattern-card-buttons">
