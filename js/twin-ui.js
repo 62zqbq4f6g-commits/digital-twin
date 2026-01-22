@@ -543,10 +543,7 @@ const TwinUI = {
    */
   async updatePatternsSection13() {
     const container = document.getElementById('twin-patterns-container');
-    if (!container) {
-      console.log('[TwinUI] Patterns container not found');
-      return;
-    }
+    if (!container) return;
 
     try {
       // Check if PatternVerification instance is available (must use window. to get instance)
@@ -557,21 +554,15 @@ const TwinUI = {
 
       // Ensure Sync.user is available before loading patterns
       if (!Sync?.user?.id) {
-        console.log('[TwinUI] Waiting for user authentication...');
         container.innerHTML = '<p class="twin-empty">Loading patterns...</p>';
         return;
       }
 
-      console.log('[TwinUI] Loading patterns for user:', Sync.user.id);
-
       // Load patterns using the instance
-      const patterns = await window.PatternVerification.loadPatterns();
-      console.log('[TwinUI] Loaded patterns:', patterns?.length, patterns);
+      await window.PatternVerification.loadPatterns();
 
       // Render the section
-      const html = window.PatternVerification.renderTwinSection();
-      console.log('[TwinUI] Rendered patterns HTML length:', html?.length);
-      container.innerHTML = html;
+      container.innerHTML = window.PatternVerification.renderTwinSection();
 
     } catch (error) {
       console.error('[TwinUI] Error updating Phase 13 patterns:', error);
