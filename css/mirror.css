@@ -116,7 +116,7 @@
   padding: 20px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
 }
 
 /* =====================================================
@@ -199,22 +199,23 @@
 }
 
 .mirror-bubble {
-  max-width: 85%;
+  max-width: 80%;
   padding: 14px 18px;
   border-radius: 16px;
 }
 
+/* AI messages - #FAFAFA background */
 .mirror-bubble-inscript {
-  background: #FFFFFF !important;
-  border: 1px solid #E5E5E5 !important;
+  background: #FAFAFA !important;
+  border: 1px solid rgba(0, 0, 0, 0.06) !important;
   border-radius: 16px 16px 16px 4px;
 }
 
 /* Override system dark mode */
 @media (prefers-color-scheme: dark) {
   .mirror-bubble-inscript {
-    background: #FFFFFF !important;
-    border-color: #E5E5E5 !important;
+    background: #FAFAFA !important;
+    border-color: rgba(0, 0, 0, 0.06) !important;
   }
 }
 
@@ -223,20 +224,24 @@
   border-color: #404040 !important;
 }
 
+/* User messages - white background */
 .mirror-bubble-user {
-  background: #FAFAFA !important;
+  background: #FFFFFF !important;
+  border: 1px solid rgba(0, 0, 0, 0.06) !important;
   border-radius: 16px 16px 4px 16px;
 }
 
 /* Override system dark mode */
 @media (prefers-color-scheme: dark) {
   .mirror-bubble-user {
-    background: #FAFAFA !important;
+    background: #FFFFFF !important;
+    border-color: rgba(0, 0, 0, 0.06) !important;
   }
 }
 
 [data-theme="dark"] .mirror-bubble-user {
   background: #333333 !important;
+  border-color: #404040 !important;
 }
 
 .mirror-bubble-text {
@@ -388,22 +393,22 @@
   align-items: flex-end;
   gap: 12px;
   background: #FFFFFF !important;
-  border: 1px solid #D4D4D4 !important;
-  border-radius: 24px;
-  padding: 8px 12px 8px 16px;
-  transition: border-color var(--motion-fast, 75ms) ease;
+  border: 1px solid #E5E5E5 !important;
+  border-radius: 12px;
+  padding: 14px 16px;
+  transition: border-color 200ms ease-out;
 }
 
 /* Override system dark mode */
 @media (prefers-color-scheme: dark) {
   .mirror-input-container {
     background: #FFFFFF !important;
-    border-color: #D4D4D4 !important;
+    border-color: #E5E5E5 !important;
   }
 }
 
 .mirror-input-container:focus-within {
-  border-color: var(--ink, #000000);
+  border-color: #000000;
 }
 
 [data-theme="dark"] .mirror-input-container {
@@ -462,17 +467,17 @@
 }
 
 .mirror-send-btn {
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   border: none;
   border-radius: 50%;
-  background: var(--ink, #000000);
-  color: var(--paper, #FFFFFF);
+  background: #000000;
+  color: #FFFFFF;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all var(--motion-fast, 75ms) ease;
+  transition: transform 200ms ease-out;
   flex-shrink: 0;
 }
 

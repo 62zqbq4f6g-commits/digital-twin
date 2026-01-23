@@ -277,13 +277,18 @@
   opacity: 0.6;
 }
 
-/* Pattern Cards */
+/* Pattern Cards - SoHo Editorial */
 .pattern-card {
-  background: var(--paper, #FFFFFF);
-  border: 1px solid var(--silver-200, #E5E5E5);
-  border-radius: 8px;
-  padding: 16px;
+  background: #FAFAFA;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 12px;
+  padding: 20px;
   margin-bottom: 12px;
+  transition: border-color 200ms ease-out;
+}
+
+.pattern-card:hover {
+  border-color: rgba(0, 0, 0, 0.12);
 }
 
 .pattern-card:last-child {
@@ -291,13 +296,17 @@
 }
 
 [data-theme="dark"] .pattern-card {
-  background: var(--ink-rich, #1A1A1A);
-  border-color: var(--silver-700, #404040);
+  background: #1A1A1A;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .pattern-card:hover {
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
 .pattern-card-confirmed {
-  background: var(--paper-warm, #FAFAFA);
-  border-color: var(--silver-300, #D4D4D4);
+  background: #FAFAFA;
+  border-color: rgba(0, 0, 0, 0.08);
 }
 
 [data-theme="dark"] .pattern-card-confirmed {
