@@ -140,7 +140,7 @@ const TwinUI = {
   },
 
   /**
-   * Update stats grid - counts directly from notes and profile for consistency
+   * Update stats grid - counts directly from notes and patterns for consistency
    */
   async updateStats(summary) {
     try {
@@ -153,11 +153,21 @@ const TwinUI = {
         return decision?.isDecision === true && decision?.resolved !== true;
       }).length;
 
-      // Count patterns from profile (Phase 3d)
+      // Count patterns from both sources:
+      // 1. Phase 3d patterns from profile
+      // 2. Phase 13 patterns from database (via PatternVerification)
       let patternsCount = 0;
       try {
+        // Phase 3d patterns
         const profile = await TwinProfile.load();
         patternsCount = profile?.patterns?.length || 0;
+
+        // Phase 13 patterns (from database)
+        if (typeof window.PatternVerification !== 'undefined' && Sync?.user?.id) {
+          await window.PatternVerification.loadPatterns();
+          const phase13Patterns = window.PatternVerification.patterns || [];
+          patternsCount += phase13Patterns.length;
+        }
       } catch (e) {
         // Ignore pattern errors
       }
@@ -168,7 +178,7 @@ const TwinUI = {
       const positiveRate = totalFeedback > 0 ? Math.round((likedCount / totalFeedback) * 100) : 0;
 
       const elements = {
-        'twin-stat-notes': summary.notesAnalyzed || notes.length,
+        'twin-stat-notes': notes.length,  // Always show actual note count
         'twin-stat-decisions': decisionsCount,
         'twin-stat-patterns': patternsCount,
         'twin-stat-feedback': positiveRate + '%'
