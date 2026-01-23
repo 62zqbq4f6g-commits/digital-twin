@@ -42,9 +42,35 @@ const TwinUI = {
       console.log('[TwinUI] Loading stats immediately...');
 
       // Get notes directly from IndexedDB
-      const notes = await DB.getAllNotes();
+      let notes = await DB.getAllNotes();
+
+      // Fallback: If IndexedDB is empty but user is authenticated, try to get count from Supabase
+      if ((!notes || notes.length === 0) && typeof Sync !== 'undefined' && Sync.user?.id && Sync.supabase) {
+        console.log('[TwinUI] IndexedDB empty, fetching note count from Supabase...');
+        try {
+          const { count, error } = await Sync.supabase
+            .from('notes')
+            .select('id', { count: 'exact', head: true })
+            .eq('user_id', Sync.user.id)
+            .is('deleted_at', null);
+
+          if (!error && count > 0) {
+            console.log('[TwinUI] Supabase has', count, 'notes - sync may be in progress');
+            // Update just the note count while sync completes
+            const el = document.getElementById('twin-stat-notes');
+            if (el) el.textContent = count;
+            // Cache this count
+            const cached = JSON.parse(localStorage.getItem('twin_stats_cache') || '{}');
+            cached.notes = count;
+            localStorage.setItem('twin_stats_cache', JSON.stringify(cached));
+          }
+        } catch (e) {
+          console.warn('[TwinUI] Supabase fallback failed:', e);
+        }
+      }
+
       if (!notes || notes.length === 0) {
-        console.log('[TwinUI] No notes yet, keeping cached/default stats');
+        console.log('[TwinUI] No notes in IndexedDB yet, keeping cached/default stats');
         return;
       }
 
