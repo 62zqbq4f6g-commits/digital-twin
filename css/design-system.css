@@ -2451,49 +2451,7 @@
   font-weight: 600;
 }
 
-.pulse-header {
-  font-family: var(--font-body);
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--ink);
-  margin-bottom: 12px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.pulse-header::before {
-  content: '✓';
-}
-
-.pulse-items {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.pulse-item {
-  font-family: var(--font-body);
-  font-size: 13px;
-  color: var(--silver-600);
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-}
-
-.pulse-item-icon {
-  color: var(--silver-400);
-  flex-shrink: 0;
-}
-
-.pulse-item-icon.primary {
-  color: var(--ink);
-}
-
-.pulse-item-text {
-  line-height: 1.4;
-}
-
+/* Entity link styling (used in entity-cards.js) */
 .pulse-item-entity {
   font-weight: 500;
   color: var(--ink);
@@ -2514,6 +2472,13 @@
     border-color: rgba(0, 0, 0, 0.08);
     color: var(--ink);
   }
+}
+
+/* Manual dark mode via data-theme attribute */
+[data-theme="dark"] .knowledge-pulse {
+  background: #FFFFFF;
+  border-color: rgba(0, 0, 0, 0.08);
+  color: #1a1a1a;
 }
 
 /* =============================================================================
