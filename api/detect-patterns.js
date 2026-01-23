@@ -235,19 +235,20 @@ IMPORTANT:
 
     // ===== STEP 4: STORE PATTERNS =====
 
-    // Archive ALL old patterns for this user (not just llm_hybrid)
+    // Reject ALL old patterns for this user (not just llm_hybrid)
+    // Valid statuses: pending, detected, confirmed, rejected
     // This ensures old temporal/thematic analysis patterns are also cleared
-    const { data: archivedPatterns, error: archiveError } = await supabase
+    const { data: rejectedPatterns, error: rejectError } = await supabase
       .from('user_patterns')
-      .update({ status: 'archived' })
+      .update({ status: 'rejected' })
       .eq('user_id', user_id)
-      .in('status', ['detected', 'active'])
+      .in('status', ['detected', 'pending'])
       .select();
 
-    if (archiveError) {
-      console.error('[detect-patterns] Archive error:', archiveError);
+    if (rejectError) {
+      console.error('[detect-patterns] Reject old patterns error:', rejectError);
     } else {
-      console.log('[detect-patterns] Archived old patterns:', archivedPatterns?.length || 0);
+      console.log('[detect-patterns] Rejected old patterns:', rejectedPatterns?.length || 0);
     }
 
     const newPatterns = [];
