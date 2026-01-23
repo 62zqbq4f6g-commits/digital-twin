@@ -1,6 +1,6 @@
 # Inscript — Project Status
 
-## January 23, 2026 | Version 8.2.0
+## January 23, 2026 | Version 8.2.1
 
 ---
 
@@ -13,11 +13,28 @@
 
 ---
 
-## LAST SESSION: January 23, 2026 (PM)
+## LAST SESSION: January 23, 2026 (Evening)
+
+### Bug Fixes Deployed
+
+| Fix | Description | Commit |
+|-----|-------------|--------|
+| 406 onboarding error | Changed `.single()` → `.maybeSingle()` in onboarding.js | `693f18c` |
+| 500 Pulse API error | Rewrote pulse.js to use action_signals + user_entities (notes are E2E encrypted) | `693f18c` |
+| Invalid Date in MEETINGS | Added date validation in `formatRelativeDate()` | `2347990` |
+| Meeting double-save | Disabled save button during save operation | `2347990` |
+
+### Parallel Terminal Setup
+
+Created task prompts for parallel development:
+- `terminal-1-backend.md` — API and backend tasks
+- `terminal-2-frontend.md` — UI and frontend tasks
+
+---
+
+## EARLIER SESSION: January 23, 2026 (PM)
 
 ### Phase 14: WORK Tab Improvements
-
-Fixes deployed to improve meeting functionality:
 
 | Fix | Description | Status |
 |-----|-------------|--------|
@@ -27,41 +44,20 @@ Fixes deployed to improve meeting functionality:
 | Double-init prevention | Added `initialized` flag to prevent duplicate listeners | ✅ Fixed |
 | Corrupted data cleanup | Added `fixCorruptedMeetings()` function | ✅ Added |
 | Duplicate cleanup | Added `cleanupDuplicates()` function | ✅ Added |
-| Meeting card display | Improved title/content extraction | ✅ Improved |
 
-### Console Commands Available
-
-```javascript
-// Fix corrupted meetings with repeated "Meeting with team:" headers
-await WorkUI.fixCorruptedMeetings()
-
-// Remove duplicate meeting entries
-await WorkUI.cleanupDuplicates()
-```
-
-### Earlier Session: Pre-Beta Holistic Test
-
-Comprehensive 28-test verification across all features:
+### Pre-Beta Holistic Test Results
 
 | Category | Pass Rate | Details |
 |----------|-----------|---------|
 | Authentication | 3/3 | App loads, user authenticated, minimal console errors |
 | Notes & Reflections | 5/5 | HEARD/NOTICED/QUESTION structure verified |
-| WORK Tab | 4/5 | Meeting fixes deployed |
+| WORK Tab | 5/5 | All meeting fixes deployed |
 | TWIN Tab | 5/5 | Stats load immediately, LLM patterns work |
 | MIRROR Tab | 4/4 | Key People recognized (including pets like Seri) |
 | UI/UX | 2/3 | Mobile responsive, dark mode works |
 | Performance | 3/3 | LCP < 2.5s, no memory leaks |
 
 **Overall Score: 93% (26/28 tests passed)**
-
-### Remaining Issues
-
-| Issue | Severity | Status |
-|-------|----------|--------|
-| Attendees showing as "team" despite input | Medium | Investigating |
-| Job titles classified as People | Low | Open |
-| 500 errors on TwinProfile sync | Low | Non-blocking |
 
 ---
 
@@ -75,10 +71,35 @@ Comprehensive 28-test verification across all features:
 - TWIN patterns are meaningful and dismissible
 - MIRROR conversation is context-aware
 - Performance is good
+- Console errors fixed (406, 500)
 
 ### Acceptable Issues
-- MEETINGS Invalid Date — edge case, doesn't block core flow
-- Duplicate meeting entries — UI deduplication works
+- Attendees sometimes show as "team" — investigating
+- Job titles classified as People — low priority
+
+---
+
+## TECH DEBT (Critical)
+
+| File | Lines | Impact | Priority |
+|------|-------|--------|----------|
+| `js/ui.js` | 4,800+ | Maintainability | P0 |
+| `api/analyze.js` | 3,600+ | Maintainability | P1 |
+| `css/styles.css` | 8,400+ | Maintainability | P2 |
+
+### Split Plans
+
+**ui.js → 5 modules:**
+- `ui-core.js` — Core utilities, initialization
+- `ui-notes.js` — Note rendering, input handling
+- `ui-twin.js` — TWIN tab specific code
+- `ui-modals.js` — Modal management
+- `ui-onboarding.js` — Onboarding flow
+
+**analyze.js → Extract prompts:**
+- `api/prompts/reflection-prompts.js`
+- `api/prompts/entity-prompts.js`
+- `api/prompts/classification-prompts.js`
 
 ---
 
@@ -86,32 +107,31 @@ Comprehensive 28-test verification across all features:
 
 ### P0 — Must Do
 
-1. **Debug attendee capture in meetings**
-   - Issue: Attendees showing as "team" even when names are entered
-   - Location: `js/work-ui.js` - `saveMeeting()` function
-   - Check console logs for `[WorkUI] saveMeeting - Attendees from chips/input`
-
-2. **Set Up Vercel Cron for Memory Maintenance**
+1. **Set Up Vercel Cron for Memory Maintenance**
    - Create `/api/cron/memory-maintenance.js`
    - Implement: time decay, duplicate detection, old memory compression
 
+2. **Split ui.js** (Terminal 2)
+   - Break 4,800+ line file into modules
+
 ### P1 — Should Do
 
-1. **Improve Entity Classification**
+1. **Debug attendee capture in meetings**
+   - Location: `js/work-ui.js` - `saveMeeting()` function
+
+2. **Improve Entity Classification**
    - Filter job titles from People extraction
    - Location: `api/extract-entities.js`
 
-2. **Split ui.js**
-   - Current: 4,800+ lines
-   - Target: ui-core, ui-notes, ui-twin, ui-modals, ui-onboarding
-
-3. **Add Error Tracking (Sentry)**
+3. **Fix 500 errors on TwinProfile sync**
+   - Location: `api/twin-profile.js`
 
 ### P2 — Nice to Have
 
 1. Memory milestones (30/90/365 days)
 2. "What does Inscript know?" query
 3. Memory visualization
+4. Add Error Tracking (Sentry)
 
 ---
 
@@ -128,42 +148,36 @@ All critical tables verified:
 | `mirror_conversations` table | ✅ Working |
 | `meetings` table | ✅ Working |
 | `decisions` table | ✅ Working |
+| `action_signals` table | ✅ Working |
 | pgvector extension | ✅ Enabled |
 
 ---
 
-## KNOWN ISSUES / TECH DEBT
+## CONSOLE COMMANDS
 
-### Critical (P0)
+```javascript
+// Fix corrupted meetings with repeated headers
+await WorkUI.fixCorruptedMeetings()
 
-| Issue | Impact | Location |
-|-------|--------|----------|
-| `ui.js` is 4,800+ lines | Maintainability | `js/ui.js` |
-| `analyze.js` is 3,600+ lines | Maintainability | `api/analyze.js` |
-
-### Should Fix (P1)
-
-| Issue | Impact | Status |
-|-------|--------|--------|
-| Attendees not captured | Meetings show "team" | Investigating |
-| Job titles as People | Incorrect classification | Open |
-
-### Known Workarounds
-
-- UI deduplication filters duplicate meetings in MEETINGS view
-- `await WorkUI.cleanupDuplicates()` — Remove duplicate meeting entries
-- `await WorkUI.fixCorruptedMeetings()` — Fix notes with repeated "Meeting with team:" headers
+// Remove duplicate meeting entries
+await WorkUI.cleanupDuplicates()
+```
 
 ---
 
 ## PHASE HISTORY
+
+### Phase 14.1: Bug Fixes (January 23, 2026 Evening)
+- Fixed 406 onboarding error
+- Fixed 500 Pulse API error
+- Created parallel terminal task prompts
 
 ### Phase 14: WORK Tab Improvements (January 23, 2026 PM)
 - Meeting click-through fixed
 - Attendee parsing from direct input
 - Double-save prevention (isSavingMeeting flag)
 - Corrupted meeting cleanup functions
-- Improved meeting card display
+- Invalid Date fix in formatRelativeDate()
 
 ### Phase 13E: Polish (January 23, 2026)
 - Pre-beta holistic testing complete
@@ -233,17 +247,7 @@ git add -A && git commit -m "message" && git push origin main
 vercel dev --listen 3001
 
 # Version (console)
-APP_VERSION  // "8.2.0"
-```
-
-### Meeting Cleanup (Browser Console)
-
-```javascript
-// Fix corrupted meetings with repeated headers
-await WorkUI.fixCorruptedMeetings()
-
-// Remove duplicate meeting entries
-await WorkUI.cleanupDuplicates()
+APP_VERSION  // "8.2.1"
 ```
 
 ---
@@ -252,7 +256,8 @@ await WorkUI.cleanupDuplicates()
 
 | Version | Date | Changes |
 |---------|------|---------|
-| **8.2.0** | Jan 23, 2026 | Pre-beta testing (93%), Key People fix, documentation update |
+| **8.2.1** | Jan 23, 2026 | Fix 406/500 errors, parallel terminal setup |
+| 8.2.0 | Jan 23, 2026 | Pre-beta testing (93%), Key People fix, documentation update |
 | 8.1.1 | Jan 21, 2026 | Category summaries `.single()` → `.maybeSingle()` |
 | 8.1.0 | Jan 21, 2026 | Mem0 GAP Integration: Full memory architecture |
 | 8.0.0 | Jan 20, 2026 | Phase 13: Patterns, MIRROR tab, WORK tab |
@@ -282,5 +287,5 @@ This is the "holy shit, it knows" moment working in production.
 ---
 
 *Last Updated: January 23, 2026*
-*Version: 8.2.0 — Inscript*
+*Version: 8.2.1 — Inscript*
 *Production: https://digital-twin-ecru.vercel.app*
