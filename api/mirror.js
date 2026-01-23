@@ -794,6 +794,7 @@ async function getUserContext(user_id) {
   if (keyPeopleError) {
     console.error('[mirror] Error fetching key people:', keyPeopleError);
   } else {
+    console.log('[mirror] Fetched key people:', JSON.stringify(keyPeople || []));
     console.log('[mirror] Fetched key people count:', keyPeople?.length || 0);
   }
 
@@ -1059,6 +1060,12 @@ function buildSystemPrompt(context, insightType = 'reflection_prompt') {
   const keyPeople = entities.filter(e => e.is_key_person);
   const otherEntities = entities.filter(e => !e.is_key_person);
 
+  // DIAGNOSTIC: Log what we're getting
+  console.log('[mirror] buildSystemPrompt DIAGNOSTIC:');
+  console.log('[mirror]   - Total entities:', entities?.length || 0);
+  console.log('[mirror]   - Key People found:', keyPeople.length);
+  console.log('[mirror]   - Key People names:', keyPeople.map(p => p.name).join(', ') || 'NONE');
+
   // Build Key People context (highest priority)
   const keyPeopleContext = keyPeople.length > 0
     ? keyPeople.map(e => {
@@ -1066,6 +1073,8 @@ function buildSystemPrompt(context, insightType = 'reflection_prompt') {
         return `- ${e.name}: ${e.relationship || 'important person'}${notes}`;
       }).join('\n')
     : null;
+
+  console.log('[mirror]   - keyPeopleContext:', keyPeopleContext || 'NULL - no key people in context');
 
   // Build entities/people context - this is our primary source of note context
   // since notes are E2E encrypted and we can't read content server-side

@@ -219,6 +219,17 @@
             </button>
           </div>
           <p id="notes-transcript-display" class="notes-transcript-display"></p>
+          <!-- Quick Modes (Phase 14) -->
+          <div class="notes-quick-modes">
+            <button id="meeting-mode-btn" class="quick-mode-btn" aria-label="Meeting mode">
+              <span class="quick-mode-icon">📋</span>
+              <span class="quick-mode-label">Meeting</span>
+            </button>
+            <button id="decision-mode-btn" class="quick-mode-btn" aria-label="Decision mode">
+              <span class="quick-mode-icon">🤔</span>
+              <span class="quick-mode-label">Decision</span>
+            </button>
+          </div>
         </div>
 
         <!-- Search Box -->
@@ -370,16 +381,51 @@
         </div>
       </section>
 
-      <!-- Actions Screen (Phase 4.1 - Simplified) -->
-      <section id="screen-actions" class="screen hidden">
-        <!-- Actions List - all content rendered by JS -->
-        <div class="actions-list" id="actions-list">
-          <!-- Populated by JS -->
+      <!-- WORK Screen (Phase 14 - Work Utility) -->
+      <section id="screen-work" class="screen hidden">
+        <!-- Sub-tab Navigation -->
+        <div class="work-tabs">
+          <button class="work-tab active" data-work-tab="pulse">PULSE</button>
+          <button class="work-tab" data-work-tab="actions">ACTIONS</button>
+          <button class="work-tab" data-work-tab="meetings">MEETINGS</button>
+          <button class="work-tab" data-work-tab="commitments">COMMITMENTS</button>
         </div>
 
-        <!-- Empty State -->
-        <div class="actions-empty hidden" id="actions-empty">
-          <!-- Populated by JS -->
+        <!-- PULSE Sub-tab (Morning Briefing) -->
+        <div id="work-pulse" class="work-content">
+          <div class="pulse-container">
+            <p class="pulse-loading">Loading your morning pulse...</p>
+          </div>
+        </div>
+
+        <!-- ACTIONS Sub-tab (existing actions functionality) -->
+        <div id="work-actions" class="work-content hidden">
+          <div class="actions-list" id="actions-list">
+            <!-- Populated by JS -->
+          </div>
+          <div class="actions-empty hidden" id="actions-empty">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+        <!-- MEETINGS Sub-tab -->
+        <div id="work-meetings" class="work-content hidden">
+          <div class="meetings-list" id="meetings-list">
+            <p class="meetings-empty">No meetings recorded yet.</p>
+          </div>
+          <button class="meetings-add-btn" id="new-meeting-btn">
+            <span>+ New Meeting</span>
+          </button>
+        </div>
+
+        <!-- COMMITMENTS Sub-tab -->
+        <div id="work-commitments" class="work-content hidden">
+          <div class="commitments-header">
+            <p class="commitments-intro">Things you said you'd do:</p>
+          </div>
+          <div class="commitments-list" id="commitments-list">
+            <p class="commitments-empty">No open commitments.</p>
+          </div>
         </div>
       </section>
 
@@ -567,13 +613,75 @@
       </div>
     </div>
 
-    <!-- Bottom Navigation - Phase 13B: 4 tabs with MIRROR -->
+    <!-- Meeting Debrief Modal (Phase 14) -->
+    <div id="meeting-modal" class="modal hidden">
+      <div class="modal-content meeting-modal-content">
+        <button class="modal-close" id="meeting-modal-close" aria-label="Close">✕</button>
+        <h2 class="meeting-modal-title">Meeting Debrief</h2>
+
+        <div class="meeting-form">
+          <div class="meeting-field">
+            <label class="meeting-label">Who was there?</label>
+            <div class="meeting-attendees">
+              <input type="text" id="meeting-attendees-input" class="meeting-input" placeholder="Add people...">
+              <div id="meeting-attendees-list" class="meeting-attendees-chips"></div>
+              <div id="meeting-attendees-suggestions" class="meeting-suggestions hidden"></div>
+            </div>
+          </div>
+
+          <div class="meeting-field">
+            <label class="meeting-label">What happened?</label>
+            <div class="meeting-capture-row">
+              <button id="meeting-voice-btn" class="meeting-voice-btn" aria-label="Voice input">
+                <span class="mic-icon">🎤</span>
+                <div class="stop-icon"></div>
+              </button>
+              <textarea id="meeting-content" class="meeting-textarea" placeholder="Tap mic to speak or type here..." rows="4"></textarea>
+            </div>
+            <p id="meeting-transcript-display" class="meeting-transcript-display"></p>
+          </div>
+
+          <button id="meeting-save-btn" class="meeting-save-btn">Save Meeting</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Decision Mode Modal (Phase 14) -->
+    <div id="decision-modal" class="modal hidden">
+      <div class="modal-content decision-modal-content">
+        <button class="modal-close" id="decision-modal-close" aria-label="Close">✕</button>
+        <h2 class="decision-modal-title">Thinking Through</h2>
+
+        <div class="decision-form">
+          <div class="decision-field">
+            <label class="decision-label">What are you deciding?</label>
+            <input type="text" id="decision-topic" class="decision-input" placeholder="e.g., Whether to push the launch">
+          </div>
+
+          <div class="decision-field">
+            <label class="decision-label">What's on your mind?</label>
+            <div class="decision-capture-row">
+              <button id="decision-voice-btn" class="decision-voice-btn" aria-label="Voice input">
+                <span class="mic-icon">🎤</span>
+                <div class="stop-icon"></div>
+              </button>
+              <textarea id="decision-content" class="decision-textarea" placeholder="Tap mic to speak or type here..." rows="4"></textarea>
+            </div>
+            <p id="decision-transcript-display" class="decision-transcript-display"></p>
+          </div>
+
+          <button id="decision-save-btn" class="decision-save-btn">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Navigation - Phase 14: 4 tabs with WORK -->
     <nav class="nav nav-four-tabs">
       <button class="nav-tab active" data-screen="notes">
         <span class="nav-label">NOTES</span>
       </button>
-      <button class="nav-tab" data-screen="actions">
-        <span class="nav-label">ACTIONS</span>
+      <button class="nav-tab" data-screen="work">
+        <span class="nav-label">WORK</span>
       </button>
       <button class="nav-tab" data-screen="twin">
         <span class="nav-label">TWIN</span>
@@ -620,6 +728,7 @@
   <script src="js/feedback.js?v=700"></script>
   <script src="js/decision-tracker.js?v=700"></script>
   <script src="js/actions-ui.js?v=700"></script>
+  <script src="js/work-ui.js?v=800"></script>
   <script src="js/follow-up.js?v=700"></script>
   <script src="js/nudge-tracker.js?v=700"></script>
   <script src="js/onboarding.js?v=792"></script>

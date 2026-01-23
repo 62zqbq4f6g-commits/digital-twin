@@ -6678,6 +6678,763 @@ body {
 }
 
 /* ============================================
+   PHASE 14: WORK TAB - Work Utility
+   ============================================ */
+
+/* Work Tab Sub-navigation */
+.work-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--silver-200);
+  padding: 0 var(--space-4);
+  background: var(--paper);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.work-tab {
+  flex: 1;
+  padding: var(--space-3) var(--space-2);
+  font-family: var(--font-body);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--silver-500);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.work-tab:hover {
+  color: var(--ink-soft);
+}
+
+.work-tab.active {
+  color: var(--ink);
+  border-bottom-color: var(--ink);
+}
+
+/* Work Content Areas */
+.work-content {
+  padding: var(--space-4);
+  min-height: calc(100vh - 200px);
+}
+
+.work-content.hidden {
+  display: none;
+}
+
+/* Quick Mode Buttons */
+.notes-quick-modes {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-top: 1px solid var(--silver-100);
+}
+
+.quick-mode-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--silver-600);
+  background: var(--silver-50);
+  border: 1px solid var(--silver-200);
+  border-radius: 100px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.quick-mode-btn:hover {
+  background: var(--silver-100);
+  border-color: var(--silver-300);
+  color: var(--ink);
+}
+
+.quick-mode-icon {
+  font-size: 0.875rem;
+}
+
+.quick-mode-label {
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+/* ─────────────────────────────────────────
+   PULSE Tab - Morning Briefing
+   ───────────────────────────────────────── */
+
+.pulse-container {
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.pulse-loading {
+  text-align: center;
+  color: var(--silver-500);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  padding: var(--space-8) 0;
+}
+
+.pulse-greeting {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 400;
+  color: var(--ink);
+  margin-bottom: var(--space-6);
+}
+
+.pulse-section {
+  margin-bottom: var(--space-6);
+  padding-bottom: var(--space-6);
+  border-bottom: 1px solid var(--silver-100);
+}
+
+.pulse-section:last-of-type {
+  border-bottom: none;
+}
+
+.pulse-section-title {
+  font-family: var(--font-body);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--silver-500);
+  margin: 0 0 var(--space-1);
+}
+
+.pulse-section-subtitle {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: var(--silver-400);
+  margin: 0 0 var(--space-3);
+}
+
+.pulse-themes,
+.pulse-actions,
+.pulse-commitments,
+.pulse-people {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.pulse-themes li,
+.pulse-action,
+.pulse-commitment,
+.pulse-person {
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--silver-50);
+}
+
+.pulse-themes li:last-child,
+.pulse-action:last-child,
+.pulse-commitment:last-child,
+.pulse-person:last-child {
+  border-bottom: none;
+}
+
+.pulse-themes li {
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  color: var(--ink-soft);
+}
+
+.pulse-action {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.pulse-action-effort {
+  font-size: 0.875rem;
+}
+
+.pulse-action-text {
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  color: var(--ink-soft);
+}
+
+.pulse-commitment {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.pulse-commitment-text {
+  font-family: var(--font-editorial);
+  font-size: 0.9375rem;
+  font-style: italic;
+  color: var(--ink-soft);
+}
+
+.pulse-commitment-date {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: var(--silver-400);
+}
+
+.pulse-person {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.pulse-person-name {
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.pulse-person-context {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: var(--silver-500);
+}
+
+.pulse-cta {
+  display: block;
+  width: 100%;
+  padding: var(--space-4);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--paper);
+  background: var(--ink);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+  margin-top: var(--space-4);
+}
+
+.pulse-cta:hover {
+  opacity: 0.9;
+}
+
+/* ─────────────────────────────────────────
+   MEETINGS Tab
+   ───────────────────────────────────────── */
+
+.meetings-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.meetings-empty {
+  text-align: center;
+  color: var(--silver-500);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  padding: var(--space-8) 0;
+}
+
+.meeting-card {
+  padding: var(--space-4);
+  background: var(--paper);
+  border: 1px solid var(--silver-200);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.meeting-card:hover {
+  border-color: var(--silver-400);
+}
+
+.meeting-card-title {
+  font-family: var(--font-body);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--ink);
+  margin-bottom: var(--space-1);
+}
+
+.meeting-card-meta {
+  display: flex;
+  gap: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: var(--silver-500);
+  margin-bottom: var(--space-2);
+}
+
+.meeting-card-attendees {
+  color: var(--silver-600);
+}
+
+.meeting-card-actions {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: var(--silver-500);
+}
+
+.meetings-add-btn {
+  display: block;
+  width: 100%;
+  padding: var(--space-3);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--silver-600);
+  background: none;
+  border: 1px dashed var(--silver-300);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  margin-top: var(--space-4);
+}
+
+.meetings-add-btn:hover {
+  border-color: var(--silver-500);
+  color: var(--ink);
+}
+
+/* ─────────────────────────────────────────
+   COMMITMENTS Tab
+   ───────────────────────────────────────── */
+
+.commitments-header {
+  margin-bottom: var(--space-4);
+}
+
+.commitments-intro {
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  color: var(--silver-600);
+  margin: 0;
+}
+
+.commitments-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.commitments-empty {
+  text-align: center;
+  color: var(--silver-500);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  padding: var(--space-8) 0;
+}
+
+.commitment-card {
+  padding: var(--space-4);
+  background: var(--paper);
+  border: 1px solid var(--silver-200);
+  border-radius: 8px;
+}
+
+.commitment-text {
+  font-family: var(--font-editorial);
+  font-size: 0.9375rem;
+  font-style: italic;
+  color: var(--ink-soft);
+  margin-bottom: var(--space-2);
+  line-height: 1.5;
+}
+
+.commitment-meta {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: var(--silver-400);
+  margin-bottom: var(--space-3);
+}
+
+.commitment-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.commitment-btn {
+  flex: 1;
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.commitment-btn-done {
+  color: var(--paper);
+  background: var(--ink);
+  border: none;
+}
+
+.commitment-btn-done:hover {
+  opacity: 0.9;
+}
+
+.commitment-btn-working {
+  color: var(--ink-soft);
+  background: none;
+  border: 1px solid var(--silver-300);
+}
+
+.commitment-btn-working:hover {
+  border-color: var(--silver-500);
+}
+
+.commitment-btn-wont {
+  color: var(--silver-500);
+  background: none;
+  border: 1px solid var(--silver-200);
+}
+
+.commitment-btn-wont:hover {
+  border-color: var(--silver-400);
+  color: var(--silver-600);
+}
+
+/* ─────────────────────────────────────────
+   Meeting Modal
+   ───────────────────────────────────────── */
+
+.meeting-modal-content {
+  max-width: 480px;
+}
+
+.meeting-modal-title {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 500;
+  color: var(--ink);
+  margin: 0 0 var(--space-6);
+}
+
+.meeting-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.meeting-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.meeting-label {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--silver-600);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.meeting-input {
+  padding: var(--space-3);
+  font-family: var(--font-body);
+  font-size: 0.9375rem;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--silver-200);
+  border-radius: 8px;
+  transition: border-color 0.15s ease;
+}
+
+.meeting-input:focus {
+  outline: none;
+  border-color: var(--ink);
+}
+
+.meeting-attendees {
+  position: relative;
+}
+
+.meeting-attendees-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.attendee-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--ink);
+  background: var(--silver-100);
+  border-radius: 100px;
+}
+
+.attendee-remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  font-size: 0.875rem;
+  color: var(--silver-500);
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.attendee-remove:hover {
+  color: var(--ink);
+}
+
+.meeting-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.meeting-suggestions.hidden {
+  display: none;
+}
+
+.meeting-suggestion {
+  padding: var(--space-1) var(--space-2);
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: var(--silver-600);
+  background: var(--silver-50);
+  border: 1px solid var(--silver-200);
+  border-radius: 100px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.meeting-suggestion:hover {
+  background: var(--silver-100);
+  border-color: var(--silver-300);
+  color: var(--ink);
+}
+
+.meeting-capture-row {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.meeting-voice-btn {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  color: var(--silver-600);
+  background: var(--silver-50);
+  border: 1px solid var(--silver-200);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.meeting-voice-btn:hover {
+  background: var(--silver-100);
+  border-color: var(--silver-300);
+}
+
+.meeting-voice-btn.recording {
+  color: var(--paper);
+  background: var(--error);
+  border-color: var(--error);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.meeting-textarea {
+  flex: 1;
+  padding: var(--space-3);
+  font-family: var(--font-body);
+  font-size: 0.9375rem;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--silver-200);
+  border-radius: 8px;
+  resize: vertical;
+  min-height: 100px;
+  transition: border-color 0.15s ease;
+}
+
+.meeting-textarea:focus {
+  outline: none;
+  border-color: var(--ink);
+}
+
+.meeting-transcript-display {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: var(--silver-500);
+  font-style: italic;
+  margin-top: var(--space-2);
+  min-height: 1.5em;
+}
+
+.meeting-save-btn {
+  padding: var(--space-4);
+  font-family: var(--font-body);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--paper);
+  background: var(--ink);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.meeting-save-btn:hover {
+  opacity: 0.9;
+}
+
+/* ─────────────────────────────────────────
+   Decision Modal
+   ───────────────────────────────────────── */
+
+.decision-modal-content {
+  max-width: 480px;
+}
+
+.decision-modal-title {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 500;
+  color: var(--ink);
+  margin: 0 0 var(--space-6);
+}
+
+.decision-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.decision-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.decision-label {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--silver-600);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.decision-input {
+  padding: var(--space-3);
+  font-family: var(--font-body);
+  font-size: 0.9375rem;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--silver-200);
+  border-radius: 8px;
+  transition: border-color 0.15s ease;
+}
+
+.decision-input:focus {
+  outline: none;
+  border-color: var(--ink);
+}
+
+.decision-capture-row {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.decision-voice-btn {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  color: var(--silver-600);
+  background: var(--silver-50);
+  border: 1px solid var(--silver-200);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.decision-voice-btn:hover {
+  background: var(--silver-100);
+  border-color: var(--silver-300);
+}
+
+.decision-voice-btn.recording {
+  color: var(--paper);
+  background: var(--error);
+  border-color: var(--error);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.decision-textarea {
+  flex: 1;
+  padding: var(--space-3);
+  font-family: var(--font-body);
+  font-size: 0.9375rem;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--silver-200);
+  border-radius: 8px;
+  resize: vertical;
+  min-height: 100px;
+  transition: border-color 0.15s ease;
+}
+
+.decision-textarea:focus {
+  outline: none;
+  border-color: var(--ink);
+}
+
+.decision-transcript-display {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: var(--silver-500);
+  font-style: italic;
+  margin-top: var(--space-2);
+  min-height: 1.5em;
+}
+
+.decision-save-btn {
+  padding: var(--space-4);
+  font-family: var(--font-body);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--paper);
+  background: var(--ink);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.decision-save-btn:hover {
+  opacity: 0.9;
+}
+
+/* ============================================
    PHASE 4.2: Camera Bottom Sheet
    ============================================ */
 

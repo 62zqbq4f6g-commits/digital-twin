@@ -339,8 +339,12 @@ const UI = {
       if (typeof TwinUI !== 'undefined') {
         TwinUI.refresh();
       }
-    } else if (screenName === 'actions') {
-      // Phase 4C: Refresh Actions tab display
+    } else if (screenName === 'work') {
+      // Phase 14: Refresh Work tab display
+      if (typeof WorkUI !== 'undefined') {
+        WorkUI.refresh();
+      }
+      // Also refresh ActionsUI if on the actions sub-tab
       if (typeof ActionsUI !== 'undefined') {
         ActionsUI.refresh();
       }
@@ -1810,9 +1814,9 @@ const UI = {
     document.getElementById('screen-note-detail').classList.add('hidden');
     this.currentNote = null;
 
-    // Return to previous screen (actions or notes)
-    if (this.previousScreen === 'actions') {
-      this.showScreen('actions');
+    // Return to previous screen (work or notes)
+    if (this.previousScreen === 'work') {
+      this.showScreen('work');
       this.previousScreen = 'notes'; // Reset
     }
   },

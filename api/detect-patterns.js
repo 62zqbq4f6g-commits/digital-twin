@@ -235,13 +235,20 @@ IMPORTANT:
 
     // ===== STEP 4: STORE PATTERNS =====
 
-    // Archive old LLM-detected patterns for this user
-    await supabase
+    // Archive ALL old patterns for this user (not just llm_hybrid)
+    // This ensures old temporal/thematic analysis patterns are also cleared
+    const { data: archivedPatterns, error: archiveError } = await supabase
       .from('user_patterns')
       .update({ status: 'archived' })
       .eq('user_id', user_id)
-      .eq('detection_method', 'llm_hybrid')
-      .eq('status', 'detected');
+      .in('status', ['detected', 'active'])
+      .select();
+
+    if (archiveError) {
+      console.error('[detect-patterns] Archive error:', archiveError);
+    } else {
+      console.log('[detect-patterns] Archived old patterns:', archivedPatterns?.length || 0);
+    }
 
     const newPatterns = [];
     for (const pattern of patterns) {
