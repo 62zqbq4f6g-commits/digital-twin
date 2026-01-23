@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TWIN Tab Replica</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Cormorant+Garamond:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: #FFFFFF;
+      color: #1A1A1A;
+      line-height: 1.6;
+      padding: 20px;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+
+    .section-title {
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #6B6B6B;
+      margin-bottom: 16px;
+    }
+
+    .section {
+      margin-bottom: 32px;
+    }
+
+    /* Stats Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      background: #FAFAFA;
+      border: 1px solid rgba(0, 0, 0, 0.06);
+      border-radius: 12px;
+      padding: 16px;
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 32px;
+      font-weight: 600;
+      color: #1A1A1A;
+      line-height: 1.2;
+    }
+
+    .stat-label {
+      font-size: 11px;
+      color: #6B6B6B;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-top: 4px;
+    }
+
+    /* Confidence Meter */
+    .confidence-meter {
+      background: #FAFAFA;
+      border: 1px solid rgba(0, 0, 0, 0.06);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 24px;
+    }
+
+    .confidence-label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .confidence-title {
+      font-size: 13px;
+      color: #6B6B6B;
+    }
+
+    .confidence-value {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .confidence-bar {
+      height: 4px;
+      background: #E5E5E5;
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .confidence-fill {
+      height: 100%;
+      background: #1A1A1A;
+      width: 67%;
+      transition: width 0.3s ease;
+    }
+
+    .confidence-hint {
+      font-size: 12px;
+      color: #6B6B6B;
+      margin-top: 8px;
+      font-style: italic;
+      font-family: 'Cormorant Garamond', serif;
+    }
+
+    /* Pattern Cards */
+    .patterns-group-title {
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #6B6B6B;
+      margin-bottom: 12px;
+    }
+
+    .pattern-card {
+      background: #FAFAFA;
+      border: 1px solid rgba(0, 0, 0, 0.06);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+
+    .pattern-card:hover {
+      border-color: rgba(0, 0, 0, 0.12);
+    }
+
+    .pattern-card-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .pattern-card-icon {
+      color: #6B6B6B;
+      font-size: 12px;
+    }
+
+    .pattern-card-title {
+      font-size: 13px;
+      font-weight: 500;
+      color: #1A1A1A;
+    }
+
+    .pattern-card-text {
+      font-size: 14px;
+      color: #1A1A1A;
+      font-family: 'Cormorant Garamond', serif;
+      font-style: italic;
+      line-height: 1.5;
+    }
+
+    .pattern-card-buttons {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .pattern-btn {
+      flex: 1;
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .pattern-btn-confirm {
+      background: #000000;
+      color: #FFFFFF;
+      border: none;
+    }
+
+    .pattern-btn-reject {
+      background: transparent;
+      color: #1A1A1A;
+      border: 1px solid #E5E5E5;
+    }
+
+    /* Your World Section */
+    .entity-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .entity-pill {
+      background: #F5F5F5;
+      border: 1px solid rgba(0, 0, 0, 0.06);
+      border-radius: 20px;
+      padding: 8px 14px;
+      font-size: 13px;
+      color: #1A1A1A;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .entity-pill:hover {
+      background: #EBEBEB;
+    }
+
+    .entity-pill-type {
+      font-size: 11px;
+      color: #6B6B6B;
+      margin-left: 4px;
+    }
+
+    /* Key People */
+    .key-people-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .key-person {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      background: #FAFAFA;
+      border: 1px solid rgba(0, 0, 0, 0.06);
+      border-radius: 12px;
+    }
+
+    .key-person-avatar {
+      width: 40px;
+      height: 40px;
+      background: #E5E5E5;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      font-weight: 500;
+      color: #6B6B6B;
+    }
+
+    .key-person-info {
+      flex: 1;
+    }
+
+    .key-person-name {
+      font-size: 14px;
+      font-weight: 500;
+      color: #1A1A1A;
+    }
+
+    .key-person-relationship {
+      font-size: 12px;
+      color: #6B6B6B;
+    }
+
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: #6B6B6B;
+    }
+
+    .empty-state-text {
+      font-family: 'Cormorant Garamond', serif;
+      font-style: italic;
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Stats Section -->
+  <div class="section">
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-value">47</div>
+        <div class="stat-label">Notes</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">12</div>
+        <div class="stat-label">People</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">8</div>
+        <div class="stat-label">Patterns</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confidence Meter -->
+  <div class="section">
+    <div class="confidence-meter">
+      <div class="confidence-label">
+        <span class="confidence-title">How well I know you</span>
+        <span class="confidence-value">67%</span>
+      </div>
+      <div class="confidence-bar">
+        <div class="confidence-fill"></div>
+      </div>
+      <div class="confidence-hint">Your twin knows you well</div>
+    </div>
+  </div>
+
+  <!-- Patterns I've Noticed -->
+  <div class="section">
+    <h3 class="patterns-group-title">Patterns I've Noticed</h3>
+
+    <div class="pattern-card">
+      <div class="pattern-card-header">
+        <span class="pattern-card-icon">◆</span>
+        <span class="pattern-card-title">Evening reflection pattern</span>
+      </div>
+      <p class="pattern-card-text">You tend to process your thoughts in the evening, often after social events or work meetings.</p>
+      <div class="pattern-card-buttons">
+        <button class="pattern-btn pattern-btn-confirm">That resonates</button>
+        <button class="pattern-btn pattern-btn-reject">Not quite</button>
+      </div>
+    </div>
+
+    <div class="pattern-card">
+      <div class="pattern-card-header">
+        <span class="pattern-card-icon">◆</span>
+        <span class="pattern-card-title">Decision catalyst</span>
+      </div>
+      <p class="pattern-card-text">Marcus seems to be someone you turn to when processing big career decisions.</p>
+      <div class="pattern-card-buttons">
+        <button class="pattern-btn pattern-btn-confirm">That resonates</button>
+        <button class="pattern-btn pattern-btn-reject">Not quite</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Your World -->
+  <div class="section">
+    <h3 class="section-title">Your World</h3>
+    <div class="entity-pills">
+      <span class="entity-pill">Anthropic <span class="entity-pill-type">work</span></span>
+      <span class="entity-pill">Bangkok <span class="entity-pill-type">place</span></span>
+      <span class="entity-pill">Stripe <span class="entity-pill-type">work</span></span>
+      <span class="entity-pill">Series A <span class="entity-pill-type">project</span></span>
+      <span class="entity-pill">NYC <span class="entity-pill-type">place</span></span>
+    </div>
+  </div>
+
+  <!-- Key People -->
+  <div class="section">
+    <h3 class="section-title">Key People</h3>
+    <div class="key-people-list">
+      <div class="key-person">
+        <div class="key-person-avatar">M</div>
+        <div class="key-person-info">
+          <div class="key-person-name">Marcus</div>
+          <div class="key-person-relationship">Close friend</div>
+        </div>
+      </div>
+      <div class="key-person">
+        <div class="key-person-avatar">S</div>
+        <div class="key-person-info">
+          <div class="key-person-name">Sarah</div>
+          <div class="key-person-relationship">Cofounder</div>
+        </div>
+      </div>
+      <div class="key-person">
+        <div class="key-person-avatar">🐕</div>
+        <div class="key-person-info">
+          <div class="key-person-name">Seri</div>
+          <div class="key-person-relationship">Dog</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

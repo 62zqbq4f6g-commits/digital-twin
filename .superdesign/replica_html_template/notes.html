@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NOTES Tab Replica</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Cormorant+Garamond:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: #F5F5F5;
+      color: #1A1A1A;
+      line-height: 1.6;
+      max-width: 480px;
+      margin: 0 auto;
+      min-height: 100vh;
+    }
+
+    /* Input Area */
+    .notes-input-area {
+      background: #FFFFFF;
+      padding: 16px 20px;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .notes-input-container {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: #FAFAFA;
+      border: 1px solid #E5E5E5;
+      border-radius: 12px;
+      padding: 12px 16px;
+    }
+
+    .notes-input {
+      flex: 1;
+      border: none;
+      background: transparent;
+      font-family: 'Inter', sans-serif;
+      font-size: 15px;
+      color: #1A1A1A;
+      outline: none;
+    }
+
+    .notes-input::placeholder {
+      color: #737373;
+    }
+
+    .notes-input-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .notes-action-btn {
+      width: 36px;
+      height: 36px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      color: #6B6B6B;
+      font-size: 18px;
+      transition: all 0.15s ease;
+    }
+
+    .notes-action-btn:hover {
+      background: #E5E5E5;
+      color: #1A1A1A;
+    }
+
+    /* Section Title */
+    .section-title {
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #6B6B6B;
+      padding: 20px 20px 12px;
+    }
+
+    /* Notes List */
+    .notes-list {
+      padding: 0 20px 20px;
+    }
+
+    /* Note Card */
+    .note-card {
+      background: #FFFFFF;
+      border: none;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    }
+
+    .note-card:hover {
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      transform: scale(1.01);
+    }
+
+    .note-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .note-card-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: #1A1A1A;
+      line-height: 1.3;
+    }
+
+    .note-card-time {
+      font-size: 11px;
+      color: #737373;
+      flex-shrink: 0;
+      margin-left: 8px;
+    }
+
+    .category-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      margin-bottom: 8px;
+      font-size: 11px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #737373;
+    }
+
+    .note-card-preview {
+      font-size: 13px;
+      color: #6B6B6B;
+      line-height: 1.5;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    /* Reflection Peek */
+    .note-reflection-peek {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #F5F5F5;
+    }
+
+    .note-reflection-text {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 14px;
+      font-style: italic;
+      color: #525252;
+      line-height: 1.5;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    /* Note Card with Thumbnail */
+    .note-card.has-thumbnail {
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+    }
+
+    .note-card-thumbnail {
+      flex-shrink: 0;
+      width: 60px;
+      height: 60px;
+      border-radius: 8px;
+      overflow: hidden;
+      background: #F5F5F5;
+    }
+
+    .note-card-thumbnail img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .note-card-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    /* Empty State */
+    .notes-empty {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 64px 24px;
+      text-align: center;
+    }
+
+    .notes-empty-icon {
+      font-size: 48px;
+      color: #D4D4D4;
+      margin-bottom: 24px;
+    }
+
+    .notes-empty-title {
+      font-family: 'Inter', sans-serif;
+      font-size: 20px;
+      font-weight: 600;
+      color: #1A1A1A;
+      margin: 0 0 8px;
+    }
+
+    .notes-empty-text {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 16px;
+      font-style: italic;
+      color: #737373;
+      line-height: 1.6;
+      max-width: 280px;
+    }
+
+    /* Skeleton Loading */
+    .skeleton {
+      background: linear-gradient(90deg, #F5F5F5 25%, #EBEBEB 50%, #F5F5F5 75%);
+      background-size: 200% 100%;
+      animation: skeleton-shimmer 1.5s infinite;
+      border-radius: 4px;
+    }
+
+    @keyframes skeleton-shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    .skeleton-card {
+      background: #FFFFFF;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+
+    .skeleton-line {
+      height: 14px;
+      margin-bottom: 8px;
+    }
+
+    .skeleton-line.short { width: 60%; }
+    .skeleton-line.medium { width: 80%; }
+    .skeleton-line.full { width: 100%; }
+  </style>
+</head>
+<body>
+  <!-- Input Area -->
+  <div class="notes-input-area">
+    <div class="notes-input-container">
+      <input type="text" class="notes-input" placeholder="What's on your mind?">
+      <div class="notes-input-actions">
+        <button class="notes-action-btn" aria-label="Voice note">🎤</button>
+        <button class="notes-action-btn" aria-label="Add image">📷</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section Title -->
+  <div class="section-title">Recent Notes</div>
+
+  <!-- Notes List -->
+  <div class="notes-list">
+    <!-- Note Card 1 -->
+    <div class="note-card">
+      <div class="note-card-header">
+        <span class="note-card-title">Conversation with Marcus about the Series A</span>
+        <span class="note-card-time">2h ago</span>
+      </div>
+      <div class="category-badge">
+        <span>◆</span>
+        <span>Work</span>
+      </div>
+      <p class="note-card-preview">He thinks we should wait until Q3 to raise. His reasoning makes sense — better traction metrics, more leverage with VCs...</p>
+      <div class="note-reflection-peek">
+        <p class="note-reflection-text">Marcus has been your anchor through big decisions before. What made his perspective feel different this time?</p>
+      </div>
+    </div>
+
+    <!-- Note Card 2 -->
+    <div class="note-card">
+      <div class="note-card-header">
+        <span class="note-card-title">Morning run thoughts</span>
+        <span class="note-card-time">Yesterday</span>
+      </div>
+      <div class="category-badge">
+        <span>◆</span>
+        <span>Personal</span>
+      </div>
+      <p class="note-card-preview">Realized I've been avoiding the conversation with Sarah about the pivot. It's not about the business case — it's about...</p>
+    </div>
+
+    <!-- Note Card 3 with Thumbnail -->
+    <div class="note-card has-thumbnail">
+      <div class="note-card-thumbnail">
+        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60'%3E%3Crect fill='%23E5E5E5' width='60' height='60'/%3E%3C/svg%3E" alt="Whiteboard sketch">
+      </div>
+      <div class="note-card-content">
+        <div class="note-card-header">
+          <span class="note-card-title">Product roadmap whiteboard</span>
+          <span class="note-card-time">Jan 20</span>
+        </div>
+        <div class="category-badge">
+          <span>◆</span>
+          <span>Work</span>
+        </div>
+        <p class="note-card-preview">Sketched out the next 3 sprints with the team...</p>
+      </div>
+    </div>
+
+    <!-- Note Card 4 -->
+    <div class="note-card">
+      <div class="note-card-header">
+        <span class="note-card-title">Late night reflection</span>
+        <span class="note-card-time">Jan 19</span>
+      </div>
+      <div class="category-badge">
+        <span>◆</span>
+        <span>Personal</span>
+      </div>
+      <p class="note-card-preview">The pressure from the board is real but I keep reminding myself why we started this in the first place...</p>
+      <div class="note-reflection-peek">
+        <p class="note-reflection-text">You process your deepest thoughts in the evening. What made tonight feel different?</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
