@@ -65,11 +65,12 @@ async function handleGet(req, res, user_id) {
     return res.status(200).json({ pattern });
   }
 
-  // List all patterns for user
+  // List all patterns for user (exclude rejected/dismissed patterns)
   const { data: patterns, error } = await supabase
     .from('user_patterns')
     .select('*')
     .eq('user_id', user_id)
+    .neq('status', 'rejected')
     .order('confidence', { ascending: false });
 
   if (error) {

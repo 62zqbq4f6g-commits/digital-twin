@@ -1,15 +1,48 @@
 # Inscript — Project Status
 
-## January 23, 2026 | Version 8.2.1
+## January 23, 2026 | Version 8.3.0
 
 ---
 
 ## CURRENT STATE
 
-**Status:** Beta Ready — 93% Test Pass Rate
+**Status:** Phase 15 — Experience Transformation (Building)
 **Production URL:** https://digital-twin-ecru.vercel.app
 **Brand:** Inscript — "Your mirror in code"
 **Category:** Personal AI Memory
+**Task List ID:** `phase15-experience-transform`
+
+---
+
+## PHASE 15: EXPERIENCE TRANSFORMATION
+
+### The 3 High-Impact Features
+
+| # | Feature | Impact | Description |
+|---|---------|--------|-------------|
+| 1 | **State of You** | 10X | Monthly auto-generated report (themes, people, sentiment, reflection question) |
+| 2 | **Whispers** | 5X | Quick capture mode without full reflection |
+| 3 | **Memory Moments** | 10X | Proactive surfacing (anniversaries, dormant entities, progress highlights) |
+
+### Terminal Ownership
+
+| Terminal | Ownership | Status |
+|----------|-----------|--------|
+| Terminal 1 | Backend (api/, database, cron) | Ready |
+| Terminal 2 | Frontend (js/, css/, UI) | Ready |
+
+### Build Progress
+
+| Epic | Tasks | Completed | Status |
+|------|-------|-----------|--------|
+| 1. Documentation | 4 | 0 | 🔲 Pending |
+| 2. Database Setup | 4 | 0 | 🔲 Pending |
+| 3. State of You | 6 | 0 | 🔲 Pending |
+| 4. Whispers | 6 | 0 | 🔲 Pending |
+| 5. Memory Moments | 9 | 0 | 🔲 Pending |
+| 6. Integration Testing | 4 | 0 | 🔲 Pending |
+
+**Full Build Spec:** `/PHASE-15-BUILD.md`
 
 ---
 

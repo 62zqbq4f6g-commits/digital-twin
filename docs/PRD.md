@@ -2,10 +2,10 @@
 
 ## Your Mirror in Code.
 
-**Version:** 8.2.0
+**Version:** 8.3.0
 **Date:** January 23, 2026
 **Author:** Rox
-**Status:** Beta Ready — 93% Test Pass Rate
+**Status:** Phase 15 — Experience Transformation (Building)
 
 ---
 
@@ -217,6 +217,81 @@ Click any name to see accumulated knowledge:
 - Data never sold or shared
 - Content never used to train AI (enterprise LLM tier)
 - Delete means delete (hard delete within 24 hours)
+
+---
+
+# PHASE 15 FEATURES (Experience Transformation)
+
+## 10. State of You (Monthly Report)
+
+Auto-generated monthly digest that synthesizes patterns, trends, and insights.
+
+**Report Structure:**
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+JANUARY 2026 — STATE OF YOU
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+TOP THEMES THIS MONTH
+1. Work transition (mentioned 12 times)
+2. Health focus (8 times)
+3. Family (6 times)
+
+PEOPLE YOU ENGAGED WITH
+◆ Marcus — 9 mentions (+2 vs December)
+◆ Sarah — 4 mentions
+◆ Mom — 3 mentions
+
+SENTIMENT TRAJECTORY
+Work: +0.42 → +0.61 ↑
+Health: +0.35 → +0.55 ↑
+
+PATTERNS DETECTED
+• You write about work decisions on Sundays
+• Marcus appears when you're processing uncertainty
+
+A QUESTION TO SIT WITH
+"You mentioned 'should' 23 times this month.
+Whose expectations are you carrying?"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+**Value:** Creates ritual, makes long-term value visible, generates shareable moments.
+
+**Access:** TWIN tab → Reports section
+
+## 11. Whispers (Quick Capture)
+
+Frictionless capture mode without triggering full reflection.
+
+**UX Flow:**
+1. Swipe left on input OR tap whisper icon
+2. Minimal UI (just input + send)
+3. Content saved, entities extracted in background
+4. Simple "✓ Heard" confirmation
+5. Optional: "Reflect on this later" queue
+
+**Value:** Reduces friction dramatically. Users capture 3x more moments. Memory gets richer.
+
+**Access:** NOTES tab → Whisper mode toggle
+
+## 12. Memory Moments (Proactive Surfacing)
+
+Transforms Inscript from reactive to proactive companion.
+
+**Moment Types:**
+
+| Type | Trigger | Example |
+|------|---------|---------|
+| `anniversary` | Date + 1 year | "This time last year, you were stressed about the reorg" |
+| `dormant_entity` | Key person not mentioned 21+ days | "It's been 3 weeks since you mentioned Marcus" |
+| `progress` | Sentiment improvement | "You mentioned imposter syndrome 8x in Oct, only 1x in Nov" |
+| `pattern` | Pattern threshold | "Sunday stress is becoming a pattern — 4 weeks in a row" |
+| `callback` | Related to recent note | "This connects to what you shared about [X] last week" |
+
+**Value:** Creates "holy shit" moments without user effort. Changes relationship from journaling tool to active companion.
+
+**Access:** NOTES tab → Memory Moments surface (daily notification opt-in)
 
 ---
 

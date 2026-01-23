@@ -189,7 +189,6 @@ class PatternVerification {
 
     const detected = this.patterns.filter(p => p.status === 'detected');
     const confirmed = this.patterns.filter(p => p.status === 'confirmed');
-    const rejected = this.patterns.filter(p => p.status === 'rejected');
 
     return `
       <div class="patterns-section">
@@ -204,13 +203,6 @@ class PatternVerification {
           <div class="patterns-group">
             <h4 class="patterns-group-title">CONFIRMED</h4>
             ${confirmed.map(p => this.renderPatternCard(p, 'confirmed')).join('')}
-          </div>
-        ` : ''}
-
-        ${rejected.length > 0 ? `
-          <div class="patterns-group patterns-group-dismissed">
-            <h4 class="patterns-group-title">DISMISSED</h4>
-            ${rejected.map(p => this.renderPatternCard(p, 'rejected')).join('')}
           </div>
         ` : ''}
       </div>
@@ -230,18 +222,6 @@ class PatternVerification {
           <div class="pattern-card-header">
             <span class="pattern-card-icon">✓</span>
             <span class="pattern-card-label">CONFIRMED</span>
-          </div>
-          <p class="pattern-card-text">${this.escapeHtml(pattern.shortDescription || pattern.description)}</p>
-        </div>
-      `;
-    }
-
-    if (status === 'rejected') {
-      return `
-        <div class="pattern-card pattern-card-rejected">
-          <div class="pattern-card-header">
-            <span class="pattern-card-icon">×</span>
-            <span class="pattern-card-label">DISMISSED</span>
           </div>
           <p class="pattern-card-text">${this.escapeHtml(pattern.shortDescription || pattern.description)}</p>
         </div>

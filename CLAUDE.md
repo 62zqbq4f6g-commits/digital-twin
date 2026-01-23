@@ -1,10 +1,11 @@
 # CLAUDE.md — Inscript Developer Guide
 
-## Version 8.2.0 | January 23, 2026
+## Version 8.3.0 | January 23, 2026
 
-> **Phase:** 13E Complete (Pre-Beta)
-> **Status:** Beta Ready (93% test pass rate)
+> **Phase:** 15 — Experience Transformation (In Progress)
+> **Status:** Building 3 High-Impact Features
 > **Last Updated:** January 23, 2026
+> **Task List ID:** `phase15-experience-transform`
 
 ---
 
@@ -33,9 +34,90 @@
 | **`/docs/PRD.md`** | Product requirements document |
 | **`/docs/ROADMAP.md`** | Development roadmap |
 
-**Current Phase:** Phase 1 — Consumer Love (targeting 10K engaged users)
+**Current Phase:** Phase 15 — Experience Transformation
 
-**Next Milestone:** Fix remaining bugs, launch beta
+**Next Milestone:** Ship 3 high-impact features (State of You, Whispers, Memory Moments)
+
+---
+
+# PHASE 15: EXPERIENCE TRANSFORMATION
+
+## Build Overview
+
+Phase 15 adds three features designed to make accumulated value visible and reduce capture friction.
+
+| Feature | Description | Impact |
+|---------|-------------|--------|
+| **State of You** | Monthly auto-generated report with themes, people, sentiment, patterns | 10X |
+| **Whispers** | Quick capture mode without triggering full reflection | 5X |
+| **Memory Moments** | Proactive surfacing of memories, anniversaries, dormant entities | 10X |
+
+**Full Specification:** `/PHASE-15-BUILD.md`
+
+## Terminal Ownership Rules
+
+**CRITICAL:** To prevent conflicts, each terminal owns specific files.
+
+### Terminal 1 (Backend) — Owns:
+
+| Directory | Files |
+|-----------|-------|
+| `api/` | `state-of-you.js`, `whisper.js`, `memory-moments.js` |
+| `api/cron/` | `monthly-report.js`, `memory-moments.js` |
+| Database | All new table migrations |
+
+### Terminal 2 (Frontend) — Owns:
+
+| Directory | Files |
+|-----------|-------|
+| `js/` | `state-of-you-ui.js`, `whisper-ui.js`, `memory-moments-ui.js`, `notifications.js` |
+| `css/` | `state-of-you.css`, `whisper.css`, `memory-moments.css` |
+
+### Shared Files (Coordinate First):
+
+- `js/app.js` — Only add imports/initialization (mark with `// PHASE 15 - T[1|2]`)
+- `js/ui.js` — Only add integration hooks (mark with `// PHASE 15 - T[1|2]`)
+- `index.html` — Only add new sections (mark with `<!-- PHASE 15 - T[1|2] -->`)
+
+## Task Management
+
+```bash
+# Start Claude Code with shared task list
+export CLAUDE_CODE_TASK_LIST_ID=phase15-experience-transform
+claude
+```
+
+## New Database Tables (Phase 15)
+
+| Table | Purpose |
+|-------|---------|
+| `user_reports` | Monthly State of You reports |
+| `whispers` | Quick capture entries |
+| `memory_moments` | Proactive memory surfacing |
+| `user_notification_preferences` | Notification settings |
+
+## New API Endpoints (Phase 15)
+
+| Endpoint | Purpose |
+|----------|---------|
+| `GET/POST /api/state-of-you` | Monthly report generation and retrieval |
+| `POST /api/whisper` | Quick capture save |
+| `GET /api/whispers` | Retrieve whisper history |
+| `GET /api/memory-moments` | Get pending moments |
+| `POST /api/memory-moments/:id/engage` | Track engagement |
+| `POST /api/memory-moments/:id/dismiss` | Dismiss moment |
+
+## New Frontend Files (Phase 15)
+
+| File | Purpose |
+|------|---------|
+| `js/state-of-you-ui.js` | Report display and history |
+| `js/whisper-ui.js` | Quick capture UI |
+| `js/memory-moments-ui.js` | Moment display and interaction |
+| `js/notifications.js` | Notification handling |
+| `css/state-of-you.css` | Report styling |
+| `css/whisper.css` | Whisper mode styling |
+| `css/memory-moments.css` | Moment card styling |
 
 ---
 
@@ -54,7 +136,9 @@
 | Phase 13C | MIRROR Intelligence | ✅ Complete |
 | Phase 13D | Pattern Verification UI | ✅ Complete |
 | Phase 13E | Polish & Bug Fixes | ✅ Complete |
+| Phase 14 | Bug Fixes & Production Hardening | ✅ Complete |
 | **Mem0 Parity** | Full Memory Architecture | ✅ **~95% Complete** |
+| **Phase 15** | Experience Transformation | 🔄 **In Progress** |
 
 ## What's Working in Production (January 23, 2026)
 
@@ -507,12 +591,29 @@ git log --oneline -5
 
 | Version | Phase | Key Changes |
 |---------|-------|-------------|
-| **8.2.0** | 13E | Pre-beta testing (93%), Key People fix (pets), full documentation update |
+| **8.3.0** | 15 | Experience Transformation: State of You, Whispers, Memory Moments |
+| 8.2.1 | 14 | Bug fixes (406/500 errors), parallel terminal setup |
+| 8.2.0 | 13E | Pre-beta testing (93%), Key People fix (pets), full documentation update |
 | 8.1.1 | 13D | Category summaries fix (.single() → .maybeSingle()) |
 | 8.1.0 | Mem0 | Full Mem0 architecture integration, tiered retrieval |
 | 8.0.0 | 13.0 | Phase 13: Patterns, MIRROR tab, WORK tab |
 | 7.8.0 | 11.0 | Inscript rebrand, 8-screen onboarding |
 | 7.5.0 | 10.3 | Semantic search with pgvector |
+
+---
+
+# GIT COMMIT CONVENTION (Phase 15)
+
+All commits should follow this format:
+
+```
+T[1|2]: [Feature] - [Description]
+
+Examples:
+T1: State of You - Create report generation API
+T2: Whispers - Add quick capture UI component
+T1: Memory Moments - Implement dormant entity triggers
+```
 
 ---
 

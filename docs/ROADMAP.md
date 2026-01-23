@@ -90,48 +90,90 @@
 
 ---
 
-## Upcoming Phases
+## Current Phase
 
-### Phase 14: Production Hardening
+### Phase 15: Experience Transformation 🔄 IN PROGRESS
 
-**Goal:** Ensure stability and reliability for beta users
+**Goal:** Make accumulated value visible and reduce capture friction
 
-| Priority | Task | Description |
-|----------|------|-------------|
-| P0 | Production testing | Full end-to-end testing |
-| P0 | Fix integration bugs | Address any issues found |
-| P1 | Error tracking | Integrate Sentry |
-| P1 | Performance monitoring | Track API latencies |
-| P2 | Analytics dashboard | Usage metrics |
+**The 3 High-Impact Features:**
+
+| # | Feature | Impact | Description |
+|---|---------|--------|-------------|
+| 1 | **State of You** | 10X | Monthly auto-generated report |
+| 2 | **Whispers** | 5X | Quick capture mode |
+| 3 | **Memory Moments** | 10X | Proactive memory surfacing |
+
+**Task List ID:** `phase15-experience-transform`
+
+#### Feature 1: State of You (Monthly Report)
+
+| Component | Owner | Status |
+|-----------|-------|--------|
+| `api/state-of-you.js` | T1 | 🔲 |
+| `api/cron/monthly-report.js` | T1 | 🔲 |
+| `js/state-of-you-ui.js` | T2 | 🔲 |
+| `css/state-of-you.css` | T2 | 🔲 |
+| TWIN tab integration | T2 | 🔲 |
+
+#### Feature 2: Whispers (Quick Capture)
+
+| Component | Owner | Status |
+|-----------|-------|--------|
+| `api/whisper.js` | T1 | 🔲 |
+| `js/whisper-ui.js` | T2 | 🔲 |
+| `css/whisper.css` | T2 | 🔲 |
+| Whisper input mode | T2 | 🔲 |
+| Whisper history | T2 | 🔲 |
+| Batch reflection | T2 | 🔲 |
+
+#### Feature 3: Memory Moments (Proactive Surfacing)
+
+| Component | Owner | Status |
+|-----------|-------|--------|
+| `api/memory-moments.js` | T1 | 🔲 |
+| `api/cron/memory-moments.js` | T1 | 🔲 |
+| Anniversary triggers | T1 | 🔲 |
+| Dormant entity triggers | T1 | 🔲 |
+| Progress triggers | T1 | 🔲 |
+| `js/memory-moments-ui.js` | T2 | 🔲 |
+| `css/memory-moments.css` | T2 | 🔲 |
+| NOTES tab integration | T2 | 🔲 |
+
+#### Database (Phase 15)
+
+| Table | Purpose | Status |
+|-------|---------|--------|
+| `user_reports` | Monthly reports | 🔲 |
+| `whispers` | Quick captures | 🔲 |
+| `memory_moments` | Proactive surfacing | 🔲 |
+| `user_notification_preferences` | Settings | 🔲 |
 
 **Success Criteria:**
-- Zero critical bugs in production
-- 99% uptime
-- Average API latency < 2s
+- Monthly report generates and displays correctly
+- Whispers save without triggering reflection
+- Memory Moments surface proactively
+- All features mobile responsive
 
 ---
 
-### Phase 15: Experience Transformation
+## Completed Phases
 
-**Goal:** Improve maintainability and user experience
+### Phase 14: Production Hardening ✅
 
-| Priority | Task | Description |
-|----------|------|-------------|
-| P0 | Split ui.js | Break 4,800+ line file into modules |
-| P1 | Vogue minimalist redesign | Refine editorial aesthetic |
-| P1 | Improved loading states | Better feedback during operations |
-| P2 | Enhanced dark mode | Polish dark theme |
+**Completed:** January 23, 2026
 
-**Modules for ui.js split:**
-- `ui-core.js` — Core utilities, initialization
-- `ui-notes.js` — Note rendering, input handling
-- `ui-twin.js` — TWIN tab specific code
-- `ui-modals.js` — Modal management
-- `ui-onboarding.js` — Onboarding flow
+| Task | Status |
+|------|--------|
+| Fix 406 onboarding error | ✅ |
+| Fix 500 Pulse API error | ✅ |
+| Fix Invalid Date in MEETINGS | ✅ |
+| Fix Meeting double-save | ✅ |
+| Parallel terminal setup | ✅ |
 
-**Success Criteria:**
-- No single file > 1,000 lines
-- Lighthouse score > 90
+---
+
+## Upcoming Phases
 
 ---
 
