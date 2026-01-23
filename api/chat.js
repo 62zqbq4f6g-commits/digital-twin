@@ -34,7 +34,7 @@ async function getMemoryContextForChat(userId) {
     // Get Key People (user explicitly added - highest priority)
     const { data: keyPeople } = await supabase
       .from('user_key_people')
-      .select('name, relationship, notes')
+      .select('name, relationship')
       .eq('user_id', userId);
 
     // Get top entities
@@ -59,8 +59,7 @@ async function getMemoryContextForChat(userId) {
     if (keyPeople?.length > 0) {
       parts.push('\nKEY PEOPLE (user explicitly told you about these):');
       keyPeople.forEach(p => {
-        const notes = p.notes ? ` — ${p.notes}` : '';
-        parts.push(`- ${p.name}: ${p.relationship}${notes}`);
+        parts.push(`- ${p.name}: ${p.relationship}`);
       });
     }
 

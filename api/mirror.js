@@ -788,7 +788,7 @@ async function getUserContext(user_id) {
   // Get Key People (user explicitly added these - highest priority)
   const { data: keyPeople, error: keyPeopleError } = await supabase
     .from('user_key_people')
-    .select('name, relationship, notes')
+    .select('name, relationship')
     .eq('user_id', user_id);
 
   if (keyPeopleError) {
@@ -811,7 +811,7 @@ async function getUserContext(user_id) {
         name: person.name,
         entity_type: 'person',
         relationship: person.relationship || 'key person',
-        context_notes: person.notes || null,
+        context_notes: null,  // user_key_people table doesn't have notes column
         is_key_person: true  // Flag to identify in prompt
       });
     }

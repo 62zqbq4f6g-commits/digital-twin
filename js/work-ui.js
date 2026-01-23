@@ -464,9 +464,17 @@ const WorkUI = {
 
     const notes = await DB.getAllNotes();
 
-    // Filter notes that are meetings (type: 'meeting' or detected as meeting-like)
+    // Filter notes that are meetings
+    // Check: note.type === 'meeting' OR note.meeting exists OR content starts with "Meeting with"
     this.meetings = notes
-      .filter(n => n.type === 'meeting' || n.analysis?.meeting)
+      .filter(n => {
+        if (n.type === 'meeting') return true;
+        if (n.meeting) return true;
+        // Also detect notes that look like meetings
+        const content = n.content || n.input?.raw_text || '';
+        if (content.toLowerCase().startsWith('meeting with')) return true;
+        return false;
+      })
       .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
     if (this.meetings.length === 0) {
@@ -475,21 +483,36 @@ const WorkUI = {
     }
 
     container.innerHTML = this.meetings.map(meeting => {
-      const data = meeting.analysis?.meeting || {};
+      // Get meeting data from either note.meeting or construct from content
+      const data = meeting.meeting || {};
+      const content = meeting.content || meeting.input?.raw_text || '';
+
+      // Extract title
+      let title = data.title || 'Meeting';
+      if (!data.title && content.toLowerCase().startsWith('meeting with')) {
+        const firstLine = content.split('\n')[0];
+        title = firstLine.substring(0, 50) + (firstLine.length > 50 ? '...' : '');
+      }
+
+      // Get attendees
       const attendees = data.attendees || [];
-      const actionCount = (data.actionItems || []).length;
-      const openCount = (data.actionItems || []).filter(a => !a.done).length;
+
+      // Get action items from meeting data or from analysis
+      const actionItems = data.actionItems || meeting.analysis?.actions || [];
+      const actionCount = actionItems.length;
+      const completed = meeting.analysis?.actionsCompleted || [];
+      const openCount = actionCount - completed.length;
 
       return `
         <div class="meeting-card" data-note-id="${meeting.id}" onclick="WorkUI.openMeetingDetail('${meeting.id}')">
-          <div class="meeting-card-title">${data.title || 'Meeting'}</div>
+          <div class="meeting-card-title">${title}</div>
           <div class="meeting-card-meta">
             <span class="meeting-card-date">${new Date(meeting.created_at).toLocaleDateString()}</span>
             ${attendees.length > 0 ? `<span class="meeting-card-attendees">${attendees.join(', ')}</span>` : ''}
           </div>
           ${actionCount > 0 ? `
             <div class="meeting-card-actions">
-              ${actionCount} action item${actionCount > 1 ? 's' : ''} · ${openCount} open
+              ${actionCount} action item${actionCount > 1 ? 's' : ''} · ${openCount > 0 ? openCount + ' open' : 'all done'}
             </div>
           ` : ''}
         </div>
@@ -834,28 +857,56 @@ const WorkUI = {
     // Close modal first
     this.closeMeetingModal();
 
-    // Submit as a note with meeting flag
-    if (typeof App !== 'undefined' && App.submitNote) {
-      // Add meeting metadata
-      const metadata = {
-        type: 'meeting',
-        attendees: attendees
-      };
-
-      await App.submitNote(noteContent, metadata);
-    } else {
-      // Fallback: use UI submit
-      const input = document.getElementById('notes-quick-input');
-      if (input) {
-        input.value = noteContent;
-        document.getElementById('notes-submit-btn')?.click();
-      }
+    // Show loading
+    if (typeof UI !== 'undefined' && UI.showToast) {
+      UI.showToast('Saving meeting...');
     }
 
-    // Switch to meetings tab after a delay
-    setTimeout(() => {
-      this.switchTab('meetings');
-    }, 2000);
+    try {
+      // Process note through App pipeline (handles analysis, entities, etc.)
+      await App.processNote(noteContent, 'text');
+
+      // Get the most recent note (the one we just saved)
+      const notes = await DB.getAllNotes();
+      const recentNote = notes.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+
+      if (recentNote) {
+        // Add meeting metadata
+        recentNote.type = 'meeting';
+        recentNote.meeting = {
+          title: `Meeting with ${attendees.join(', ') || 'team'}`,
+          attendees: attendees,
+          content: content
+        };
+
+        // Extract action items from analysis if present
+        if (recentNote.analysis?.actions) {
+          recentNote.meeting.actionItems = recentNote.analysis.actions.map(a => ({
+            text: typeof a === 'string' ? a : a.action || a.text,
+            owner: 'you',
+            done: false
+          }));
+        }
+
+        // Save the updated note
+        await DB.saveNote(recentNote);
+        console.log('[WorkUI] Meeting saved with metadata:', recentNote.id);
+      }
+
+      // Refresh UI
+      UI.loadNotes();
+
+      // Switch to meetings tab after a delay
+      setTimeout(() => {
+        this.switchTab('meetings');
+      }, 1500);
+
+    } catch (error) {
+      console.error('[WorkUI] Failed to save meeting:', error);
+      if (typeof UI !== 'undefined' && UI.showToast) {
+        UI.showToast('Failed to save meeting');
+      }
+    }
   },
 
   // ═══════════════════════════════════════════════════════════
@@ -983,20 +1034,40 @@ const WorkUI = {
     // Close modal first
     this.closeDecisionModal();
 
-    // Submit as a note with decision flag
-    if (typeof App !== 'undefined' && App.submitNote) {
-      const metadata = {
-        type: 'decision',
-        topic: topic
-      };
+    // Show loading
+    if (typeof UI !== 'undefined' && UI.showToast) {
+      UI.showToast('Saving...');
+    }
 
-      await App.submitNote(noteContent, metadata);
-    } else {
-      // Fallback: use UI submit
-      const input = document.getElementById('notes-quick-input');
-      if (input) {
-        input.value = noteContent;
-        document.getElementById('notes-submit-btn')?.click();
+    try {
+      // Process note through App pipeline
+      await App.processNote(noteContent, 'text');
+
+      // Get the most recent note
+      const notes = await DB.getAllNotes();
+      const recentNote = notes.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+
+      if (recentNote) {
+        // Add decision metadata
+        recentNote.type = 'decision';
+        recentNote.decision = {
+          topic: topic,
+          content: content,
+          createdAt: new Date().toISOString()
+        };
+
+        // Save the updated note
+        await DB.saveNote(recentNote);
+        console.log('[WorkUI] Decision saved with metadata:', recentNote.id);
+      }
+
+      // Refresh UI
+      UI.loadNotes();
+
+    } catch (error) {
+      console.error('[WorkUI] Failed to save decision:', error);
+      if (typeof UI !== 'undefined' && UI.showToast) {
+        UI.showToast('Failed to save');
       }
     }
   }

@@ -853,6 +853,9 @@
         TwinUI.init();
         Feedback.init();
         ActionsUI.init();
+        if (typeof WorkUI !== 'undefined') {
+          WorkUI.init();
+        }
         setTimeout(async () => {
           if (typeof FollowUp !== 'undefined') {
             await FollowUp.checkPendingFollowUps();
