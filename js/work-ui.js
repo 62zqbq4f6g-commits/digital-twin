@@ -595,10 +595,20 @@ const WorkUI = {
         if (match && match[1]) {
           const namesPart = match[1].trim();
           if (namesPart.toLowerCase() !== 'team') {
-            attendees = namesPart.split(/[,;]/).map(n => n.trim()).filter(n => n && n.toLowerCase() !== 'team');
+            // Parse names separated by commas, semicolons, or "and"
+            attendees = namesPart
+              .replace(/\s+and\s+/gi, ',')  // Replace " and " with comma
+              .split(/[,;]/)
+              .map(n => n.trim())
+              .filter(n => n && n.toLowerCase() !== 'team' && n.toLowerCase() !== 'and');
           }
         }
       }
+      console.log('[WorkUI] Meeting attendees extracted:', {
+        id: meeting.id,
+        fromMeta: meetingMeta.attendees?.length > 0,
+        attendees: attendees
+      });
 
       // Build title from attendees
       let title = 'Meeting';
@@ -1044,16 +1054,24 @@ const WorkUI = {
     // Also parse any remaining text in the input field (handles "Sarah, Marcus" typed directly)
     const attendeesInput = document.getElementById('meeting-attendees-input');
     console.log('[WorkUI] saveMeeting - Input field found:', !!attendeesInput);
-    console.log('[WorkUI] saveMeeting - Input field value:', attendeesInput?.value);
+    console.log('[WorkUI] saveMeeting - Input field value:', JSON.stringify(attendeesInput?.value));
 
     if (attendeesInput && attendeesInput.value.trim()) {
       const inputValue = attendeesInput.value.trim();
+      // Parse names separated by commas, semicolons, or "and"
+      // Handles: "Sarah, Marcus", "Sarah; Marcus", "Sarah and Marcus", "Sarah, Marcus and John"
       const inputNames = inputValue
+        .replace(/\s+and\s+/gi, ',')  // Replace " and " with comma
         .split(/[,;]+/)
         .map(name => name.trim())
-        .filter(name => name && name.length > 0 && !attendees.includes(name));
+        .filter(name => name && name.length > 0 && name.toLowerCase() !== 'and' && !attendees.includes(name));
       console.log('[WorkUI] saveMeeting - Parsed names from input:', inputNames);
       attendees = [...attendees, ...inputNames];
+    }
+
+    // Double-check: if still no attendees and input field had text, log a warning
+    if (attendees.length === 0 && attendeesInput?.value) {
+      console.warn('[WorkUI] saveMeeting - WARNING: No attendees captured despite input field having text');
     }
 
     // Final attendees list
