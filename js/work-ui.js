@@ -18,10 +18,18 @@ const WorkUI = {
   // Known entities for suggestions
   knownEntities: [],
 
+  // Initialization flag
+  initialized: false,
+
   /**
    * Initialize Work UI
    */
   init() {
+    if (this.initialized) {
+      console.log('[WorkUI] Already initialized, skipping');
+      return;
+    }
+    this.initialized = true;
     console.log('[WorkUI] Initializing...');
     this.attachTabListeners();
     this.attachModeListeners();
@@ -987,13 +995,24 @@ const WorkUI = {
     }
   },
 
+  // Flag to prevent double saves
+  isSavingMeeting: false,
+
   /**
    * Save the meeting
    */
   async saveMeeting() {
+    // Prevent double saves
+    if (this.isSavingMeeting) {
+      console.log('[WorkUI] saveMeeting - Already saving, ignoring duplicate call');
+      return;
+    }
+    this.isSavingMeeting = true;
+
     const content = document.getElementById('meeting-content').value.trim();
     if (!content) {
       alert('Please add meeting content');
+      this.isSavingMeeting = false;
       return;
     }
 
@@ -1078,6 +1097,9 @@ const WorkUI = {
       if (typeof UI !== 'undefined' && UI.showToast) {
         UI.showToast('Failed to save meeting');
       }
+    } finally {
+      // Reset save flag
+      this.isSavingMeeting = false;
     }
   },
 
