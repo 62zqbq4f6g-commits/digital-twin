@@ -5397,6 +5397,13 @@ body {
 }
 
 /* Skeleton Loading */
+.skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s infinite;
+  border-radius: 4px;
+}
+
 .note-skeleton {
   padding: 1.5rem;
 }
@@ -5414,6 +5421,90 @@ body {
 .skeleton-line.medium { width: 60%; }
 .skeleton-line.full { width: 100%; }
 .skeleton-spacer { height: 1rem; }
+
+/* Skeleton component variants */
+.skeleton-text {
+  height: 14px;
+  margin: 8px 0;
+}
+
+.skeleton-title {
+  height: 20px;
+  width: 60%;
+  margin: 12px 0;
+}
+
+.skeleton-card {
+  height: 80px;
+  margin: 12px 0;
+  border-radius: 8px;
+}
+
+.skeleton-stat {
+  height: 48px;
+  width: 100%;
+  margin: 8px 0;
+  border-radius: 8px;
+}
+
+.skeleton-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+}
+
+/* Skeleton container for notes list */
+.notes-skeleton-container {
+  padding: 16px;
+}
+
+.notes-skeleton-item {
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  border-bottom: 1px solid var(--color-gray-100);
+}
+
+.notes-skeleton-item .skeleton-title {
+  width: 70%;
+}
+
+.notes-skeleton-item .skeleton-text {
+  width: 100%;
+}
+
+.notes-skeleton-item .skeleton-text:last-child {
+  width: 40%;
+}
+
+/* Skeleton for TWIN stats */
+.twin-skeleton-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  padding: 16px;
+}
+
+/* Skeleton for Pulse briefing */
+.pulse-skeleton {
+  padding: 16px;
+}
+
+.pulse-skeleton .skeleton-title {
+  width: 50%;
+  margin-bottom: 16px;
+}
+
+.pulse-skeleton .skeleton-text {
+  margin-bottom: 8px;
+}
+
+/* Dark mode skeleton */
+[data-theme="dark"] .skeleton,
+[data-theme="dark"] .skeleton-line {
+  background: linear-gradient(90deg, #2a2a2a 25%, #333333 50%, #2a2a2a 75%);
+  background-size: 200% 100%;
+}
 
 @keyframes skeleton-shimmer {
   0% { background-position: 200% 0; }
@@ -7027,6 +7118,13 @@ body {
   font-family: var(--font-body);
   font-size: 0.75rem;
   color: var(--silver-500);
+}
+
+/* Skeleton loading for meeting cards */
+.skeleton-meeting-card {
+  padding: 16px;
+  border-bottom: 1px solid var(--silver-100);
+  pointer-events: none;
 }
 
 .meetings-add-btn {

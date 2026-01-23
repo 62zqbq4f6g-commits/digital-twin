@@ -29,6 +29,38 @@ const UI = {
   // Currently displayed note
   currentNote: null,
 
+  // Skeleton loading state
+  isShowingSkeleton: false,
+
+  /**
+   * Show skeleton loading state for notes list
+   */
+  showNotesSkeleton() {
+    const notesList = document.getElementById('notes-list');
+    const emptyState = document.getElementById('notes-empty');
+    if (!notesList) return;
+
+    this.isShowingSkeleton = true;
+    if (emptyState) emptyState.classList.add('hidden');
+    notesList.classList.remove('hidden');
+
+    // Generate 5 skeleton note cards
+    notesList.innerHTML = Array(5).fill(0).map(() => `
+      <div class="notes-skeleton-item">
+        <div class="skeleton skeleton-title"></div>
+        <div class="skeleton skeleton-text"></div>
+        <div class="skeleton skeleton-text" style="width: 40%"></div>
+      </div>
+    `).join('');
+  },
+
+  /**
+   * Hide skeleton loading state
+   */
+  hideNotesSkeleton() {
+    this.isShowingSkeleton = false;
+  },
+
   /**
    * Initialize UI - set up event listeners
    */
@@ -928,7 +960,13 @@ const UI = {
           this.allNotes = cachedNotes;
           this.renderNotes();
           console.log(`[UI] Cached notes rendered in ${Math.round(performance.now() - startTime)}ms (${cachedNotes.length} notes)`);
+        } else {
+          // No cache - show skeleton while loading
+          this.showNotesSkeleton();
         }
+      } else {
+        // No cache module - show skeleton while loading
+        this.showNotesSkeleton();
       }
 
       // STEP 2: Fetch fresh notes from IndexedDB (async)

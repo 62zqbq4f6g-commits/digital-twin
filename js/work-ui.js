@@ -213,7 +213,18 @@ const WorkUI = {
     const container = document.querySelector('.pulse-container');
     if (!container) return;
 
-    container.innerHTML = '<p class="pulse-loading">Loading your morning pulse...</p>';
+    // Show skeleton loading state
+    container.innerHTML = `
+      <div class="pulse-skeleton">
+        <div class="skeleton skeleton-title" style="width: 50%; margin-bottom: 16px;"></div>
+        <div class="skeleton skeleton-text" style="width: 100%; margin-bottom: 8px;"></div>
+        <div class="skeleton skeleton-text" style="width: 90%; margin-bottom: 8px;"></div>
+        <div class="skeleton skeleton-text" style="width: 70%; margin-bottom: 16px;"></div>
+        <div class="skeleton skeleton-title" style="width: 40%; margin-bottom: 12px;"></div>
+        <div class="skeleton skeleton-text" style="width: 80%; margin-bottom: 8px;"></div>
+        <div class="skeleton skeleton-text" style="width: 60%;"></div>
+      </div>
+    `;
 
     try {
       // Try to fetch from API
@@ -486,6 +497,15 @@ const WorkUI = {
       console.warn('[WorkUI] meetings-list container not found');
       return;
     }
+
+    // Show skeleton loading state
+    container.innerHTML = Array(3).fill(0).map(() => `
+      <div class="meeting-card skeleton-meeting-card">
+        <div class="skeleton skeleton-title" style="width: 60%;"></div>
+        <div class="skeleton skeleton-text" style="width: 100%; margin-top: 8px;"></div>
+        <div class="skeleton skeleton-text" style="width: 40%; margin-top: 4px;"></div>
+      </div>
+    `).join('');
 
     const notes = await DB.getAllNotes();
     console.log('[WorkUI] loadMeetings - Total notes:', notes.length);
