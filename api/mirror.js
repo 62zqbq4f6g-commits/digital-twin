@@ -785,14 +785,40 @@ async function getUserContext(user_id) {
     .eq('user_id', user_id)
     .maybeSingle();
 
+  // Get Key People (user explicitly added these - highest priority)
+  const { data: keyPeople, error: keyPeopleError } = await supabase
+    .from('user_key_people')
+    .select('name, relationship, notes')
+    .eq('user_id', user_id);
+
+  if (keyPeopleError) {
+    console.error('[mirror] Error fetching key people:', keyPeopleError);
+  } else {
+    console.log('[mirror] Fetched key people count:', keyPeople?.length || 0);
+  }
+
   // Get onboarding data (graceful fallback if missing)
   const onboarding = await getOnboardingContext(user_id);
 
-  // Merge onboarding people with entities
-  let allPeople = [...(entities || [])];
+  // Build people list with priority: Key People > Onboarding > Entities
+  let allPeople = [];
+
+  // Add Key People first (highest priority - user explicitly added these)
+  if (keyPeople && keyPeople.length > 0) {
+    for (const person of keyPeople) {
+      allPeople.push({
+        name: person.name,
+        entity_type: 'person',
+        relationship: person.relationship || 'key person',
+        context_notes: person.notes || null,
+        is_key_person: true  // Flag to identify in prompt
+      });
+    }
+  }
+
+  // Add onboarding seeded people
   if (onboarding?.people && Array.isArray(onboarding.people)) {
     for (const person of onboarding.people) {
-      // Add seeded people if not already in entities
       const exists = allPeople.some(e =>
         e.name.toLowerCase() === person.name?.toLowerCase()
       );
@@ -804,6 +830,16 @@ async function getUserContext(user_id) {
           compressed_context: null
         });
       }
+    }
+  }
+
+  // Add entities that aren't already in the list
+  for (const entity of (entities || [])) {
+    const exists = allPeople.some(e =>
+      e.name.toLowerCase() === entity.name?.toLowerCase()
+    );
+    if (!exists) {
+      allPeople.push(entity);
     }
   }
 
@@ -1019,10 +1055,22 @@ function buildSystemPrompt(context, insightType = 'reflection_prompt') {
     ? recentSessionNotes.map((n, i) => `${i + 1}. "${n.content}" (${n.title || 'recent'})`).join('\n')
     : null;
 
+  // Separate Key People (user explicitly added) from other entities
+  const keyPeople = entities.filter(e => e.is_key_person);
+  const otherEntities = entities.filter(e => !e.is_key_person);
+
+  // Build Key People context (highest priority)
+  const keyPeopleContext = keyPeople.length > 0
+    ? keyPeople.map(e => {
+        const notes = e.context_notes ? ` — ${e.context_notes}` : '';
+        return `- ${e.name}: ${e.relationship || 'important person'}${notes}`;
+      }).join('\n')
+    : null;
+
   // Build entities/people context - this is our primary source of note context
   // since notes are E2E encrypted and we can't read content server-side
-  const entitiesContext = entities.length > 0
-    ? entities.slice(0, 12).map(e => {
+  const entitiesContext = otherEntities.length > 0
+    ? otherEntities.slice(0, 10).map(e => {
         // context_notes is a TEXT array containing extracted context from notes
         const contextNotes = Array.isArray(e.context_notes) && e.context_notes.length > 0
           ? e.context_notes.slice(0, 3).map(c => `"${c}"`).join('; ')
@@ -1030,7 +1078,7 @@ function buildSystemPrompt(context, insightType = 'reflection_prompt') {
         const contextStr = contextNotes ? `\n    Context from notes: ${contextNotes}` : '';
         return `- ${e.name} (${e.entity_type}${e.relationship ? `, ${e.relationship}` : ''}, mentioned ${e.mention_count || 1}x)${contextStr}`;
       }).join('\n')
-    : 'No known people or topics yet.';
+    : 'No other known people or topics yet.';
 
   // Build patterns context
   const patternsContext = patterns && patterns.length > 0
@@ -1055,6 +1103,9 @@ User's name: ${userName}
 ${onboardingContext ? onboardingContext + '\n' : ''}
 Note activity: ${notesContext}
 ${sessionNotesContext ? `\nRECENT NOTES FROM THIS SESSION (highest priority - just written):\n${sessionNotesContext}\n` : ''}
+${keyPeopleContext ? `KEY PEOPLE (user explicitly told you about these - ALWAYS acknowledge if mentioned):
+${keyPeopleContext}
+` : ''}
 People and topics from their notes:
 ${entitiesContext}
 ${patternsContext ? `\nObserved patterns:\n${patternsContext}` : ''}
@@ -1076,6 +1127,12 @@ THE CREEPY LINE - NEVER CROSS IT:
 ❌ "I've been tracking your patterns" → ✅ "I've been noticing something"
 ❌ "You should talk to Marcus" → ✅ "What would it look like to talk to Marcus?"
 ❌ "Based on my analysis..." → ✅ "From what you've shared..."
+
+KEY PEOPLE RULE:
+When user mentions someone from KEY PEOPLE, acknowledge you know them naturally.
+❌ "I don't think you've mentioned Seri before" (when Seri is in Key People)
+✅ "How's Seri doing?" or "Is this about Seri, your dog?"
+You ALREADY KNOW Key People - don't pretend you don't.
 
 ${userContextBlock}
 

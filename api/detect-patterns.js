@@ -1,14 +1,16 @@
 /**
- * /api/detect-patterns - Phase 13A: Pattern Detection
- * Analyzes notes for multiple pattern types:
- * - Temporal: day-of-week, time-of-day writing habits
- * - Entity: people mentioned frequently in specific contexts
- * - Thematic: recurring topics and themes
+ * /api/detect-patterns - Phase 13A: LLM-Powered Pattern Detection
  *
- * Called after note save to check for new patterns
+ * Hybrid approach:
+ * 1. Database gathers raw data (entities, notes, categories)
+ * 2. LLM interprets data to find MEANINGFUL patterns
+ *
+ * Good patterns: emotional, relational, behavioral, thematic
+ * Bad patterns: "You write on Sundays" (obvious, not insightful)
  */
 
 const { createClient } = require('@supabase/supabase-js');
+const Anthropic = require('@anthropic-ai/sdk');
 
 const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = createClient(
@@ -16,11 +18,12 @@ const supabase = createClient(
   supabaseKey
 );
 
-// Minimum requirements for pattern detection
-const MIN_NOTES_FOR_PATTERN = 5;
-const MIN_OCCURRENCES = 3;
-const MIN_CONFIDENCE = 0.75;
-const MIN_ENTITY_MENTIONS = 4; // Minimum mentions for entity pattern
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY
+});
+
+// Minimum requirements
+const MIN_NOTES_FOR_PATTERN = 10;
 
 module.exports = async function handler(req, res) {
   // CORS headers
@@ -43,14 +46,18 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    // Fetch recent notes for pattern analysis
+    console.log('[detect-patterns] Starting hybrid LLM pattern detection for user:', user_id);
+
+    // ===== STEP 1: GATHER RAW DATA =====
+
+    // Get recent notes (we can't read encrypted content, but we have metadata)
     const { data: notes, error: notesError } = await supabase
       .from('notes')
       .select('id, created_at')
       .eq('user_id', user_id)
       .is('deleted_at', null)
       .order('created_at', { ascending: false })
-      .limit(100);
+      .limit(60);
 
     if (notesError) {
       console.error('[detect-patterns] Error fetching notes:', notesError);
@@ -64,134 +71,211 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    // Fetch user entities for entity-based patterns
-    const { data: entities, error: entitiesError } = await supabase
+    // Get top entities by mention count
+    const { data: topEntities, error: entitiesError } = await supabase
       .from('user_entities')
-      .select('id, name, entity_type, mention_count, context, importance_score')
+      .select('name, entity_type, mention_count, sentiment, context_notes, relationship, importance_score')
       .eq('user_id', user_id)
+      .eq('status', 'active')
+      .gte('mention_count', 2)
       .order('mention_count', { ascending: false })
-      .limit(50);
+      .limit(15);
 
     if (entitiesError) {
       console.warn('[detect-patterns] Could not fetch entities:', entitiesError);
     }
 
-    // Detect all pattern types
-    const temporalPatterns = detectTemporalPatterns(notes);
-    const entityPatterns = detectEntityPatterns(entities || [], notes.length);
+    // Get category summaries
+    const { data: categories, error: categoriesError } = await supabase
+      .from('category_summaries')
+      .select('category, summary, entity_count')
+      .eq('user_id', user_id);
 
-    // Combine all patterns
-    const allPatterns = [...temporalPatterns, ...entityPatterns];
+    if (categoriesError) {
+      console.warn('[detect-patterns] Could not fetch categories:', categoriesError);
+    }
 
-    // DIAGNOSTIC: Log all detected patterns with confidence
-    console.log('[detect-patterns] DIAGNOSTIC - Patterns detected:', allPatterns.length);
-    console.log('[detect-patterns] - Temporal:', temporalPatterns.length);
-    console.log('[detect-patterns] - Entity:', entityPatterns.length);
-    allPatterns.forEach((p, i) => {
-      console.log(`[detect-patterns] Pattern ${i + 1}:`, {
-        type: p.type,
-        shortDescription: p.shortDescription,
-        confidence: p.confidence,
-        meetsThreshold: p.confidence >= MIN_CONFIDENCE,
-        evidence: p.evidence
-      });
-    });
+    // Get sentiment distribution from all entities
+    const { data: allEntities, error: allEntitiesError } = await supabase
+      .from('user_entities')
+      .select('sentiment, entity_type')
+      .eq('user_id', user_id)
+      .eq('status', 'active');
 
-    // Store new patterns
-    const newPatterns = [];
-    const diagnostics = {
-      patternsDetected: allPatterns.length,
-      temporalCount: temporalPatterns.length,
-      entityCount: entityPatterns.length,
-      insertAttempts: 0,
-      insertSuccesses: 0,
-      insertErrors: [],
-      existingUpdates: 0,
-      skippedBelowThreshold: 0
-    };
+    // ===== STEP 2: BUILD CONTEXT FOR LLM =====
 
-    for (const pattern of allPatterns) {
-      // Check if pattern already exists
-      const { data: existing, error: existingError } = await supabase
-        .from('user_patterns')
-        .select('id, confidence')
-        .eq('user_id', user_id)
-        .eq('pattern_type', pattern.type)
-        .eq('short_description', pattern.shortDescription)
-        .single();
+    // Note timing analysis (since we can't read content)
+    const timingAnalysis = analyzeNoteTiming(notes);
 
-      if (existingError && existingError.code !== 'PGRST116') {
-        // PGRST116 = no rows returned, which is expected for new patterns
-        console.log('[detect-patterns] Error checking existing:', existingError);
-      }
+    // Entity summary with context
+    const entitySummary = (topEntities || []).map(e => {
+      const contextStr = Array.isArray(e.context_notes) && e.context_notes.length > 0
+        ? ` — recent context: "${e.context_notes[0]}"`
+        : '';
+      return `- ${e.name} (${e.entity_type}): mentioned ${e.mention_count}x, sentiment: ${e.sentiment || 'unknown'}, relationship: ${e.relationship || 'unknown'}${contextStr}`;
+    }).join('\n') || 'No frequently mentioned entities yet.';
 
-      if (existing) {
-        // Update existing pattern confidence
-        console.log('[detect-patterns] Pattern exists, updating:', pattern.shortDescription);
-        if (pattern.confidence > existing.confidence) {
-          const { error: updateError } = await supabase
-            .from('user_patterns')
-            .update({
-              confidence: pattern.confidence,
-              evidence: pattern.evidence,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', existing.id);
+    // Category summary
+    const categorySummary = (categories || []).map(c =>
+      `- ${c.category}: ${c.entity_count || 0} items — ${(c.summary || 'No summary').substring(0, 150)}`
+    ).join('\n') || 'No category summaries yet.';
 
-          if (updateError) {
-            console.log('[detect-patterns] Update error:', updateError);
-          } else {
-            diagnostics.existingUpdates++;
-          }
-        }
-      } else {
-        // Insert new pattern
-        console.log('[detect-patterns] Attempting INSERT for:', pattern.shortDescription);
-        diagnostics.insertAttempts++;
-
-        // Determine detection method based on pattern type
-        const detectionMethod = pattern.type === 'temporal' ? 'temporal_analysis'
-          : pattern.type === 'entity' ? 'entity_analysis'
-          : pattern.type === 'thematic' ? 'thematic_analysis'
-          : 'automatic';
-
-        const { data: inserted, error: insertError } = await supabase
-          .from('user_patterns')
-          .insert({
-            user_id,
-            pattern_type: pattern.type,
-            pattern_text: pattern.shortDescription, // Required NOT NULL column
-            description: pattern.description,
-            short_description: pattern.shortDescription,
-            confidence: pattern.confidence,
-            evidence: pattern.evidence,
-            detection_method: detectionMethod,
-            status: 'detected'
-          })
-          .select()
-          .single();
-
-        if (insertError) {
-          console.log('[detect-patterns] INSERT ERROR:', insertError);
-          diagnostics.insertErrors.push({
-            pattern: pattern.shortDescription,
-            error: insertError
-          });
-        } else if (inserted) {
-          console.log('[detect-patterns] INSERT SUCCESS:', inserted.id);
-          diagnostics.insertSuccesses++;
-          newPatterns.push(inserted);
-        }
+    // Sentiment stats
+    const sentimentCounts = { positive: 0, negative: 0, neutral: 0, mixed: 0 };
+    for (const e of allEntities || []) {
+      if (sentimentCounts[e.sentiment] !== undefined) {
+        sentimentCounts[e.sentiment]++;
       }
     }
 
-    console.log('[detect-patterns] DIAGNOSTIC SUMMARY:', diagnostics);
+    // Entity type distribution
+    const entityTypes = {};
+    for (const e of allEntities || []) {
+      entityTypes[e.entity_type] = (entityTypes[e.entity_type] || 0) + 1;
+    }
+
+    console.log('[detect-patterns] Data gathered:', {
+      noteCount: notes.length,
+      entityCount: topEntities?.length || 0,
+      categoryCount: categories?.length || 0
+    });
+
+    // ===== STEP 3: ASK LLM FOR PATTERNS =====
+
+    const prompt = `You are analyzing a user's personal notes to find meaningful patterns about them.
+
+DATA AVAILABLE:
+
+Note Activity (${notes.length} total notes):
+${timingAnalysis}
+
+Frequently Mentioned People/Things:
+${entitySummary}
+
+Life Areas:
+${categorySummary}
+
+Sentiment Distribution:
+${JSON.stringify(sentimentCounts)}
+
+Entity Types:
+${JSON.stringify(entityTypes)}
+
+---
+
+Find 2-4 MEANINGFUL patterns. A good pattern:
+- Reveals something the user might not have consciously noticed
+- Connects dots between different people, topics, or behaviors
+- Explains emotional tendencies or relationship dynamics
+- Is specific to THIS user, not generic advice
+
+BAD patterns (NEVER output these):
+- "You write notes on Sundays" — temporal patterns about WHEN they write are BORING
+- "You mention [person] often" — just restating the data, not insight
+- "You have work notes" — obvious from categories
+- Generic observations that could apply to anyone
+
+GOOD patterns (aim for these):
+- "When you write about [X], [Y] often comes up too — there might be a connection you haven't explored"
+- "Your notes about [person] have shifted in tone recently — something may have changed"
+- "[Person A] and [Person B] appear together in your thinking — they might represent similar things to you"
+- "You process work stress through [specific behavior] — this seems to be your pattern"
+- "There's tension between [theme A] and [theme B] across your notes"
+
+Return ONLY valid JSON:
+{
+  "patterns": [
+    {
+      "pattern_name": "Short title (3-5 words)",
+      "pattern_type": "emotional|relational|behavioral|thematic",
+      "short_description": "One sentence insight",
+      "description": "2-3 sentences explaining the pattern and why it matters",
+      "confidence": 0.7,
+      "evidence_count": 5
+    }
+  ]
+}
+
+IMPORTANT:
+- If data is insufficient for meaningful patterns, return FEWER patterns (or empty array)
+- Never force weak patterns just to fill the quota
+- Temporal patterns about WHEN user writes are NOT valuable — skip them entirely
+- Focus on WHAT they write about and WHO matters to them`;
+
+    let patterns = [];
+    try {
+      console.log('[detect-patterns] Calling LLM for pattern analysis...');
+
+      const response = await anthropic.messages.create({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        messages: [{ role: 'user', content: prompt }]
+      });
+
+      const text = response.content[0].text;
+      console.log('[detect-patterns] LLM response:', text.substring(0, 200) + '...');
+
+      // Extract JSON from response
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        patterns = parsed.patterns || [];
+      }
+
+      console.log(`[detect-patterns] LLM found ${patterns.length} patterns`);
+    } catch (llmError) {
+      console.error('[detect-patterns] LLM error:', llmError.message);
+      // Return empty rather than failing
+      return res.status(200).json({
+        detected: [],
+        message: 'LLM pattern detection failed, will retry later',
+        error: llmError.message
+      });
+    }
+
+    // ===== STEP 4: STORE PATTERNS =====
+
+    // Archive old LLM-detected patterns for this user
+    await supabase
+      .from('user_patterns')
+      .update({ status: 'archived' })
+      .eq('user_id', user_id)
+      .eq('detection_method', 'llm_hybrid')
+      .eq('status', 'detected');
+
+    const newPatterns = [];
+    for (const pattern of patterns) {
+      const { data: inserted, error: insertError } = await supabase
+        .from('user_patterns')
+        .insert({
+          user_id,
+          pattern_type: pattern.pattern_type || 'thematic',
+          pattern_text: pattern.short_description,
+          description: pattern.description,
+          short_description: pattern.short_description,
+          confidence: pattern.confidence || 0.7,
+          evidence: { evidence_count: pattern.evidence_count },
+          detection_method: 'llm_hybrid',
+          status: 'detected'
+        })
+        .select()
+        .single();
+
+      if (insertError) {
+        console.error('[detect-patterns] Insert error:', insertError);
+      } else if (inserted) {
+        console.log('[detect-patterns] Inserted pattern:', inserted.short_description);
+        newPatterns.push(inserted);
+      }
+    }
+
+    console.log('[detect-patterns] Completed. Inserted:', newPatterns.length);
 
     return res.status(200).json({
       detected: newPatterns,
       total_analyzed: notes.length,
-      patterns_found: allPatterns.length,
-      diagnostics // Include diagnostics in response for debugging
+      patterns_found: patterns.length,
+      method: 'llm_hybrid'
     });
 
   } catch (error) {
@@ -201,243 +285,29 @@ module.exports = async function handler(req, res) {
 };
 
 /**
- * Detect entity-based patterns
- * Finds people/entities mentioned frequently with meaningful context
+ * Analyze note timing for context (not for patterns)
  */
-function detectEntityPatterns(entities, totalNotes) {
-  const patterns = [];
+function analyzeNoteTiming(notes) {
+  if (!notes || notes.length === 0) return 'No notes to analyze.';
 
-  if (!entities || entities.length === 0) {
-    return patterns;
-  }
+  const now = new Date();
+  const oneWeekAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
+  const oneMonthAgo = new Date(now - 30 * 24 * 60 * 60 * 1000);
 
-  // Focus on people entities with sufficient mentions
-  const significantPeople = entities.filter(e =>
-    e.entity_type === 'person' &&
-    e.mention_count >= MIN_ENTITY_MENTIONS
-  );
+  const thisWeek = notes.filter(n => new Date(n.created_at) >= oneWeekAgo).length;
+  const thisMonth = notes.filter(n => new Date(n.created_at) >= oneMonthAgo).length;
 
-  for (const person of significantPeople) {
-    // Calculate significance - how often this person appears relative to notes
-    const mentionRatio = person.mention_count / totalNotes;
-
-    // Person mentioned in 20%+ of notes is significant
-    if (mentionRatio >= 0.2) {
-      const confidence = Math.min(0.95, 0.7 + (mentionRatio * 0.5));
-
-      // Create a pattern based on context if available
-      const context = person.context || '';
-      const relationship = extractRelationship(context);
-
-      patterns.push({
-        type: 'entity',
-        shortDescription: `${person.name} connection`,
-        description: relationship
-          ? `${person.name} (${relationship}) appears frequently in your notes. This seems like an important relationship.`
-          : `${person.name} comes up often in your reflections. This person seems significant to you.`,
-        confidence,
-        evidence: {
-          entity_name: person.name,
-          mention_count: person.mention_count,
-          total_notes: totalNotes,
-          mention_ratio: mentionRatio.toFixed(2),
-          context: context.substring(0, 100)
-        }
-      });
-    }
-  }
-
-  // Detect work vs personal focus from entity types
-  const workEntities = entities.filter(e =>
-    e.entity_type === 'project' || e.entity_type === 'company'
-  );
-  const personalEntities = entities.filter(e =>
-    e.entity_type === 'person' || e.entity_type === 'place'
-  );
-
-  const workMentions = workEntities.reduce((sum, e) => sum + (e.mention_count || 0), 0);
-  const personalMentions = personalEntities.reduce((sum, e) => sum + (e.mention_count || 0), 0);
-  const totalMentions = workMentions + personalMentions;
-
-  if (totalMentions >= 10) {
-    const workRatio = workMentions / totalMentions;
-
-    if (workRatio >= 0.6) {
-      patterns.push({
-        type: 'thematic',
-        shortDescription: 'Work-focused reflections',
-        description: 'Your notes tend to focus on work, projects, and professional matters. Work is clearly on your mind.',
-        confidence: Math.min(0.90, 0.7 + workRatio * 0.3),
-        evidence: {
-          work_mentions: workMentions,
-          personal_mentions: personalMentions,
-          work_ratio: workRatio.toFixed(2)
-        }
-      });
-    } else if (workRatio <= 0.3) {
-      patterns.push({
-        type: 'thematic',
-        shortDescription: 'Personal-focused reflections',
-        description: 'Your notes tend to focus on personal relationships and life. People matter to you.',
-        confidence: Math.min(0.90, 0.7 + (1 - workRatio) * 0.3),
-        evidence: {
-          work_mentions: workMentions,
-          personal_mentions: personalMentions,
-          personal_ratio: (1 - workRatio).toFixed(2)
-        }
-      });
-    }
-  }
-
-  return patterns;
-}
-
-/**
- * Extract relationship type from context string
- */
-function extractRelationship(context) {
-  if (!context) return null;
-
-  const contextLower = context.toLowerCase();
-
-  // Common relationship indicators
-  const relationships = [
-    { keywords: ['cofounder', 'co-founder', 'partner'], label: 'co-founder' },
-    { keywords: ['friend', 'close friend', 'best friend'], label: 'friend' },
-    { keywords: ['colleague', 'coworker', 'team'], label: 'colleague' },
-    { keywords: ['manager', 'boss', 'lead'], label: 'manager' },
-    { keywords: ['mentor', 'advisor'], label: 'mentor' },
-    { keywords: ['family', 'sister', 'brother', 'parent', 'mom', 'dad'], label: 'family' },
-    { keywords: ['investor', 'vc'], label: 'investor' }
-  ];
-
-  for (const rel of relationships) {
-    if (rel.keywords.some(kw => contextLower.includes(kw))) {
-      return rel.label;
-    }
-  }
-
-  return null;
-}
-
-/**
- * Detect temporal patterns from note timestamps
- * Looks for day-of-week and time-of-day correlations
- */
-function detectTemporalPatterns(notes) {
-  const patterns = [];
-  const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-
-  // Group notes by day of week
-  const byDayOfWeek = {};
-  const byTimeOfDay = { morning: [], afternoon: [], evening: [], night: [] };
-
+  // Time of day distribution (for context only)
+  const byTimeOfDay = { morning: 0, afternoon: 0, evening: 0, night: 0 };
   for (const note of notes) {
-    const date = new Date(note.created_at);
-    const day = date.getDay();
-    const hour = date.getHours();
-
-    // Day of week grouping
-    if (!byDayOfWeek[day]) byDayOfWeek[day] = [];
-    byDayOfWeek[day].push(note);
-
-    // Time of day grouping
-    if (hour >= 5 && hour < 12) {
-      byTimeOfDay.morning.push({ ...note, day });
-    } else if (hour >= 12 && hour < 17) {
-      byTimeOfDay.afternoon.push({ ...note, day });
-    } else if (hour >= 17 && hour < 21) {
-      byTimeOfDay.evening.push({ ...note, day });
-    } else {
-      byTimeOfDay.night.push({ ...note, day });
-    }
+    const hour = new Date(note.created_at).getHours();
+    if (hour >= 5 && hour < 12) byTimeOfDay.morning++;
+    else if (hour >= 12 && hour < 17) byTimeOfDay.afternoon++;
+    else if (hour >= 17 && hour < 21) byTimeOfDay.evening++;
+    else byTimeOfDay.night++;
   }
 
-  // Detect day-of-week patterns (e.g., "writes on Sunday evenings")
-  for (const [dayNum, dayNotes] of Object.entries(byDayOfWeek)) {
-    const dayName = dayNames[parseInt(dayNum)];
-    const totalWeeks = Math.ceil(notes.length / 7);
+  const primaryTime = Object.entries(byTimeOfDay).sort((a, b) => b[1] - a[1])[0][0];
 
-    if (dayNotes.length >= MIN_OCCURRENCES) {
-      const frequency = dayNotes.length / totalWeeks;
-
-      if (frequency >= 0.6) { // At least 60% of that day
-        // Check if there's a time pattern on this day
-        const eveningNotes = dayNotes.filter(n => {
-          const hour = new Date(n.created_at).getHours();
-          return hour >= 17 && hour < 22;
-        });
-
-        if (eveningNotes.length >= MIN_OCCURRENCES && eveningNotes.length / dayNotes.length >= 0.6) {
-          // Pattern: writes on [Day] evenings
-          const confidence = Math.min(0.95, eveningNotes.length / dayNotes.length);
-
-          if (confidence >= MIN_CONFIDENCE) {
-            patterns.push({
-              type: 'temporal',
-              shortDescription: `${dayName} evening notes`,
-              description: `You tend to write notes on ${dayName} evenings. This might be a time for reflection.`,
-              confidence,
-              evidence: {
-                occurrences: eveningNotes.length,
-                total_day_notes: dayNotes.length,
-                sample_dates: eveningNotes.slice(0, 3).map(n => n.created_at)
-              }
-            });
-          }
-        } else if (dayNotes.length >= MIN_OCCURRENCES) {
-          // Pattern: writes frequently on [Day]
-          const confidence = Math.min(0.95, frequency);
-
-          if (confidence >= MIN_CONFIDENCE) {
-            patterns.push({
-              type: 'temporal',
-              shortDescription: `${dayName} notes`,
-              description: `You often write notes on ${dayName}s. There might be something about this day.`,
-              confidence,
-              evidence: {
-                occurrences: dayNotes.length,
-                total_weeks: totalWeeks,
-                frequency: frequency.toFixed(2),
-                sample_dates: dayNotes.slice(0, 3).map(n => n.created_at)
-              }
-            });
-          }
-        }
-      }
-    }
-  }
-
-  // Detect time-of-day patterns across all days
-  for (const [timeSlot, timeNotes] of Object.entries(byTimeOfDay)) {
-    const ratio = timeNotes.length / notes.length;
-
-    if (ratio >= 0.5 && timeNotes.length >= MIN_OCCURRENCES) {
-      const confidence = Math.min(0.95, ratio);
-
-      if (confidence >= MIN_CONFIDENCE) {
-        const timeDescriptions = {
-          morning: 'in the morning',
-          afternoon: 'in the afternoon',
-          evening: 'in the evening',
-          night: 'late at night'
-        };
-
-        patterns.push({
-          type: 'temporal',
-          shortDescription: `${timeSlot.charAt(0).toUpperCase() + timeSlot.slice(1)} writer`,
-          description: `Most of your notes are written ${timeDescriptions[timeSlot]}. This seems to be when you reflect.`,
-          confidence,
-          evidence: {
-            occurrences: timeNotes.length,
-            total_notes: notes.length,
-            ratio: ratio.toFixed(2),
-            sample_dates: timeNotes.slice(0, 3).map(n => n.created_at)
-          }
-        });
-      }
-    }
-  }
-
-  return patterns;
+  return `${thisWeek} notes this week, ${thisMonth} this month. Tends to write ${primaryTime}.`;
 }

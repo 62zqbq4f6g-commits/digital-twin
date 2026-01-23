@@ -31,6 +31,12 @@ async function getMemoryContextForChat(userId) {
       .order('updated_at', { ascending: false })
       .limit(3);
 
+    // Get Key People (user explicitly added - highest priority)
+    const { data: keyPeople } = await supabase
+      .from('user_key_people')
+      .select('name, relationship, notes')
+      .eq('user_id', userId);
+
     // Get top entities
     const { data: entities } = await supabase
       .from('user_entities')
@@ -49,9 +55,20 @@ async function getMemoryContextForChat(userId) {
       });
     }
 
+    // Key People first (highest priority)
+    if (keyPeople?.length > 0) {
+      parts.push('\nKEY PEOPLE (user explicitly told you about these):');
+      keyPeople.forEach(p => {
+        const notes = p.notes ? ` — ${p.notes}` : '';
+        parts.push(`- ${p.name}: ${p.relationship}${notes}`);
+      });
+    }
+
     if (entities?.length > 0) {
-      parts.push('\nKey people/things in their world:');
+      parts.push('\nOther people/things from their notes:');
       entities.forEach(e => {
+        // Skip if already in key people
+        if (keyPeople?.some(kp => kp.name.toLowerCase() === e.name.toLowerCase())) return;
         const rel = e.relationship ? ` (${e.relationship})` : '';
         parts.push(`- ${e.name}${rel}`);
       });

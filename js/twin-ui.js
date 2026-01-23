@@ -9,6 +9,9 @@ const TwinUI = {
   init() {
     this.attachListeners();
 
+    // Load cached stats immediately on init (no flash of 0s)
+    this.loadCachedStats();
+
     // Register for sync complete callback to refresh UI after cloud sync
     if (typeof Sync !== 'undefined') {
       Sync.onSyncComplete = () => {
@@ -140,6 +143,45 @@ const TwinUI = {
   },
 
   /**
+   * Load cached stats immediately (prevents flash of 0s)
+   */
+  loadCachedStats() {
+    try {
+      const cached = localStorage.getItem('twin_stats_cache');
+      if (cached) {
+        const stats = JSON.parse(cached);
+        const elements = {
+          'twin-stat-notes': stats.notes ?? 0,
+          'twin-stat-decisions': stats.decisions ?? 0,
+          'twin-stat-patterns': stats.patterns ?? 0,
+          'twin-stat-feedback': (stats.feedback ?? 0) + '%'
+        };
+        for (const [id, value] of Object.entries(elements)) {
+          const el = document.getElementById(id);
+          if (el) el.textContent = value;
+        }
+        console.log('[TwinUI] Loaded cached stats:', stats);
+      }
+    } catch (e) {
+      console.warn('[TwinUI] Could not load cached stats:', e);
+    }
+  },
+
+  /**
+   * Cache stats for immediate loading next time
+   */
+  cacheStats(notes, decisions, patterns, feedback) {
+    try {
+      localStorage.setItem('twin_stats_cache', JSON.stringify({
+        notes, decisions, patterns, feedback,
+        cached_at: Date.now()
+      }));
+    } catch (e) {
+      // Ignore cache errors
+    }
+  },
+
+  /**
    * Update stats grid - counts directly from notes and patterns for consistency
    */
   async updateStats(summary) {
@@ -176,6 +218,9 @@ const TwinUI = {
       const likedCount = notes.filter(n => n.feedback?.rating === 'liked').length;
       const totalFeedback = notes.filter(n => n.feedback?.rating).length;
       const positiveRate = totalFeedback > 0 ? Math.round((likedCount / totalFeedback) * 100) : 0;
+
+      // Cache stats for immediate loading next time
+      this.cacheStats(notes.length, decisionsCount, patternsCount, positiveRate);
 
       const elements = {
         'twin-stat-notes': notes.length,  // Always show actual note count
