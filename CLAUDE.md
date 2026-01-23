@@ -1,10 +1,10 @@
 # CLAUDE.md — Inscript Developer Guide
 
-## Version 8.3.0 | January 23, 2026
+## Version 8.5.0 | January 24, 2026
 
 > **Phase:** 15 — Experience Transformation (In Progress)
-> **Status:** Building 3 High-Impact Features
-> **Last Updated:** January 23, 2026
+> **Status:** Quality Fixes Complete, Building 3 Features
+> **Last Updated:** January 24, 2026
 > **Task List ID:** `phase15-experience-transform`
 
 ---
@@ -16,10 +16,10 @@
 | **App Name** | Inscript |
 | **Tagline** | Your mirror in code |
 | **Category** | Personal AI Memory |
-| **Version** | 8.2.0 |
+| **Version** | 8.5.0 |
 | **Production URL** | https://digital-twin-ecru.vercel.app |
 | **Working Directory** | `/Users/airoxthebox/Projects/digital-twin` |
-| **Beta Status** | Ready (93% pass rate, 26/28 tests) |
+| **Beta Status** | Ready (Quality fixes deployed, 4 critical issues resolved) |
 
 ---
 
@@ -37,6 +37,26 @@
 **Current Phase:** Phase 15 — Experience Transformation
 
 **Next Milestone:** Ship 3 high-impact features (State of You, Whispers, Memory Moments)
+
+---
+
+# RECENT QUALITY FIXES (January 24, 2026)
+
+**Commit:** `1da6dda` — Four critical quality fixes deployed
+
+| Issue | Fix | Impact |
+|-------|-----|--------|
+| **Key People in MIRROR** | Strengthened system prompt with absolute directive, moved Key People to top of context | MIRROR now acknowledges pets and people user explicitly added |
+| **Pattern Quality** | Enhanced LLM prompt, added temporal filter, post-processing rejection | No more "Sunday notes" patterns — only relational/emotional insights |
+| **TWIN Stats Loading** | Added `loadStatsImmediately()` with Supabase fallback | Stats appear within milliseconds on tab open |
+| **Action Extraction** | Applied `isActionable()` filter to AI actions, expanded blocklist | "Stay awake" no longer extracted — only concrete tasks |
+
+### Files Modified
+- `api/mirror.js` — KEY PEOPLE RULE strengthened
+- `api/chat.js` — Key People instruction added
+- `api/detect-patterns.js` — Temporal filter, richer entity context
+- `api/analyze.js` — Action validation for AI-generated actions
+- `js/twin-ui.js` — Immediate stats loading with Supabase fallback
 
 ---
 
@@ -458,12 +478,19 @@ Never use: "I can see...", "It seems like...", "Based on my analysis...", "As an
 
 # KNOWN ISSUES
 
+## Recently Fixed (January 24, 2026)
+
+| Issue | Fix | Commit |
+|-------|-----|--------|
+| Key People not recognized by MIRROR | Strengthened system prompt | `1da6dda` |
+| Patterns showing "Sunday notes" | LLM prompt + temporal filter | `1da6dda` |
+| TWIN stats not loading immediately | Added `loadStatsImmediately()` | `1da6dda` |
+| Action extraction too permissive | Added `isActionable()` filter | `1da6dda` |
+
 ## Active Bugs (P1)
 
 | Issue | Severity | Location |
 |-------|----------|----------|
-| MEETINGS shows "Invalid Date" | Medium | js/work-ui.js |
-| Meeting double-save creates duplicates | Medium | js/work-ui.js |
 | Job titles classified as People | Low | api/extract-entities.js |
 | 500 errors on TwinProfile sync | Low | api/twin-profile.js |
 
@@ -591,7 +618,9 @@ git log --oneline -5
 
 | Version | Phase | Key Changes |
 |---------|-------|-------------|
-| **8.3.0** | 15 | Experience Transformation: State of You, Whispers, Memory Moments |
+| **8.5.0** | 15 | Quality fixes: Key People in MIRROR, pattern quality, immediate stats, action filtering |
+| 8.4.0 | 15 | SoHo design refinement, PHASE-15-BUILD.md v1.1 |
+| 8.3.0 | 15 | Experience Transformation: State of You, Whispers, Memory Moments |
 | 8.2.1 | 14 | Bug fixes (406/500 errors), parallel terminal setup |
 | 8.2.0 | 13E | Pre-beta testing (93%), Key People fix (pets), full documentation update |
 | 8.1.1 | 13D | Category summaries fix (.single() → .maybeSingle()) |
@@ -618,5 +647,5 @@ T1: Memory Moments - Implement dormant entity triggers
 ---
 
 *CLAUDE.md — Inscript Developer Guide*
-*Last Updated: January 23, 2026*
+*Last Updated: January 24, 2026*
 *Production: https://digital-twin-ecru.vercel.app*

@@ -2,8 +2,8 @@
 
 ## Your Mirror in Code.
 
-**Version:** 8.3.0
-**Date:** January 23, 2026
+**Version:** 8.5.0
+**Date:** January 24, 2026
 **Author:** Rox
 **Status:** Phase 15 — Experience Transformation (Building)
 
@@ -29,10 +29,12 @@ Inscript is the first **Personal AI Memory** — an AI that actually remembers y
 | Metric | Value |
 |--------|-------|
 | Production URL | https://digital-twin-ecru.vercel.app |
-| Version | 8.2.0 |
+| Version | 8.5.0 |
 | Memory System | ~95% Mem0 Parity |
-| Beta Status | 93% Test Pass Rate (26/28) |
-| Phases Complete | 8, 9, 10, 11, 13A-E |
+| Beta Status | Ready (Quality fixes deployed) |
+| Design System | SoHo Editorial Aesthetic ✅ |
+| Mobile Responsive | Verified at 375px ✅ |
+| Phases Complete | 8, 9, 10, 11, 13A-E, 14 |
 
 ---
 
@@ -122,7 +124,9 @@ Explicitly added people have HIGHEST priority in memory retrieval:
 | `user_key_people` | HIGHEST | "Seri: dog" (explicitly added) |
 | `user_entities` | Normal | "Jamie" (auto-extracted) |
 
-**Key insight:** The relationship field can include pets ("dog", "cat"), not just human relationships. This was fixed in 8.2.0 to properly recognize Seri as a dog.
+**Key insight:** The relationship field can include pets ("dog", "cat"), not just human relationships.
+
+**Database constraint (8.5.0):** Added unique constraint on `(user_id, name)` for proper upsert operations.
 
 ### Layer 3: Full Memory Retrieval
 When summaries aren't enough, Inscript performs hybrid retrieval:
@@ -778,5 +782,5 @@ Every day a user spends with Inscript:
 ---
 
 *Inscript — Your mirror in code.*
-*PRD Version 2.1 | January 23, 2026*
+*PRD Version 2.2 | January 24, 2026*
 *Production: https://digital-twin-ecru.vercel.app*

@@ -1,16 +1,17 @@
 # Inscript — Project Status
 
-## January 23, 2026 | Version 8.3.0
+## January 24, 2026 | Version 8.5.0
 
 ---
 
 ## CURRENT STATE
 
-**Status:** Phase 15 — Experience Transformation (Building)
+**Status:** Phase 15 — Experience Transformation (Quality Fixes Complete)
 **Production URL:** https://digital-twin-ecru.vercel.app
 **Brand:** Inscript — "Your mirror in code"
 **Category:** Personal AI Memory
 **Task List ID:** `phase15-experience-transform`
+**Design System:** SoHo Editorial Aesthetic ✅
 
 ---
 
@@ -46,14 +47,60 @@
 
 ---
 
-## LAST SESSION: January 23, 2026 (Evening)
+## LATEST SESSION: January 24, 2026 (Evening)
+
+### Four Critical Quality Fixes Deployed
+
+**Commit:** `1da6dda` — feat: Key People in MIRROR, LLM-powered patterns, immediate stats, better actions
+
+| # | Issue | Fix | Files |
+|---|-------|-----|-------|
+| 1 | **Key People not in MIRROR** | Strengthened KEY PEOPLE RULE with absolute directive, moved to top of context | `api/mirror.js`, `api/chat.js` |
+| 2 | **Pattern quality (temporal patterns)** | Enhanced LLM prompt, added post-processing filter for day/time keywords | `api/detect-patterns.js` |
+| 3 | **TWIN stats not loading** | Added `loadStatsImmediately()` with Supabase fallback | `js/twin-ui.js` |
+| 4 | **Action extraction (too permissive)** | Applied `isActionable()` to AI actions, expanded blocklist | `api/analyze.js` |
+
+### Verification Tests
+
+| Test | Expected Result |
+|------|-----------------|
+| MIRROR: "I miss seri" | Responds knowing Seri is your dog |
+| TWIN: Patterns | No "Sunday notes" — only relational/emotional |
+| TWIN: Stats | Load within milliseconds |
+| Action: "I'm tired but need to finish deck" | Extracts "finish deck", NOT "stay awake" |
+
+---
+
+## EARLIER SESSION: January 24, 2026 (Morning)
+
+### Quality Fixes Deployed
+
+| Fix | Description | Commit |
+|-----|-------------|--------|
+| Key People constraint | Added unique constraint migration for `user_key_people` table | `078ee6f` |
+| Stats Supabase fallback | If IndexedDB empty, fetch note count from Supabase | `078ee6f` |
+| SoHo Editorial CSS | Refined NOTES + WORK tabs per design system | Previous |
+| Mobile Audit | All 4 tabs verified responsive at 375px | Verified |
+
+### Issues Investigated
+
+| Issue | Finding |
+|-------|---------|
+| Key People not in MIRROR | Code exists, unique constraint was missing (now fixed) |
+| Patterns "wrong category" | Patterns don't have category field - only `pattern_type` |
+| Stats showing zero | Race condition - stats load before sync; added fallback |
+| Actions tab empty | **By Design**: Personal notes don't generate actions |
+
+---
+
+## EARLIER SESSION: January 23, 2026 (Evening)
 
 ### Bug Fixes Deployed
 
 | Fix | Description | Commit |
 |-----|-------------|--------|
 | 406 onboarding error | Changed `.single()` → `.maybeSingle()` in onboarding.js | `693f18c` |
-| 500 Pulse API error | Rewrote pulse.js to use action_signals + user_entities (notes are E2E encrypted) | `693f18c` |
+| 500 Pulse API error | Rewrote pulse.js to use action_signals + user_entities | `693f18c` |
 | Invalid Date in MEETINGS | Added date validation in `formatRelativeDate()` | `2347990` |
 | Meeting double-save | Disabled save button during save operation | `2347990` |
 
@@ -289,7 +336,9 @@ APP_VERSION  // "8.2.1"
 
 | Version | Date | Changes |
 |---------|------|---------|
-| **8.2.1** | Jan 23, 2026 | Fix 406/500 errors, parallel terminal setup |
+| **8.5.0** | Jan 24, 2026 | Key People constraint, stats fallback, SoHo editorial CSS, mobile audit |
+| 8.3.0 | Jan 23, 2026 | Knowledge Pulse simplification, dark mode support |
+| 8.2.1 | Jan 23, 2026 | Fix 406/500 errors, parallel terminal setup |
 | 8.2.0 | Jan 23, 2026 | Pre-beta testing (93%), Key People fix, documentation update |
 | 8.1.1 | Jan 21, 2026 | Category summaries `.single()` → `.maybeSingle()` |
 | 8.1.0 | Jan 21, 2026 | Mem0 GAP Integration: Full memory architecture |
@@ -319,6 +368,6 @@ This is the "holy shit, it knows" moment working in production.
 
 ---
 
-*Last Updated: January 23, 2026*
-*Version: 8.2.1 — Inscript*
+*Last Updated: January 24, 2026*
+*Version: 8.5.0 — Inscript*
 *Production: https://digital-twin-ecru.vercel.app*

@@ -1,13 +1,15 @@
 # Inscript — Development Roadmap
 
-## January 23, 2026 | Version 8.2.0
+## January 24, 2026 | Version 8.5.0
 
 ---
 
 ## Current Status
 
-**Beta Ready:** 93% test pass rate (26/28 tests)
+**Beta Ready:** Quality fixes deployed, SoHo editorial design refined
 **Production:** https://digital-twin-ecru.vercel.app
+**Design System:** SoHo Editorial Aesthetic ✅
+**Mobile Responsive:** Verified at 375px ✅
 
 ---
 
@@ -68,16 +70,24 @@
 - Tiered retrieval (3 tiers)
 - Context assembly with time decay
 
+### Phase 14.1: Quality Fixes (January 24, 2026) ✅
+- Key People unique constraint migration
+- Stats Supabase fallback (race condition fix)
+- SoHo Editorial CSS refinements (NOTES + WORK tabs)
+- Mobile responsiveness audit (375px verified)
+
 ---
 
-## Current Sprint: Bug Fixes
+## Current Sprint: Phase 15 Features
 
 ### P0 — Critical (This Week)
 
 | Task | Location | Status |
 |------|----------|--------|
-| Fix MEETINGS "Invalid Date" | `js/work-ui.js` | Open |
-| Fix Meeting double-save | `js/work-ui.js` | Open |
+| Fix MEETINGS "Invalid Date" | `js/work-ui.js` | ✅ Fixed |
+| Fix Meeting double-save | `js/work-ui.js` | ✅ Fixed |
+| Add Key People unique constraint | Migration | ✅ Done |
+| Fix stats showing zero | `js/twin-ui.js` | ✅ Added fallback |
 | Set up Vercel Cron for memory maintenance | `/api/cron/` | Open |
 
 ### P1 — Important (This Sprint)
@@ -86,7 +96,7 @@
 |------|----------|--------|
 | Improve entity classification (filter job titles) | `api/extract-entities.js` | Open |
 | Add duplicate entity detection | `api/analyze.js` | Open |
-| Fix 500 errors on TwinProfile sync | `api/twin-profile.js` | Open |
+| Split ui.js into modules | `js/ui.js` | Open |
 
 ---
 
@@ -274,6 +284,8 @@
 
 | Version | Date | Milestone |
 |---------|------|-----------|
+| **8.5.0** | Jan 24, 2026 | Quality fixes, SoHo editorial CSS, mobile audit |
+| 8.3.0 | Jan 23, 2026 | Knowledge Pulse simplification |
 | 8.2.0 | Jan 23, 2026 | Beta ready (93% tests) |
 | 8.1.1 | Jan 21, 2026 | Category summaries fix |
 | 8.1.0 | Jan 21, 2026 | Mem0 parity |
@@ -284,5 +296,5 @@
 ---
 
 *Roadmap — Inscript*
-*Last Updated: January 23, 2026*
+*Last Updated: January 24, 2026*
 *Production: https://digital-twin-ecru.vercel.app*
