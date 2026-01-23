@@ -76,19 +76,36 @@
 - SoHo Editorial CSS refinements (NOTES + WORK tabs)
 - Mobile responsiveness audit (375px verified)
 
+### Phase 14.2: Critical Quality Fixes (January 24, 2026 Evening) ✅
+**Commit:** `1da6dda`
+- **Key People in MIRROR** — Strengthened system prompt, absolute directive
+- **Pattern Quality** — LLM prompt + temporal post-processing filter
+- **TWIN Stats Immediate Loading** — `loadStatsImmediately()` with Supabase fallback
+- **Action Extraction** — `isActionable()` filter for AI-generated actions
+
 ---
 
 ## Current Sprint: Phase 15 Features
+
+### Recently Completed ✅
+
+| Task | Location | Status |
+|------|----------|--------|
+| Fix Key People in MIRROR | `api/mirror.js`, `api/chat.js` | ✅ Fixed |
+| Fix pattern quality (temporal) | `api/detect-patterns.js` | ✅ Fixed |
+| Fix TWIN stats loading | `js/twin-ui.js` | ✅ Fixed |
+| Fix action extraction | `api/analyze.js` | ✅ Fixed |
+| Fix MEETINGS "Invalid Date" | `js/work-ui.js` | ✅ Fixed |
+| Fix Meeting double-save | `js/work-ui.js` | ✅ Fixed |
+| Add Key People unique constraint | Migration | ✅ Done |
+| Fix stats showing zero | `js/twin-ui.js` | ✅ Added fallback |
 
 ### P0 — Critical (This Week)
 
 | Task | Location | Status |
 |------|----------|--------|
-| Fix MEETINGS "Invalid Date" | `js/work-ui.js` | ✅ Fixed |
-| Fix Meeting double-save | `js/work-ui.js` | ✅ Fixed |
-| Add Key People unique constraint | Migration | ✅ Done |
-| Fix stats showing zero | `js/twin-ui.js` | ✅ Added fallback |
 | Set up Vercel Cron for memory maintenance | `/api/cron/` | Open |
+| Begin Phase 15 Task #0 (RLS Policies) | Supabase | Open |
 
 ### P1 — Important (This Sprint)
 
@@ -284,7 +301,7 @@
 
 | Version | Date | Milestone |
 |---------|------|-----------|
-| **8.5.0** | Jan 24, 2026 | Quality fixes, SoHo editorial CSS, mobile audit |
+| **8.5.0** | Jan 24, 2026 | Key People in MIRROR, pattern quality, immediate stats, action filtering |
 | 8.3.0 | Jan 23, 2026 | Knowledge Pulse simplification |
 | 8.2.0 | Jan 23, 2026 | Beta ready (93% tests) |
 | 8.1.1 | Jan 21, 2026 | Category summaries fix |
