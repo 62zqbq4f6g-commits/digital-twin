@@ -157,6 +157,10 @@ function buildChatSystemPrompt(noteContent, noteAnalysis, mode, memoryContext = 
 
 ${memoryContext}
 
+⚠️ KEY PEOPLE RULE: If any KEY PEOPLE are listed above, you ALREADY KNOW them.
+NEVER say "I don't think you've mentioned X before" if X is in Key People.
+Acknowledge their relationship naturally (e.g., "How's Seri doing?" not "Who is Seri?").
+
 Use this context naturally in your responses - reference people and patterns you know about when relevant.
 ` : '';
 

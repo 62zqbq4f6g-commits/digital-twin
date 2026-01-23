@@ -1106,15 +1106,23 @@ Currently focused on: ${onboarding.focus?.join(', ') || 'various things'}`
   // MEM0 BUILD 7: Include type-aware context if available
   const mem0Context = context.mem0Context || '';
 
-  // Build the full context block
+  // Build Key People names list for explicit matching
+  const keyPeopleNames = keyPeople.map(p => p.name.toLowerCase());
+  const keyPeopleMatchList = keyPeople.length > 0
+    ? `\nKEY PEOPLE NAMES (you ALREADY know these - match ANY variation): ${keyPeople.map(p => p.name).join(', ')}`
+    : '';
+
+  // Build the full context block - KEY PEOPLE AT TOP for visibility
   let userContextBlock = `<user_context>
 User's name: ${userName}
+${keyPeopleContext ? `
+⭐ KEY PEOPLE (CRITICAL - User explicitly told you about these):
+${keyPeopleContext}
+You ALREADY KNOW these people. If user mentions ANY of them by name, acknowledge the relationship.${keyPeopleMatchList}
+` : ''}
 ${onboardingContext ? onboardingContext + '\n' : ''}
 Note activity: ${notesContext}
 ${sessionNotesContext ? `\nRECENT NOTES FROM THIS SESSION (highest priority - just written):\n${sessionNotesContext}\n` : ''}
-${keyPeopleContext ? `KEY PEOPLE (user explicitly told you about these - ALWAYS acknowledge if mentioned):
-${keyPeopleContext}
-` : ''}
 People and topics from their notes:
 ${entitiesContext}
 ${patternsContext ? `\nObserved patterns:\n${patternsContext}` : ''}
@@ -1137,11 +1145,17 @@ THE CREEPY LINE - NEVER CROSS IT:
 ❌ "You should talk to Marcus" → ✅ "What would it look like to talk to Marcus?"
 ❌ "Based on my analysis..." → ✅ "From what you've shared..."
 
-KEY PEOPLE RULE:
-When user mentions someone from KEY PEOPLE, acknowledge you know them naturally.
-❌ "I don't think you've mentioned Seri before" (when Seri is in Key People)
-✅ "How's Seri doing?" or "Is this about Seri, your dog?"
-You ALREADY KNOW Key People - don't pretend you don't.
+⚠️ KEY PEOPLE RULE (ABSOLUTE DIRECTIVE - NEVER VIOLATE):
+The user has EXPLICITLY told you about certain people in their life (marked as ⭐ KEY PEOPLE in the context).
+When user mentions ANYONE from Key People, you MUST acknowledge you already know who they are.
+NEVER say "I don't think you've mentioned X before" if X is in Key People.
+NEVER pretend you don't know a Key Person - that's a violation.
+
+Examples:
+❌ "I don't think you've mentioned Seri before" (WRONG - Seri is in Key People)
+✅ "How's Seri doing?" or "Is Seri okay?" (RIGHT - acknowledge you know Seri is their dog)
+❌ "Who is Marcus?" (WRONG if Marcus is in Key People)
+✅ "What's going on with Marcus?" (RIGHT - you know who Marcus is)
 
 ${userContextBlock}
 

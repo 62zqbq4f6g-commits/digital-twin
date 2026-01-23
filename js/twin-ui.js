@@ -12,6 +12,9 @@ const TwinUI = {
     // Load cached stats immediately on init (no flash of 0s)
     this.loadCachedStats();
 
+    // IMMEDIATELY load fresh stats from DB (don't wait for full profile)
+    this.loadStatsImmediately();
+
     // Register for sync complete callback to refresh UI after cloud sync
     if (typeof Sync !== 'undefined') {
       Sync.onSyncComplete = () => {
@@ -28,6 +31,73 @@ const TwinUI = {
     });
 
     console.log('[TwinUI] Initialized');
+  },
+
+  /**
+   * Load stats immediately from IndexedDB (fast, no profile load needed)
+   * This runs in parallel with heavier operations
+   */
+  async loadStatsImmediately() {
+    try {
+      console.log('[TwinUI] Loading stats immediately...');
+
+      // Get notes directly from IndexedDB
+      const notes = await DB.getAllNotes();
+      if (!notes || notes.length === 0) {
+        console.log('[TwinUI] No notes yet, keeping cached/default stats');
+        return;
+      }
+
+      // Count notes
+      const noteCount = notes.length;
+
+      // Count decisions (unresolved)
+      const decisionsCount = notes.filter(note => {
+        const decision = note.analysis?.decision || note.decision;
+        return decision?.isDecision === true && decision?.resolved !== true;
+      }).length;
+
+      // Count patterns - from profile if available
+      let patternsCount = 0;
+      try {
+        const profile = JSON.parse(localStorage.getItem('twin_profile') || '{}');
+        patternsCount = profile?.patterns?.length || 0;
+      } catch (e) { /* ignore */ }
+
+      // Try to get Phase 13 patterns count from database
+      if (typeof window.PatternVerification !== 'undefined' && Sync?.user?.id) {
+        try {
+          await window.PatternVerification.loadPatterns();
+          const phase13Patterns = window.PatternVerification.patterns || [];
+          patternsCount += phase13Patterns.length;
+        } catch (e) { /* ignore */ }
+      }
+
+      // Count feedback directly from notes
+      const likedCount = notes.filter(n => n.feedback?.rating === 'liked').length;
+      const totalFeedback = notes.filter(n => n.feedback?.rating).length;
+      const positiveRate = totalFeedback > 0 ? Math.round((likedCount / totalFeedback) * 100) : 0;
+
+      // Update UI
+      const elements = {
+        'twin-stat-notes': noteCount,
+        'twin-stat-decisions': decisionsCount,
+        'twin-stat-patterns': patternsCount,
+        'twin-stat-feedback': positiveRate + '%'
+      };
+
+      for (const [id, value] of Object.entries(elements)) {
+        const el = document.getElementById(id);
+        if (el) el.textContent = value;
+      }
+
+      // Cache for next time
+      this.cacheStats(noteCount, decisionsCount, patternsCount, positiveRate);
+
+      console.log('[TwinUI] Stats loaded immediately:', { noteCount, decisionsCount, patternsCount, positiveRate });
+    } catch (e) {
+      console.warn('[TwinUI] Could not load immediate stats:', e);
+    }
   },
 
   /**

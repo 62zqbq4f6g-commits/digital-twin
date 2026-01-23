@@ -2840,8 +2840,18 @@ Extract actions from ANY of these patterns:
 - Questions without intent: "what should I do?"
 - Past events: "I called mom yesterday"
 - Observations: "the weather is nice"
+- STATES/FEELINGS: "I'm tired", "feeling stressed", "need to relax"
+- VAGUE INTENTIONS: "stay awake", "be more productive", "try harder", "focus more"
+- NON-SPECIFIC: "do something", "figure it out", "handle it"
 
-CRITICAL: Extract actions even from short, casual inputs. "need to call vet" IS an action. When in doubt, extract the action.
+⚠️ IMPORTANT: Actions must be SPECIFIC tasks with VERB + OBJECT:
+✅ "call the vet" — specific task
+✅ "finish the investor deck" — specific task
+❌ "stay awake" — this is a STATE, not a task
+❌ "be more productive" — this is a goal, not a task
+❌ "get through this" — this is motivation, not a task
+
+Only extract actions that someone could CHECK OFF a to-do list.
 
 Effort levels:
 - quick: Under 15 minutes, single task
@@ -3383,11 +3393,21 @@ function getDefaultFutureState(actionText) {
 
 // Non-actionable phrases - feelings, states, internal experiences (not tasks)
 const NON_ACTIONABLE_STARTS = [
-  'stay ', 'be ', 'feel ', 'keep ', 'remain ',
+  // States/feelings
+  'stay ', 'be ', 'feel ', 'keep ', 'remain ', 'get ',
   'relax', 'calm down', 'focus', 'sleep', 'rest', 'breathe',
+  // Vague intentions
   'think about it', 'remember that', 'know that', 'believe',
   'do something', 'figure it out', 'deal with it', 'work on it',
-  'handle it', 'take care of it', 'sort it out'
+  'handle it', 'take care of it', 'sort it out',
+  // More states
+  'try to ', 'try harder', 'stop ', 'start ',
+  'don\'t ', 'avoid ', 'ignore ',
+  // Motivational/abstract
+  'push through', 'power through', 'keep going', 'hang in there',
+  'make it work', 'get through', 'survive ', 'manage ',
+  // Time-based states
+  'wake up', 'stay up', 'stay awake', 'stay alert', 'stay focused'
 ];
 
 const NON_ACTIONABLE_ENDS = [
@@ -3520,18 +3540,35 @@ function capitalizeFirst(str) {
 
 /**
  * Phase 5D: Ensure actions are extracted, using fallback if AI missed them
+ * Also filters out non-actionable items (feelings, states, vague intentions)
  */
 function ensureActionsExtracted(aiActions, originalText) {
-  // If AI found actions, normalize and return them
+  // If AI found actions, normalize AND filter them
   if (aiActions && Array.isArray(aiActions) && aiActions.length > 0) {
-    return aiActions.map(normalizeAction);
+    const normalized = aiActions.map(normalizeAction);
+
+    // Filter out non-actionable items (AI sometimes returns feelings/states)
+    const filtered = normalized.filter(a => {
+      const actionText = a.action || '';
+      if (!isActionable(actionText)) {
+        console.log('[Analyze] Filtered non-actionable AI action:', actionText);
+        return false;
+      }
+      return true;
+    });
+
+    if (filtered.length > 0) {
+      return filtered;
+    }
+    // If all AI actions were filtered, fall through to fallback
+    console.log('[Analyze] All AI actions were non-actionable, trying fallback');
   }
 
   // Otherwise, try fallback extraction
   const fallbackActions = extractFallbackActions(originalText);
 
   if (fallbackActions.length > 0) {
-    console.log('[Analyze] AI missed actions, fallback extracted:', fallbackActions.length);
+    console.log('[Analyze] Fallback extracted:', fallbackActions.length);
   }
 
   return fallbackActions;

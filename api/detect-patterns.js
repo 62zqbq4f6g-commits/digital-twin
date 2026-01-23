@@ -107,11 +107,14 @@ module.exports = async function handler(req, res) {
     // Note timing analysis (since we can't read content)
     const timingAnalysis = analyzeNoteTiming(notes);
 
-    // Entity summary with context
+    // Entity summary with RICH context (multiple context notes for better patterns)
     const entitySummary = (topEntities || []).map(e => {
-      const contextStr = Array.isArray(e.context_notes) && e.context_notes.length > 0
-        ? ` — recent context: "${e.context_notes[0]}"`
-        : '';
+      // Include up to 3 context notes for richer pattern detection
+      let contextStr = '';
+      if (Array.isArray(e.context_notes) && e.context_notes.length > 0) {
+        const contexts = e.context_notes.slice(0, 3).map(c => `"${c}"`).join(', ');
+        contextStr = `\n    Context from notes: ${contexts}`;
+      }
       return `- ${e.name} (${e.entity_type}): mentioned ${e.mention_count}x, sentiment: ${e.sentiment || 'unknown'}, relationship: ${e.relationship || 'unknown'}${contextStr}`;
     }).join('\n') || 'No frequently mentioned entities yet.';
 
@@ -168,19 +171,24 @@ Find 2-4 MEANINGFUL patterns. A good pattern:
 - Connects dots between different people, topics, or behaviors
 - Explains emotional tendencies or relationship dynamics
 - Is specific to THIS user, not generic advice
+- Has INSIGHT, not just observation
 
-BAD patterns (NEVER output these):
-- "You write notes on Sundays" — temporal patterns about WHEN they write are BORING
-- "You mention [person] often" — just restating the data, not insight
-- "You have work notes" — obvious from categories
-- Generic observations that could apply to anyone
+⚠️ STRICTLY FORBIDDEN PATTERNS (NEVER generate these):
+- ANY pattern about WHEN/TIME they write (day of week, time of day, frequency)
+- "You write on [day]" — FORBIDDEN
+- "You're more active on [time]" — FORBIDDEN
+- "You write X times per week" — FORBIDDEN
+- "[Person] is mentioned often" — This is just data, not insight
+- "You think about work" — Obviously everyone does
+- Any pattern a stranger could guess without reading the notes
 
-GOOD patterns (aim for these):
-- "When you write about [X], [Y] often comes up too — there might be a connection you haven't explored"
-- "Your notes about [person] have shifted in tone recently — something may have changed"
-- "[Person A] and [Person B] appear together in your thinking — they might represent similar things to you"
-- "You process work stress through [specific behavior] — this seems to be your pattern"
-- "There's tension between [theme A] and [theme B] across your notes"
+✅ GOOD PATTERNS (aim for these - they require actually understanding the content):
+- "When [person A] comes up, you often also mention [emotion/topic] — there might be a connection"
+- "Your notes about [person] carry a [specific emotional quality] — what's underneath that?"
+- "[Person A] and [Person B] seem to represent similar things in your thinking"
+- "You process stress by [specific behavior visible in the contexts]"
+- "There's a recurring tension between [specific thing A] and [specific thing B]"
+- "The way you describe [topic] suggests [deeper insight about values/fears/desires]"
 
 Return ONLY valid JSON:
 {
@@ -199,8 +207,10 @@ Return ONLY valid JSON:
 IMPORTANT:
 - If data is insufficient for meaningful patterns, return FEWER patterns (or empty array)
 - Never force weak patterns just to fill the quota
-- Temporal patterns about WHEN user writes are NOT valuable — skip them entirely
-- Focus on WHAT they write about and WHO matters to them`;
+- ABSOLUTELY NO temporal patterns (day/time/frequency) — these will be REJECTED
+- Focus on RELATIONSHIPS between entities, emotional patterns, and behavioral insights
+- Use the "Context from notes" data to find actual insights about the person
+- Each pattern must pass this test: "Would this surprise the user? Does it connect dots they haven't connected?"`;
 
     let patterns = [];
     try {
@@ -223,6 +233,27 @@ IMPORTANT:
       }
 
       console.log(`[detect-patterns] LLM found ${patterns.length} patterns`);
+
+      // Post-process: Filter out any temporal patterns that slipped through
+      patterns = patterns.filter(p => {
+        const text = (p.short_description + ' ' + p.description).toLowerCase();
+        const temporalKeywords = [
+          'sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday',
+          'morning', 'afternoon', 'evening', 'night', 'day of',
+          'times per', 'per week', 'per day', 'frequently', 'often write',
+          'tend to write', 'write more on', 'most active'
+        ];
+
+        for (const keyword of temporalKeywords) {
+          if (text.includes(keyword)) {
+            console.log(`[detect-patterns] Filtered out temporal pattern: "${p.short_description}"`);
+            return false;
+          }
+        }
+        return true;
+      });
+
+      console.log(`[detect-patterns] After filtering: ${patterns.length} patterns`);
     } catch (llmError) {
       console.error('[detect-patterns] LLM error:', llmError.message);
       // Return empty rather than failing
