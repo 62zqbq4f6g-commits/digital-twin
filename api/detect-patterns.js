@@ -1,6 +1,9 @@
 /**
- * /api/detect-patterns - Phase 13A: Temporal Pattern Detection
- * Analyzes note timestamps to detect recurring patterns like "writes about work on Sundays"
+ * /api/detect-patterns - Phase 13A: Pattern Detection
+ * Analyzes notes for multiple pattern types:
+ * - Temporal: day-of-week, time-of-day writing habits
+ * - Entity: people mentioned frequently in specific contexts
+ * - Thematic: recurring topics and themes
  *
  * Called after note save to check for new patterns
  */
@@ -17,6 +20,7 @@ const supabase = createClient(
 const MIN_NOTES_FOR_PATTERN = 5;
 const MIN_OCCURRENCES = 3;
 const MIN_CONFIDENCE = 0.75;
+const MIN_ENTITY_MENTIONS = 4; // Minimum mentions for entity pattern
 
 module.exports = async function handler(req, res) {
   // CORS headers
@@ -60,13 +64,32 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    // Detect temporal patterns
+    // Fetch user entities for entity-based patterns
+    const { data: entities, error: entitiesError } = await supabase
+      .from('user_entities')
+      .select('id, name, entity_type, mention_count, context, importance_score')
+      .eq('user_id', user_id)
+      .order('mention_count', { ascending: false })
+      .limit(50);
+
+    if (entitiesError) {
+      console.warn('[detect-patterns] Could not fetch entities:', entitiesError);
+    }
+
+    // Detect all pattern types
     const temporalPatterns = detectTemporalPatterns(notes);
+    const entityPatterns = detectEntityPatterns(entities || [], notes.length);
+
+    // Combine all patterns
+    const allPatterns = [...temporalPatterns, ...entityPatterns];
 
     // DIAGNOSTIC: Log all detected patterns with confidence
-    console.log('[detect-patterns] DIAGNOSTIC - Patterns detected:', temporalPatterns.length);
-    temporalPatterns.forEach((p, i) => {
+    console.log('[detect-patterns] DIAGNOSTIC - Patterns detected:', allPatterns.length);
+    console.log('[detect-patterns] - Temporal:', temporalPatterns.length);
+    console.log('[detect-patterns] - Entity:', entityPatterns.length);
+    allPatterns.forEach((p, i) => {
       console.log(`[detect-patterns] Pattern ${i + 1}:`, {
+        type: p.type,
         shortDescription: p.shortDescription,
         confidence: p.confidence,
         meetsThreshold: p.confidence >= MIN_CONFIDENCE,
@@ -77,7 +100,9 @@ module.exports = async function handler(req, res) {
     // Store new patterns
     const newPatterns = [];
     const diagnostics = {
-      patternsDetected: temporalPatterns.length,
+      patternsDetected: allPatterns.length,
+      temporalCount: temporalPatterns.length,
+      entityCount: entityPatterns.length,
       insertAttempts: 0,
       insertSuccesses: 0,
       insertErrors: [],
@@ -85,7 +110,7 @@ module.exports = async function handler(req, res) {
       skippedBelowThreshold: 0
     };
 
-    for (const pattern of temporalPatterns) {
+    for (const pattern of allPatterns) {
       // Check if pattern already exists
       const { data: existing, error: existingError } = await supabase
         .from('user_patterns')
@@ -124,6 +149,12 @@ module.exports = async function handler(req, res) {
         console.log('[detect-patterns] Attempting INSERT for:', pattern.shortDescription);
         diagnostics.insertAttempts++;
 
+        // Determine detection method based on pattern type
+        const detectionMethod = pattern.type === 'temporal' ? 'temporal_analysis'
+          : pattern.type === 'entity' ? 'entity_analysis'
+          : pattern.type === 'thematic' ? 'thematic_analysis'
+          : 'automatic';
+
         const { data: inserted, error: insertError } = await supabase
           .from('user_patterns')
           .insert({
@@ -134,7 +165,7 @@ module.exports = async function handler(req, res) {
             short_description: pattern.shortDescription,
             confidence: pattern.confidence,
             evidence: pattern.evidence,
-            detection_method: 'temporal_analysis',
+            detection_method: detectionMethod,
             status: 'detected'
           })
           .select()
@@ -159,7 +190,7 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({
       detected: newPatterns,
       total_analyzed: notes.length,
-      patterns_found: temporalPatterns.length,
+      patterns_found: allPatterns.length,
       diagnostics // Include diagnostics in response for debugging
     });
 
@@ -168,6 +199,126 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ error: 'Pattern detection failed' });
   }
 };
+
+/**
+ * Detect entity-based patterns
+ * Finds people/entities mentioned frequently with meaningful context
+ */
+function detectEntityPatterns(entities, totalNotes) {
+  const patterns = [];
+
+  if (!entities || entities.length === 0) {
+    return patterns;
+  }
+
+  // Focus on people entities with sufficient mentions
+  const significantPeople = entities.filter(e =>
+    e.entity_type === 'person' &&
+    e.mention_count >= MIN_ENTITY_MENTIONS
+  );
+
+  for (const person of significantPeople) {
+    // Calculate significance - how often this person appears relative to notes
+    const mentionRatio = person.mention_count / totalNotes;
+
+    // Person mentioned in 20%+ of notes is significant
+    if (mentionRatio >= 0.2) {
+      const confidence = Math.min(0.95, 0.7 + (mentionRatio * 0.5));
+
+      // Create a pattern based on context if available
+      const context = person.context || '';
+      const relationship = extractRelationship(context);
+
+      patterns.push({
+        type: 'entity',
+        shortDescription: `${person.name} connection`,
+        description: relationship
+          ? `${person.name} (${relationship}) appears frequently in your notes. This seems like an important relationship.`
+          : `${person.name} comes up often in your reflections. This person seems significant to you.`,
+        confidence,
+        evidence: {
+          entity_name: person.name,
+          mention_count: person.mention_count,
+          total_notes: totalNotes,
+          mention_ratio: mentionRatio.toFixed(2),
+          context: context.substring(0, 100)
+        }
+      });
+    }
+  }
+
+  // Detect work vs personal focus from entity types
+  const workEntities = entities.filter(e =>
+    e.entity_type === 'project' || e.entity_type === 'company'
+  );
+  const personalEntities = entities.filter(e =>
+    e.entity_type === 'person' || e.entity_type === 'place'
+  );
+
+  const workMentions = workEntities.reduce((sum, e) => sum + (e.mention_count || 0), 0);
+  const personalMentions = personalEntities.reduce((sum, e) => sum + (e.mention_count || 0), 0);
+  const totalMentions = workMentions + personalMentions;
+
+  if (totalMentions >= 10) {
+    const workRatio = workMentions / totalMentions;
+
+    if (workRatio >= 0.6) {
+      patterns.push({
+        type: 'thematic',
+        shortDescription: 'Work-focused reflections',
+        description: 'Your notes tend to focus on work, projects, and professional matters. Work is clearly on your mind.',
+        confidence: Math.min(0.90, 0.7 + workRatio * 0.3),
+        evidence: {
+          work_mentions: workMentions,
+          personal_mentions: personalMentions,
+          work_ratio: workRatio.toFixed(2)
+        }
+      });
+    } else if (workRatio <= 0.3) {
+      patterns.push({
+        type: 'thematic',
+        shortDescription: 'Personal-focused reflections',
+        description: 'Your notes tend to focus on personal relationships and life. People matter to you.',
+        confidence: Math.min(0.90, 0.7 + (1 - workRatio) * 0.3),
+        evidence: {
+          work_mentions: workMentions,
+          personal_mentions: personalMentions,
+          personal_ratio: (1 - workRatio).toFixed(2)
+        }
+      });
+    }
+  }
+
+  return patterns;
+}
+
+/**
+ * Extract relationship type from context string
+ */
+function extractRelationship(context) {
+  if (!context) return null;
+
+  const contextLower = context.toLowerCase();
+
+  // Common relationship indicators
+  const relationships = [
+    { keywords: ['cofounder', 'co-founder', 'partner'], label: 'co-founder' },
+    { keywords: ['friend', 'close friend', 'best friend'], label: 'friend' },
+    { keywords: ['colleague', 'coworker', 'team'], label: 'colleague' },
+    { keywords: ['manager', 'boss', 'lead'], label: 'manager' },
+    { keywords: ['mentor', 'advisor'], label: 'mentor' },
+    { keywords: ['family', 'sister', 'brother', 'parent', 'mom', 'dad'], label: 'family' },
+    { keywords: ['investor', 'vc'], label: 'investor' }
+  ];
+
+  for (const rel of relationships) {
+    if (rel.keywords.some(kw => contextLower.includes(kw))) {
+      return rel.label;
+    }
+  }
+
+  return null;
+}
 
 /**
  * Detect temporal patterns from note timestamps
