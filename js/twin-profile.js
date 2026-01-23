@@ -157,6 +157,17 @@ const TwinProfile = {
    */
   async save(profile) {
     try {
+      // Ensure profile has meta object
+      if (!profile.meta) {
+        profile.meta = {
+          version: '1.0',
+          created: new Date().toISOString(),
+          lastUpdated: new Date().toISOString(),
+          notesAnalyzed: 0,
+          confidenceScore: 0,
+          lastFullAnalysis: null
+        };
+      }
       profile.meta.lastUpdated = new Date().toISOString();
 
       const db = await this.getDB();
@@ -270,6 +281,8 @@ const TwinProfile = {
    * Calculate confidence score based on data completeness
    */
   calculateConfidence(profile) {
+    if (!profile) return 0;
+
     let score = 0;
     const weights = {
       notesAnalyzed: 0.3,
@@ -280,36 +293,46 @@ const TwinProfile = {
       relationships: 0.1
     };
 
+    // Safe access helpers
+    const meta = profile.meta || {};
+    const relationships = profile.relationships || {};
+    const beliefs = profile.beliefs || {};
+    const patterns = profile.patterns || {};
+    const identity = profile.identity || {};
+    const writing = identity.writing || {};
+    const vocabulary = writing.vocabulary || {};
+
     // Notes analyzed (max contribution at 50 notes)
-    const notesFactor = Math.min(profile.meta.notesAnalyzed / 50, 1);
+    const notesFactor = Math.min((meta.notesAnalyzed || 0) / 50, 1);
     score += notesFactor * weights.notesAnalyzed;
 
     // Entities (people, projects, companies)
     const entityCount =
-      (profile.relationships.people?.length || 0) +
-      (profile.relationships.projects?.length || 0) +
-      (profile.relationships.companies?.length || 0);
+      (relationships.people?.length || 0) +
+      (relationships.projects?.length || 0) +
+      (relationships.companies?.length || 0);
     score += Math.min(entityCount / 20, 1) * weights.entities;
 
     // Beliefs
     const beliefCount =
-      (profile.beliefs.opinions?.length || 0) +
-      (profile.beliefs.values?.length || 0);
+      (beliefs.opinions?.length || 0) +
+      (beliefs.values?.length || 0);
     score += Math.min(beliefCount / 10, 1) * weights.beliefs;
 
     // Patterns
-    const hasPatterns =
-      Object.keys(profile.patterns.temporal.captureFrequency.byHour || {}).length > 0;
+    const temporal = patterns.temporal || {};
+    const captureFrequency = temporal.captureFrequency || {};
+    const hasPatterns = Object.keys(captureFrequency.byHour || {}).length > 0;
     score += (hasPatterns ? 1 : 0) * weights.patterns;
 
     // Vocabulary
     const vocabCount =
-      (profile.identity.writing.vocabulary.frequent?.length || 0) +
-      (profile.identity.writing.vocabulary.signature?.length || 0);
+      (vocabulary.frequent?.length || 0) +
+      (vocabulary.signature?.length || 0);
     score += Math.min(vocabCount / 20, 1) * weights.vocabulary;
 
     // Relationships
-    score += Math.min((profile.relationships.people?.length || 0) / 10, 1) * weights.relationships;
+    score += Math.min((relationships.people?.length || 0) / 10, 1) * weights.relationships;
 
     return Math.round(score * 100) / 100;
   },
@@ -325,16 +348,23 @@ const TwinProfile = {
 
     try {
       const profile = await this.load();
+      if (!profile) {
+        console.warn('[TwinProfile] No profile to sync');
+        return;
+      }
+
       const encrypted = await PIN.encrypt(JSON.stringify(profile));
 
+      // Use safe access for meta properties with defaults
+      const meta = profile.meta || {};
       await Sync.supabase
         .from('twin_profiles')
         .upsert({
           user_id: Sync.user.id,
           encrypted_profile: encrypted,
-          version: profile.meta.version,
-          notes_analyzed: profile.meta.notesAnalyzed,
-          confidence_score: profile.meta.confidenceScore,
+          version: meta.version || '1.0',
+          notes_analyzed: meta.notesAnalyzed || 0,
+          confidence_score: meta.confidenceScore || 0,
           updated_at: new Date().toISOString()
         }, { onConflict: 'user_id' });
 
