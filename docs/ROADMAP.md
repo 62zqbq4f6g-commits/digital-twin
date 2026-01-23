@@ -1,0 +1,246 @@
+# Inscript — Development Roadmap
+
+## January 23, 2026 | Version 8.2.0
+
+---
+
+## Current Status
+
+**Beta Ready:** 93% test pass rate (26/28 tests)
+**Production:** https://digital-twin-ecru.vercel.app
+
+---
+
+## Completed Phases
+
+### Phase 8: Intelligent Twin
+- Twin profile and learning
+- Entity extraction pipeline
+- Basic memory operations
+
+### Phase 9: Personalization
+- 8-screen onboarding flow
+- Seeded people recognition
+- Life season context
+
+### Phase 10: Entity Extraction & Relationships
+- LLM-powered extraction
+- Importance classification
+- Relationship graph
+- Semantic search (pgvector)
+- Cross-memory reasoning
+
+### Phase 11: Inscript Rebrand
+- Digital Twin → Inscript rebrand
+- Editorial design system
+- Privacy promise
+- Production deployment
+
+### Phase 13A: Pattern Foundation
+- LLM hybrid pattern detection
+- Pattern storage
+- Pattern API
+
+### Phase 13B: MIRROR Foundation
+- MIRROR tab implementation
+- Conversation flow
+- Basic API integration
+
+### Phase 13C: MIRROR Intelligence
+- Signal-based prompts
+- Context-aware responses
+- Memory integration
+
+### Phase 13D: Pattern Verification UI
+- Inline pattern display
+- TWIN section patterns
+- User feedback on patterns
+
+### Phase 13E: Polish & Bug Fixes
+- Pre-beta holistic testing (93% pass)
+- Key People fix (pets recognized)
+- Documentation update
+
+### Mem0 Parity (~95%)
+- Query synthesis
+- Summary evolution (LLM rewrite)
+- Hybrid retrieval (vector + keyword)
+- Tiered retrieval (3 tiers)
+- Context assembly with time decay
+
+---
+
+## Current Sprint: Bug Fixes
+
+### P0 — Critical (This Week)
+
+| Task | Location | Status |
+|------|----------|--------|
+| Fix MEETINGS "Invalid Date" | `js/work-ui.js` | Open |
+| Fix Meeting double-save | `js/work-ui.js` | Open |
+| Set up Vercel Cron for memory maintenance | `/api/cron/` | Open |
+
+### P1 — Important (This Sprint)
+
+| Task | Location | Status |
+|------|----------|--------|
+| Improve entity classification (filter job titles) | `api/extract-entities.js` | Open |
+| Add duplicate entity detection | `api/analyze.js` | Open |
+| Fix 500 errors on TwinProfile sync | `api/twin-profile.js` | Open |
+
+---
+
+## Upcoming Phases
+
+### Phase 14: Production Hardening
+
+**Goal:** Ensure stability and reliability for beta users
+
+| Priority | Task | Description |
+|----------|------|-------------|
+| P0 | Production testing | Full end-to-end testing |
+| P0 | Fix integration bugs | Address any issues found |
+| P1 | Error tracking | Integrate Sentry |
+| P1 | Performance monitoring | Track API latencies |
+| P2 | Analytics dashboard | Usage metrics |
+
+**Success Criteria:**
+- Zero critical bugs in production
+- 99% uptime
+- Average API latency < 2s
+
+---
+
+### Phase 15: Experience Transformation
+
+**Goal:** Improve maintainability and user experience
+
+| Priority | Task | Description |
+|----------|------|-------------|
+| P0 | Split ui.js | Break 4,800+ line file into modules |
+| P1 | Vogue minimalist redesign | Refine editorial aesthetic |
+| P1 | Improved loading states | Better feedback during operations |
+| P2 | Enhanced dark mode | Polish dark theme |
+
+**Modules for ui.js split:**
+- `ui-core.js` — Core utilities, initialization
+- `ui-notes.js` — Note rendering, input handling
+- `ui-twin.js` — TWIN tab specific code
+- `ui-modals.js` — Modal management
+- `ui-onboarding.js` — Onboarding flow
+
+**Success Criteria:**
+- No single file > 1,000 lines
+- Lighthouse score > 90
+
+---
+
+### Phase 16: Advanced Memory
+
+**Goal:** Deepen the "it knows me" experience
+
+| Priority | Task | Description |
+|----------|------|-------------|
+| P0 | Memory milestones | 30/90/365 day reviews |
+| P0 | "What does Inscript know?" | Natural language memory query |
+| P1 | Memory visualization | Entity/relationship graph |
+| P1 | Monthly memory summaries | Automated insights |
+| P2 | Memory export | Download your data |
+
+**Success Criteria:**
+- Users receive milestone notifications
+- Memory query accuracy > 80%
+- Visualization renders in < 1s
+
+---
+
+### Phase 17: Growth
+
+**Goal:** Increase engagement and retention
+
+| Priority | Task | Description |
+|----------|------|-------------|
+| P1 | Push notifications | Daily reflection prompts |
+| P1 | Weekly digest emails | Memory highlights |
+| P2 | Privacy-preserving sharing | Share insights, not data |
+| P2 | Community features | Optional shared patterns |
+
+**Success Criteria:**
+- D7 retention > 50%
+- D30 retention > 30%
+- NPS > 50
+
+---
+
+### Phase 18: Platform (Future)
+
+**Goal:** Enable integrations and extensibility
+
+| Priority | Task | Description |
+|----------|------|-------------|
+| P0 | MCP Server | Model Context Protocol integration |
+| P1 | API access | Developer API for memory |
+| P2 | Webhook support | Event notifications |
+| P2 | Third-party integrations | Calendar, email, etc. |
+
+---
+
+## Technical Debt Backlog
+
+### Critical (Must Fix)
+
+| Issue | Impact | Location |
+|-------|--------|----------|
+| `ui.js` is 4,800+ lines | Maintainability | `js/ui.js` |
+| `analyze.js` is 3,600+ lines | Maintainability | `api/analyze.js` |
+| `styles.css` is 8,400+ lines | Maintainability | `css/styles.css` |
+
+### Important (Should Fix)
+
+| Issue | Impact |
+|-------|--------|
+| Mixed module exports (CommonJS + ESM) | Consistency |
+| Double version log (8.0.0 + 7.0.0) | Confusing console |
+| No Vercel Cron for maintenance | Memory decay not automated |
+
+---
+
+## Sprint Planning Template
+
+### Sprint Goals
+1. [Primary goal]
+2. [Secondary goal]
+3. [Stretch goal]
+
+### Committed Tasks
+- [ ] Task 1 (P0)
+- [ ] Task 2 (P0)
+- [ ] Task 3 (P1)
+
+### Stretch Tasks
+- [ ] Task 4 (P2)
+
+### Definition of Done
+- [ ] Code complete
+- [ ] Tests passing
+- [ ] Deployed to production
+- [ ] Documentation updated
+
+---
+
+## Version History
+
+| Version | Date | Milestone |
+|---------|------|-----------|
+| 8.2.0 | Jan 23, 2026 | Beta ready (93% tests) |
+| 8.1.1 | Jan 21, 2026 | Category summaries fix |
+| 8.1.0 | Jan 21, 2026 | Mem0 parity |
+| 8.0.0 | Jan 20, 2026 | Phase 13 complete |
+| 7.8.0 | Jan 19, 2026 | Cross-memory reasoning |
+| 7.5.0 | Jan 19, 2026 | Semantic search |
+
+---
+
+*Roadmap — Inscript*
+*Last Updated: January 23, 2026*
+*Production: https://digital-twin-ecru.vercel.app*

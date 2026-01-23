@@ -1,10 +1,10 @@
 # CLAUDE.md — Inscript Developer Guide
 
-## Version 8.1.0 | January 21, 2026
+## Version 8.2.0 | January 23, 2026
 
-> **Phase:** Mem0 Parity Complete
-> **Status:** Production Ready
-> **Last Updated:** January 21, 2026
+> **Phase:** 13E Complete (Pre-Beta)
+> **Status:** Beta Ready (93% test pass rate)
+> **Last Updated:** January 23, 2026
 
 ---
 
@@ -15,9 +15,10 @@
 | **App Name** | Inscript |
 | **Tagline** | Your mirror in code |
 | **Category** | Personal AI Memory |
-| **Version** | 8.1.0 |
+| **Version** | 8.2.0 |
 | **Production URL** | https://digital-twin-ecru.vercel.app |
 | **Working Directory** | `/Users/airoxthebox/Projects/digital-twin` |
+| **Beta Status** | Ready (93% pass rate, 26/28 tests) |
 
 ---
 
@@ -28,13 +29,13 @@
 
 | Document | Purpose |
 |----------|---------|
-| **`/docs/INSCRIPT-STRATEGIC-BIBLE.md`** | Full strategic guide — the source of truth |
-| **`/docs/INSCRIPT-STRATEGY-ONE-PAGER.md`** | Executive summary |
-| **`/docs/MEMORY-SYSTEM.md`** | Technical memory architecture |
+| **`/docs/STATUS.md`** | Current project status and next priorities |
+| **`/docs/PRD.md`** | Product requirements document |
+| **`/docs/ROADMAP.md`** | Development roadmap |
 
 **Current Phase:** Phase 1 — Consumer Love (targeting 10K engaged users)
 
-**Next Milestone:** MCP server integration (Phase 2)
+**Next Milestone:** Fix remaining bugs, launch beta
 
 ---
 
@@ -48,10 +49,14 @@
 | Phase 9 | Personalization | ✅ Complete |
 | Phase 10 | Entity Extraction & Relationships | ✅ Complete |
 | Phase 11 | Inscript Rebrand + Onboarding | ✅ Complete |
-| Phase 13 | Patterns & MIRROR Tab | ✅ Complete |
-| **Mem0 Parity** | Full Memory Architecture | ✅ **100% Complete** |
+| Phase 13A | Pattern Foundation | ✅ Complete |
+| Phase 13B | MIRROR Tab | ✅ Complete |
+| Phase 13C | MIRROR Intelligence | ✅ Complete |
+| Phase 13D | Pattern Verification UI | ✅ Complete |
+| Phase 13E | Polish & Bug Fixes | ✅ Complete |
+| **Mem0 Parity** | Full Memory Architecture | ✅ **~95% Complete** |
 
-## What's Working in Production (January 21, 2026)
+## What's Working in Production (January 23, 2026)
 
 | Feature | Status |
 |---------|--------|
@@ -59,17 +64,65 @@
 | 8-screen onboarding flow | ✅ Live |
 | Note creation (text, voice, image) | ✅ Live |
 | AI reflection with memory context | ✅ Live |
-| Seeded people → AI context injection | ✅ Live |
+| Key People system (explicit + extracted) | ✅ Live |
 | Entity extraction (ADD/UPDATE/DELETE/NOOP) | ✅ Live |
 | Category summaries (Tier 1) | ✅ Live |
 | Tiered memory retrieval | ✅ Live |
 | Sentiment tracking | ✅ Live |
 | Feedback loop | ✅ Live |
-| Actions tab | ✅ Live |
-| TWIN tab | ✅ Live |
-| MIRROR tab | ✅ Live |
+| **WORK tab** (Pulse, Actions, Meetings, Commitments) | ✅ Live |
+| **TWIN tab** (Stats, Patterns) | ✅ Live |
+| **MIRROR tab** (Conversational AI) | ✅ Live |
+| LLM hybrid pattern detection | ✅ Live |
 | Cloud sync (E2E encrypted) | ✅ Live |
 | PIN authentication | ✅ Live |
+
+## Beta Readiness Test Results (January 23, 2026)
+
+| Category | Pass Rate | Notes |
+|----------|-----------|-------|
+| Authentication | 3/3 | App loads, user authenticated |
+| Notes & Reflections | 5/5 | HEARD/NOTICED/QUESTION structure |
+| WORK Tab | 4/5 | Invalid Date bug in MEETINGS |
+| TWIN Tab | 5/5 | Stats load, patterns work |
+| MIRROR Tab | 4/4 | Key People recognized (including pets) |
+| UI/UX | 2/3 | Mobile responsive, dark mode works |
+| Performance | 3/3 | LCP < 2.5s, no memory leaks |
+
+**Overall: 93% (26/28 tests passed)**
+
+---
+
+# APPLICATION TABS
+
+## NOTES Tab (Primary)
+- Main note capture (text, voice, image)
+- AI reflections with HEARD/NOTICED/QUESTION structure
+- Meeting mode and Decision mode entry points
+- Entity extraction and memory updates
+
+## WORK Tab (Phase 13)
+
+| Sub-Tab | Purpose |
+|---------|---------|
+| PULSE | Real-time activity feed, recent notes |
+| ACTIONS | Extracted action items from notes |
+| MEETINGS | Meeting summaries with attendees |
+| COMMITMENTS | Tracked decisions and commitments |
+
+## TWIN Tab
+
+| Section | Purpose |
+|---------|---------|
+| Stats | Note count, streak, entities learned |
+| Patterns | LLM-detected behavioral/emotional patterns |
+| Profile | User's digital twin overview |
+
+## MIRROR Tab (Conversational AI)
+- Ongoing conversation with context
+- References Key People naturally
+- Four modes: clarify, expand, challenge, decide
+- Memory context injection for personalization
 
 ---
 
@@ -83,7 +136,7 @@
 | **Backend** | Vercel serverless functions (Node.js) |
 | **Database** | Supabase (Postgres + pgvector) |
 | **AI** | Anthropic Claude (Sonnet) + OpenAI embeddings |
-| **Memory System** | Full Mem0 architecture (6 gaps closed) |
+| **Memory System** | Full Mem0 architecture (~95% parity) |
 | **Auth** | Supabase Auth + PIN encryption |
 
 ## System Diagram
@@ -96,20 +149,20 @@
                                  ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                    index.html + js/*.js                         │
-│    (Notes Tab | Actions Tab | TWIN Tab | MIRROR Tab)            │
+│    (NOTES | WORK | TWIN | MIRROR)                               │
 └────────────────────────────────┬────────────────────────────────┘
                                  │
          ┌───────────────────────┼───────────────────────┐
          ▼                       ▼                       ▼
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│  js/app.js      │    │  js/sync.js     │    │  js/pin.js      │
-│  (Pipeline)     │    │  (Cloud)        │    │  (Encryption)   │
+│  api/analyze.js │    │  api/mirror.js  │    │  api/detect-    │
+│  (Reflection)   │    │  (Conversation) │    │  patterns.js    │
 └────────┬────────┘    └────────┬────────┘    └─────────────────┘
          │                      │
          ▼                      ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                    api/*.js (Vercel)                            │
-│  analyze | chat | memory-retrieve | tiered-retrieval | etc.     │
+│                    Memory System                                 │
+│  tiered-retrieval | hybrid-retrieval | assemble-context         │
 └────────────────────────────────┬────────────────────────────────┘
                                  │
          ┌───────────────────────┼───────────────────────┐
@@ -129,16 +182,18 @@
 
 | File | Purpose |
 |------|---------|
-| `js/app.js` | Application entry point, version (8.0.0) |
+| `js/app.js` | Application entry point, version (8.2.0) |
 | `js/ui.js` | Main UI (4,800+ lines - needs split) |
+| `js/work-ui.js` | WORK tab UI |
+| `js/twin-ui.js` | TWIN tab UI |
+| `js/mirror.js` | MIRROR tab UI |
 | `js/entities.js` | Entity management and display |
 | `js/entity-memory.js` | Memory operations (CRUD) |
 | `js/context.js` | Context building for AI |
 | `js/embeddings.js` | Semantic search client |
 | `js/analyzer.js` | Analysis orchestration |
 | `js/onboarding.js` | 8-screen onboarding flow |
-| `js/twin-ui.js` | TWIN tab UI |
-| `js/mirror.js` | MIRROR tab UI |
+| `js/extractor.js` | Client-side extraction (actions, sentiment, people) |
 | `js/actions-ui.js` | Actions tab |
 | `js/signal-tracker.js` | Pattern signal tracking |
 | `js/pattern-verification.js` | Pattern verification UI |
@@ -154,8 +209,9 @@
 
 | File | Purpose |
 |------|---------|
-| `api/analyze.js` | Main reflection + memory context injection (3,600+ lines) |
+| `api/analyze.js` | Main reflection + memory context injection (~3,600 lines) |
 | `api/chat.js` | Socratic dialogue with memory context |
+| `api/mirror.js` | MIRROR conversation with Key People |
 | `api/vision.js` | Image analysis (Claude Vision) |
 
 ### Memory System (Mem0 Architecture)
@@ -172,6 +228,15 @@
 | `api/memory-search.js` | Semantic memory search |
 | `api/memory-consolidate.js` | Duplicate detection and merging |
 
+### Pattern Detection
+
+| File | Purpose |
+|------|---------|
+| `api/detect-patterns.js` | LLM hybrid pattern detection |
+| `api/patterns.js` | Pattern management |
+| `api/signals.js` | Signal processing |
+| `api/user-patterns.js` | User pattern management |
+
 ### Entity Processing
 
 | File | Purpose |
@@ -180,20 +245,6 @@
 | `api/classify-importance.js` | Entity importance scoring |
 | `api/infer-connections.js` | Cross-memory reasoning |
 | `api/compress-memory.js` | LLM memory compression |
-
-### Other APIs
-
-| File | Purpose |
-|------|---------|
-| `api/embed.js` | OpenAI embeddings |
-| `api/patterns.js` | Pattern detection |
-| `api/signals.js` | Signal processing |
-| `api/mirror.js` | MIRROR conversation |
-| `api/user-patterns.js` | User pattern management |
-| `api/digest.js` | Weekly digest generation |
-| `api/recovery.js` | PIN recovery email |
-| `api/refine.js` | Text refinement |
-| `api/env.js` | Public Supabase config |
 
 ---
 
@@ -206,81 +257,139 @@
 | `notes` | Encrypted note storage |
 | `onboarding_data` | User onboarding (name, seasons, focus, people) |
 | `user_entities` | Extracted entities with importance/sentiment |
+| `user_key_people` | **Explicitly added people** (highest priority) |
 | `note_embeddings` | pgvector embeddings for semantic search |
 | `entity_relationships` | Relationship graph between entities |
 | `category_summaries` | Pre-computed summaries per category |
 | `user_feedback` | Thumbs up/down on reflections |
 | `user_learning_profile` | Learned preferences |
-| `user_profiles` | Legacy profile data |
-| `user_salts` | Encryption salts |
 
 ## Memory System Tables
 
 | Table | Purpose |
 |-------|---------|
+| `memory_operations` | ADD/UPDATE/NOOP audit log |
 | `memory_inferences` | Cross-memory reasoning results |
 | `entity_sentiment_history` | Sentiment tracking over time |
 | `memory_jobs` | Async processing queue |
-| `detected_patterns` | Pattern detection results |
 
 ## Phase 13 Tables
 
 | Table | Purpose |
 |-------|---------|
-| `user_patterns` | User behavioral patterns |
+| `user_patterns` | User behavioral patterns (LLM detected) |
 | `mirror_conversations` | MIRROR chat history |
 | `mirror_sessions` | MIRROR session tracking |
+| `meetings` | Meeting summaries |
+| `decisions` | Captured decisions |
 
 ---
 
-# CRON JOBS
+# KEY PEOPLE SYSTEM
 
-Four automated maintenance jobs (requires `pg_cron` extension):
+## Priority Order
 
-| Job | Schedule | Purpose |
-|-----|----------|---------|
-| `cleanup-expired-memories` | Daily 3 AM UTC | Archive expired memories |
-| `weekly-memory-decay` | Sunday 4 AM UTC | Decay importance scores by tier |
-| `nightly-consolidation` | Daily 2 AM UTC | Flag potential duplicates |
-| `monthly-reindex` | 1st of month 5 AM UTC | Archive stale memories, update stats |
+1. **Key People** (`user_key_people`) — Explicitly added by user (HIGHEST PRIORITY)
+2. **Entities** (`user_entities`) — Extracted from notes (auto-detected)
 
-### Decay Schedule
+## Schema
 
-| Importance | Starts After | Decay Rate |
-|------------|--------------|------------|
-| trivial | 7 days | -20%/week |
-| low | 14 days | -15%/week |
-| medium | 30 days | -10%/week |
-| high | 90 days | -5%/week |
-| critical | Never | 0% |
-
----
-
-# ENVIRONMENT VARIABLES
-
-## Required for Local Development
-
-```bash
-# Anthropic (AI reflections)
-ANTHROPIC_API_KEY=sk-ant-...
-
-# OpenAI (embeddings)
-OPENAI_API_KEY=sk-...
-
-# Supabase
-SUPABASE_URL=https://xxx.supabase.co
-NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
-SUPABASE_ANON_KEY=eyJ...
-SUPABASE_SERVICE_KEY=eyJ...
-SUPABASE_SERVICE_ROLE_KEY=eyJ...
-
-# Optional: PIN recovery
-RESEND_API_KEY=re_...
+```sql
+CREATE TABLE user_key_people (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id),
+  name TEXT NOT NULL,
+  relationship TEXT NOT NULL,  -- "close friend", "dog", "cofounder"
+  created_at TIMESTAMP DEFAULT NOW()
+);
 ```
 
-## Vercel Environment Variables
+## Context Injection
 
-All of the above must be configured in Vercel Project Settings.
+Key People are injected into AI prompts with highest priority:
+
+```
+KEY PEOPLE (user explicitly told you about these):
+- Marcus: close friend
+- Sarah: cofounder
+- Seri: dog
+
+Other people/things from their notes:
+- Jamie (colleague)
+- Q1 Roadmap (project)
+```
+
+**CRITICAL:** The `relationship` column can include pets ("dog", "cat"), not just human relationships.
+
+---
+
+# PATTERN DETECTION
+
+## LLM Hybrid Approach (api/detect-patterns.js)
+
+1. **Database gathers raw data** — entities, notes, categories
+2. **LLM interprets data** — finds MEANINGFUL patterns
+
+## Good Patterns
+- Emotional: "You process work stress through..."
+- Relational: "Marcus and Sarah appear together in your thinking..."
+- Behavioral: "When you write about X, Y often comes up..."
+- Thematic: "There's tension between A and B across your notes..."
+
+## Bad Patterns (NEVER output)
+- "You write on Sundays" — temporal, boring
+- "You mention [person] often" — just restating data
+- "You have work notes" — obvious from categories
+
+## Minimum Requirements
+- 10 notes minimum for pattern detection
+- 2+ mentions for entity inclusion
+- Patterns scored by confidence (0.7+)
+
+---
+
+# REFLECTION QUALITY
+
+## The Three-Layer Structure
+
+### HEARD (Always)
+Prove you understood. Be specific. Quote their words.
+- BAD: "Sounds like a busy day"
+- GOOD: "The product launch delay and friction with Jamie — that's a lot for one day"
+
+### NOTICED (When memory is relevant)
+Connect to what you know about their world.
+- "This is the third time this month the launch has slipped"
+- "You usually mention Marcus when processing career decisions"
+
+### OFFERED (When valuable)
+A question, connection, or gentle observation.
+- "What made the conversation with Jamie feel different this time?"
+
+## Forbidden Phrases
+
+Never use: "I can see...", "It seems like...", "Based on my analysis...", "As an AI...", "I understand that...", "Based on my records..."
+
+---
+
+# KNOWN ISSUES
+
+## Active Bugs (P1)
+
+| Issue | Severity | Location |
+|-------|----------|----------|
+| MEETINGS shows "Invalid Date" | Medium | js/work-ui.js |
+| Meeting double-save creates duplicates | Medium | js/work-ui.js |
+| Job titles classified as People | Low | api/extract-entities.js |
+| 500 errors on TwinProfile sync | Low | api/twin-profile.js |
+
+## Technical Debt
+
+| File | Lines | Issue |
+|------|-------|-------|
+| `js/ui.js` | 4,800+ | Must split into modules |
+| `api/analyze.js` | 3,600+ | Extract prompts to separate files |
+| `css/styles.css` | 8,400+ | Modularize by feature |
 
 ---
 
@@ -300,7 +409,10 @@ git add -A && git commit -m "message" && git push origin main
 vercel --prod
 
 # Check version (browser console)
-APP_VERSION  // "8.0.0"
+APP_VERSION  // "8.2.0"
+
+# Cleanup duplicate meetings (browser console)
+await WorkUI.cleanupDuplicates()
 
 # Search codebase (avoid reading large files)
 grep -rn "functionName" js/*.js api/*.js
@@ -309,35 +421,6 @@ grep -rn "functionName" js/*.js api/*.js
 git status
 git log --oneline -5
 ```
-
----
-
-# PRODUCT IDENTITY
-
-## The Category
-
-**We're not a note app. We're not a journaling app. We're not an AI assistant.**
-
-We're creating a new category: **Personal AI Memory**
-
-> "Inscript is the first AI that actually remembers you.
-> Not just your notes — your world."
-
-## The Flywheel
-
-```
-Input → Learn → Demonstrate → Trust → More Input → Smarter
-```
-
-**CRITICAL:** Learning must be VISIBLE. If users don't see Inscript getting smarter, the flywheel breaks.
-
-## Privacy Foundation
-
-- User data is encrypted and isolated
-- Never used to train AI models (use enterprise LLM tier)
-- Never sold or shared
-- Delete means delete
-- This is non-negotiable
 
 ---
 
@@ -389,39 +472,6 @@ Input → Learn → Demonstrate → Trust → More Input → Smarter
 
 ---
 
-# REFLECTION QUALITY
-
-## The Three-Layer Structure
-
-### HEARD (Always)
-Prove you understood. Be specific. Quote their words.
-
-### NOTICED (When memory is relevant)
-Connect to what you know about their world.
-- "This is the third time this month the launch has slipped"
-- "You usually mention Marcus when processing career decisions"
-
-### OFFERED (When valuable)
-A question, connection, or gentle observation.
-
-## Forbidden Phrases
-
-Never use: "I can see...", "It seems like...", "Based on my analysis...", "As an AI...", "I understand that...", "Based on my records..."
-
----
-
-# TECHNICAL DEBT
-
-## Must Fix
-
-| File | Lines | Issue |
-|------|-------|-------|
-| `js/ui.js` | 4,800+ | Must split into modules |
-| `api/analyze.js` | 3,600+ | Extract prompts to separate files |
-| `css/styles.css` | 8,400+ | Modularize by feature |
-
----
-
 # UI GUIDELINES
 
 ## Accessibility (A11y)
@@ -444,11 +494,12 @@ Never use: "I can see...", "It seems like...", "Based on my analysis...", "As an
 
 1. **NEVER read ui.js in full** — Use grep only
 2. **Always use onboarding data** in first reflection
-3. **Callbacks are critical** — Reference previous notes by note 2-3
-4. **Entity mentions must feel natural** — Never "Based on my database..."
-5. **Privacy is non-negotiable** — Enterprise LLM, no training
-6. **Design is editorial** — Black, white, silver. Typography-first.
-7. **Test mobile** — Responsive design is required
+3. **Key People have highest priority** — Reference by name with relationship
+4. **Callbacks are critical** — Reference previous notes by note 2-3
+5. **Entity mentions must feel natural** — Never "Based on my database..."
+6. **Privacy is non-negotiable** — Enterprise LLM, no training
+7. **Design is editorial** — Black, white, silver. Typography-first.
+8. **Test mobile** — Responsive design is required
 
 ---
 
@@ -456,13 +507,15 @@ Never use: "I can see...", "It seems like...", "Based on my analysis...", "As an
 
 | Version | Phase | Key Changes |
 |---------|-------|-------------|
-| **8.1.0** | Mem0 | Full Mem0 architecture integration, tiered retrieval, category summaries |
-| 8.0.0 | 13.0 | Phase 13: Patterns, MIRROR tab, memory operations |
+| **8.2.0** | 13E | Pre-beta testing (93%), Key People fix (pets), full documentation update |
+| 8.1.1 | 13D | Category summaries fix (.single() → .maybeSingle()) |
+| 8.1.0 | Mem0 | Full Mem0 architecture integration, tiered retrieval |
+| 8.0.0 | 13.0 | Phase 13: Patterns, MIRROR tab, WORK tab |
 | 7.8.0 | 11.0 | Inscript rebrand, 8-screen onboarding |
 | 7.5.0 | 10.3 | Semantic search with pgvector |
 
 ---
 
 *CLAUDE.md — Inscript Developer Guide*
-*Last Updated: January 21, 2026*
+*Last Updated: January 23, 2026*
 *Production: https://digital-twin-ecru.vercel.app*

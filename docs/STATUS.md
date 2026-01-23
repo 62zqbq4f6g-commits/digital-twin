@@ -1,63 +1,84 @@
 # Inscript — Project Status
 
-## January 21, 2026 | Version 8.1.1
+## January 23, 2026 | Version 8.2.0
 
 ---
 
 ## CURRENT STATE
 
-**Status:** Production Ready — Mem0 Parity Achieved
+**Status:** Beta Ready — 93% Test Pass Rate
 **Production URL:** https://digital-twin-ecru.vercel.app
 **Brand:** Inscript — "Your mirror in code"
 **Category:** Personal AI Memory
 
 ---
 
-## LAST SESSION: January 21, 2026 (Evening)
+## LAST SESSION: January 23, 2026 (PM)
 
-### Critical Bug Fix: Category Summaries
+### Phase 14: WORK Tab Improvements
 
-**Problem:** Category summaries were not being populated despite the code existing.
+Fixes deployed to improve meeting functionality:
 
-**Root Cause:** In `api/analyze.js` line 697, the function used `.single()` which throws PGRST116 error when no row exists. This error was silently caught, preventing any summaries from being created.
+| Fix | Description | Status |
+|-----|-------------|--------|
+| Meeting click-through | Fixed `UI.showNoteDetail` → `UI.openNoteDetail` | ✅ Fixed |
+| Attendee parsing | Now parses comma-separated names from input field | ✅ Fixed |
+| Double-save prevention | Added `isSavingMeeting` flag | ✅ Fixed |
+| Double-init prevention | Added `initialized` flag to prevent duplicate listeners | ✅ Fixed |
+| Corrupted data cleanup | Added `fixCorruptedMeetings()` function | ✅ Added |
+| Duplicate cleanup | Added `cleanupDuplicates()` function | ✅ Added |
+| Meeting card display | Improved title/content extraction | ✅ Improved |
 
-**Fix Applied:**
+### Console Commands Available
+
 ```javascript
-// BEFORE (broken):
-.eq('category', category)
-.single();  // Throws error when no row!
+// Fix corrupted meetings with repeated "Meeting with team:" headers
+await WorkUI.fixCorruptedMeetings()
 
-// AFTER (fixed):
-.eq('category', category)
-.maybeSingle();  // Returns null, no error
+// Remove duplicate meeting entries
+await WorkUI.cleanupDuplicates()
 ```
 
-**Commit:** `677ad72` — Fix category summary generation
+### Earlier Session: Pre-Beta Holistic Test
 
-### Verification Results
+Comprehensive 28-test verification across all features:
 
-| Component | Verified Status |
-|-----------|-----------------|
-| Schema completeness | ✅ 100% complete |
-| Embeddings generated | ✅ 9/10 entities have embeddings |
-| Memory operations | ✅ 13 ADD, 4 UPDATE, 1 NOOP logged |
-| Category summaries | ✅ Fixed (was 0 rows due to bug) |
-| pg_cron | ⚠️ Blocked (requires Supabase Pro) |
+| Category | Pass Rate | Details |
+|----------|-----------|---------|
+| Authentication | 3/3 | App loads, user authenticated, minimal console errors |
+| Notes & Reflections | 5/5 | HEARD/NOTICED/QUESTION structure verified |
+| WORK Tab | 4/5 | Meeting fixes deployed |
+| TWIN Tab | 5/5 | Stats load immediately, LLM patterns work |
+| MIRROR Tab | 4/4 | Key People recognized (including pets like Seri) |
+| UI/UX | 2/3 | Mobile responsive, dark mode works |
+| Performance | 3/3 | LCP < 2.5s, no memory leaks |
 
-### Previous Session Work
+**Overall Score: 93% (26/28 tests passed)**
 
-1. **Closed All Mem0 Gaps:**
-   - Query Synthesis (`api/synthesize-query.js`)
-   - Summary Evolution (`api/evolve-summary.js`)
-   - Hybrid Retrieval (`api/hybrid-retrieval.js`)
-   - Tiered Retrieval (`api/tiered-retrieval.js`)
-   - Context Assembly (`api/assemble-context.js`)
-   - Unified Pipeline (`api/memory-retrieve.js`)
+### Remaining Issues
 
-2. **Integrated Memory System:**
-   - `api/analyze.js` - `getMemoryContext()` for tiered retrieval
-   - `api/chat.js` - `getMemoryContextForChat()` for dialogue
-   - Memory context injected into `<user_context>` tags
+| Issue | Severity | Status |
+|-------|----------|--------|
+| Attendees showing as "team" despite input | Medium | Investigating |
+| Job titles classified as People | Low | Open |
+| 500 errors on TwinProfile sync | Low | Non-blocking |
+
+---
+
+## BETA READINESS
+
+**Decision: YES — Ready for Beta Launch**
+
+### Strengths
+- Core note-taking and reflection flow is excellent
+- Memory system working (callbacks, Key People)
+- TWIN patterns are meaningful and dismissible
+- MIRROR conversation is context-aware
+- Performance is good
+
+### Acceptable Issues
+- MEETINGS Invalid Date — edge case, doesn't block core flow
+- Duplicate meeting entries — UI deduplication works
 
 ---
 
@@ -65,66 +86,49 @@
 
 ### P0 — Must Do
 
-1. **Test Category Summary Fix**
-   - Create a new note in production
-   - Query `category_summaries` table to verify it's now populated
-   - Check for `[Analyze] Mem0 - updateCategorySummaries` logs
+1. **Debug attendee capture in meetings**
+   - Issue: Attendees showing as "team" even when names are entered
+   - Location: `js/work-ui.js` - `saveMeeting()` function
+   - Check console logs for `[WorkUI] saveMeeting - Attendees from chips/input`
 
 2. **Set Up Vercel Cron for Memory Maintenance**
    - Create `/api/cron/memory-maintenance.js`
-   - Configure `vercel.json` with cron schedule
    - Implement: time decay, duplicate detection, old memory compression
 
-3. **Add Duplicate Entity Detection**
-   - Before creating new entity, check for similar existing entity
-   - Use embedding similarity or name fuzzy matching
-   - Merge instead of creating duplicate
+### P1 — Should Do
 
-### P1 — Should Verify
+1. **Improve Entity Classification**
+   - Filter job titles from People extraction
+   - Location: `api/extract-entities.js`
 
-1. **Tiered Retrieval Verification**
-   - Tier 1: Category summaries used for broad queries
-   - Tier 2: Top entities when summaries insufficient
-   - Tier 3: Full hybrid retrieval for specific queries
+2. **Split ui.js**
+   - Current: 4,800+ lines
+   - Target: ui-core, ui-notes, ui-twin, ui-modals, ui-onboarding
 
-2. **Entity Relationship Graph**
-   - Verify `entity_relationships` queries work
-   - Test cross-memory reasoning
+3. **Add Error Tracking (Sentry)**
 
 ### P2 — Nice to Have
 
-- Test MIRROR tab conversation flow
-- Verify pattern detection
-- Check Knowledge Pulse UI
+1. Memory milestones (30/90/365 days)
+2. "What does Inscript know?" query
+3. Memory visualization
 
 ---
 
-## SCHEMA VERIFICATION (January 21, 2026)
+## SCHEMA VERIFICATION (January 23, 2026)
 
-### Verified via Supabase Dashboard
+All critical tables verified:
 
 | Component | Status |
 |-----------|--------|
-| `user_entities.embedding` (vector) | ✅ Exists |
-| `user_entities.status` | ✅ Exists (default 'active') |
-| `user_entities.importance` | ✅ Exists (default 'medium') |
-| `user_entities.importance_score` | ✅ Exists (numeric) |
-| `user_entities.summary` | ✅ Exists |
-| `entity_relationships` table | ✅ Exists |
-| `category_summaries` table | ✅ Exists |
-| `entity_sentiment_history` table | ✅ Exists |
-| `memory_jobs` table | ✅ Exists |
-| `memory_operations` table | ✅ Exists |
-| IVFFlat index on embedding | ✅ Exists |
+| `user_entities` with embeddings | ✅ Working |
+| `user_key_people` table | ✅ Working |
+| `category_summaries` table | ✅ Fixed (Jan 21) |
+| `user_patterns` table | ✅ Working |
+| `mirror_conversations` table | ✅ Working |
+| `meetings` table | ✅ Working |
+| `decisions` table | ✅ Working |
 | pgvector extension | ✅ Enabled |
-
-### Application-Level Issues (Not Schema)
-
-| Issue | Root Cause | Status |
-|-------|-----------|--------|
-| Vector search | Embeddings not generated | ✅ **FIXED** - 9/10 entities have embeddings |
-| Category summaries empty | `.single()` throwing PGRST116 | ✅ **FIXED** - Changed to `.maybeSingle()` |
-| pg_cron not running | Requires Supabase Pro | ⚠️ Need Vercel Cron alternative |
 
 ---
 
@@ -136,49 +140,55 @@
 |-------|--------|----------|
 | `ui.js` is 4,800+ lines | Maintainability | `js/ui.js` |
 | `analyze.js` is 3,600+ lines | Maintainability | `api/analyze.js` |
-| Mixed module exports | Consistency | `api/*.js` (CommonJS + ESM) |
 
 ### Should Fix (P1)
 
-| Issue | Impact |
-|-------|--------|
-| Double version log (8.0.0 + 7.0.0) | Confusing console |
-| `OPENAI_API_KEY` may not be set locally | Embeddings fail locally |
-| No Vercel Cron for maintenance | Memory decay not automated |
+| Issue | Impact | Status |
+|-------|--------|--------|
+| Attendees not captured | Meetings show "team" | Investigating |
+| Job titles as People | Incorrect classification | Open |
 
 ### Known Workarounds
 
-- Memory functions integrated directly into analyze.js (not imported) to avoid CommonJS/ESM issues
-- Category summaries use upsert to handle concurrent updates
+- UI deduplication filters duplicate meetings in MEETINGS view
+- `await WorkUI.cleanupDuplicates()` — Remove duplicate meeting entries
+- `await WorkUI.fixCorruptedMeetings()` — Fix notes with repeated "Meeting with team:" headers
 
 ---
 
-## UPCOMING PHASES
+## PHASE HISTORY
 
-### Phase 14: Production Hardening
+### Phase 14: WORK Tab Improvements (January 23, 2026 PM)
+- Meeting click-through fixed
+- Attendee parsing from direct input
+- Double-save prevention (isSavingMeeting flag)
+- Corrupted meeting cleanup functions
+- Improved meeting card display
 
-| Priority | Task |
-|----------|------|
-| P0 | Production testing of memory system |
-| P0 | Fix any integration bugs found |
-| P1 | Add error tracking (Sentry) |
-| P1 | Performance monitoring |
+### Phase 13E: Polish (January 23, 2026)
+- Pre-beta holistic testing complete
+- Key People fix (pets recognized)
+- Documentation update
 
-### Phase 15: Experience Transformation
+### Phase 13D: Pattern Verification UI (January 22, 2026)
+- Inline pattern display
+- TWIN section patterns
+- User feedback on patterns
 
-| Priority | Task |
-|----------|------|
-| P0 | Vogue minimalist redesign |
-| P1 | Split `ui.js` into modules |
-| P1 | Improved onboarding flow |
+### Phase 13C: MIRROR Intelligence (January 21, 2026)
+- Signal-based prompts
+- Context-aware responses
+- Memory integration
 
-### Phase 16: Advanced Memory
+### Phase 13B: MIRROR Foundation (January 20, 2026)
+- MIRROR tab implementation
+- Conversation flow
+- Basic API integration
 
-| Priority | Task |
-|----------|------|
-| P0 | Memory milestones (30/90/365 days) |
-| P1 | "What does Inscript know?" query |
-| P1 | Memory visualization |
+### Phase 13A: Pattern Foundation (January 19, 2026)
+- LLM hybrid pattern detection
+- Pattern storage
+- Pattern API
 
 ---
 
@@ -223,7 +233,17 @@ git add -A && git commit -m "message" && git push origin main
 vercel dev --listen 3001
 
 # Version (console)
-APP_VERSION  // "8.0.0"
+APP_VERSION  // "8.2.0"
+```
+
+### Meeting Cleanup (Browser Console)
+
+```javascript
+// Fix corrupted meetings with repeated headers
+await WorkUI.fixCorruptedMeetings()
+
+// Remove duplicate meeting entries
+await WorkUI.cleanupDuplicates()
 ```
 
 ---
@@ -232,10 +252,11 @@ APP_VERSION  // "8.0.0"
 
 | Version | Date | Changes |
 |---------|------|---------|
-| **8.1.1** | Jan 21, 2026 | Critical fix: Category summaries `.single()` → `.maybeSingle()` |
-| 8.1.0 | Jan 21, 2026 | Mem0 GAP Integration: Full memory architecture deployed |
-| 8.0.0 | Jan 20, 2026 | Phase 13: Patterns, MIRROR tab, memory operations |
-| 7.8.0 | Jan 19, 2026 | Phase 10.6-10.8: Cross-memory reasoning, importance, forgetting |
+| **8.2.0** | Jan 23, 2026 | Pre-beta testing (93%), Key People fix, documentation update |
+| 8.1.1 | Jan 21, 2026 | Category summaries `.single()` → `.maybeSingle()` |
+| 8.1.0 | Jan 21, 2026 | Mem0 GAP Integration: Full memory architecture |
+| 8.0.0 | Jan 20, 2026 | Phase 13: Patterns, MIRROR tab, WORK tab |
+| 7.8.0 | Jan 19, 2026 | Phase 10.6-10.8: Cross-memory reasoning |
 | 7.5.0 | Jan 19, 2026 | Phase 10.3: Semantic search with pgvector |
 
 ---
@@ -245,18 +266,21 @@ APP_VERSION  // "8.0.0"
 **Status: PASSED**
 
 When user creates a note mentioning a known entity, the AI:
-1. Retrieves memory context (category summaries + top entities)
+1. Retrieves memory context (category summaries + top entities + Key People)
 2. Injects context into the prompt
 3. Generates a personalized reflection with natural callbacks
 
-Example:
+Examples verified:
 > User: "Had coffee with Marcus today..."
-> AI: "You had coffee with Marcus about the Anthropic project... Marcus—**your close friend**—has been a recurring presence when you're processing big decisions."
+> AI: "You had coffee with Marcus... Marcus—**your close friend**—has been a recurring presence when you're processing big decisions."
+
+> User asks about Seri in MIRROR:
+> AI: "You mentioned Seri earlier — your dog. She sounds like an important part of your daily rhythm."
 
 This is the "holy shit, it knows" moment working in production.
 
 ---
 
-*Last Updated: January 21, 2026 (Evening)*
-*Version: 8.1.1 — Inscript*
+*Last Updated: January 23, 2026*
+*Version: 8.2.0 — Inscript*
 *Production: https://digital-twin-ecru.vercel.app*

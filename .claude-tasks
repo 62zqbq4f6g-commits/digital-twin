@@ -1,0 +1,146 @@
+{
+  "version": "1.0",
+  "project": "inscript",
+  "lastUpdated": "2026-01-23",
+
+  "activeSprintTasks": [
+    {
+      "id": "bug-invalid-date",
+      "title": "Fix MEETINGS Invalid Date display",
+      "priority": "P0",
+      "status": "open",
+      "location": "js/work-ui.js",
+      "description": "Date parsing fails for some meeting entries, showing 'Invalid Date'"
+    },
+    {
+      "id": "bug-double-save",
+      "title": "Fix Meeting double-save issue",
+      "priority": "P0",
+      "status": "open",
+      "location": "js/work-ui.js",
+      "description": "Creating a meeting causes duplicate DB records. UI deduplication filters them for now."
+    },
+    {
+      "id": "feature-vercel-cron",
+      "title": "Set up Vercel Cron for memory maintenance",
+      "priority": "P0",
+      "status": "open",
+      "location": "api/cron/",
+      "description": "Implement time decay, duplicate detection, old memory compression via Vercel Cron"
+    },
+    {
+      "id": "bug-entity-classification",
+      "title": "Improve entity classification",
+      "priority": "P1",
+      "status": "open",
+      "location": "api/extract-entities.js",
+      "description": "Filter job titles (Senior Engineer, Product Manager) from People extraction"
+    },
+    {
+      "id": "bug-twinprofile-500",
+      "title": "Fix 500 errors on TwinProfile sync",
+      "priority": "P1",
+      "status": "open",
+      "location": "api/twin-profile.js",
+      "description": "Intermittent 500 errors during TwinProfile sync. Non-blocking but noisy."
+    }
+  ],
+
+  "completedTasks": [
+    {
+      "id": "fix-key-people-pets",
+      "title": "Key People system - recognize pets",
+      "completedDate": "2026-01-23",
+      "description": "Fixed api/mirror.js and api/chat.js to use relationship column for Key People"
+    },
+    {
+      "id": "holistic-test",
+      "title": "Pre-beta holistic testing",
+      "completedDate": "2026-01-23",
+      "description": "28-test verification, 93% pass rate"
+    },
+    {
+      "id": "category-summaries-fix",
+      "title": "Category summaries .single() fix",
+      "completedDate": "2026-01-21",
+      "description": "Changed .single() to .maybeSingle() to fix PGRST116 error"
+    }
+  ],
+
+  "techDebt": [
+    {
+      "id": "split-ui-js",
+      "title": "Split ui.js into modules",
+      "priority": "P0",
+      "lines": 4800,
+      "location": "js/ui.js",
+      "targetModules": ["ui-core.js", "ui-notes.js", "ui-twin.js", "ui-modals.js", "ui-onboarding.js"]
+    },
+    {
+      "id": "split-analyze-js",
+      "title": "Split analyze.js - extract prompts",
+      "priority": "P1",
+      "lines": 3600,
+      "location": "api/analyze.js"
+    },
+    {
+      "id": "split-styles-css",
+      "title": "Modularize styles.css by feature",
+      "priority": "P2",
+      "lines": 8400,
+      "location": "css/styles.css"
+    }
+  ],
+
+  "upcomingPhases": [
+    {
+      "phase": 14,
+      "name": "Production Hardening",
+      "tasks": ["Production testing", "Fix integration bugs", "Error tracking (Sentry)", "Performance monitoring"]
+    },
+    {
+      "phase": 15,
+      "name": "Experience Transformation",
+      "tasks": ["Split ui.js", "Vogue minimalist redesign", "Improved loading states", "Enhanced dark mode"]
+    },
+    {
+      "phase": 16,
+      "name": "Advanced Memory",
+      "tasks": ["Memory milestones", "What does Inscript know? query", "Memory visualization", "Monthly summaries"]
+    }
+  ],
+
+  "testResults": {
+    "lastRun": "2026-01-23",
+    "passRate": 0.93,
+    "passed": 26,
+    "failed": 2,
+    "categories": {
+      "authentication": { "passed": 3, "total": 3 },
+      "notes": { "passed": 5, "total": 5 },
+      "work": { "passed": 4, "total": 5 },
+      "twin": { "passed": 5, "total": 5 },
+      "mirror": { "passed": 4, "total": 4 },
+      "ui": { "passed": 2, "total": 3 },
+      "performance": { "passed": 3, "total": 3 }
+    }
+  },
+
+  "knownIssues": [
+    {
+      "id": "meetings-invalid-date",
+      "severity": "medium",
+      "description": "MEETINGS shows 'Invalid Date' for some entries"
+    },
+    {
+      "id": "meeting-duplicates",
+      "severity": "medium",
+      "description": "Meeting double-save creates duplicate DB records (UI filters them)"
+    },
+    {
+      "id": "job-titles-as-people",
+      "severity": "low",
+      "description": "Job titles classified as People in entity extraction"
+    }
+  ]
+}
