@@ -2418,17 +2418,25 @@
   bottom: 100px;  /* Above the bottom nav */
   left: 50%;
   transform: translateX(-50%);
-  background: var(--paper);
-  border: 1px solid var(--silver-200);
-  padding: 16px 24px;
-  min-width: 280px;
-  max-width: 360px;
+  background: #FFFFFF;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+  padding: 12px 20px;
+  min-width: auto;
+  max-width: 200px;
   z-index: 1000;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 6px;
 
   /* Animation */
   opacity: 0;
   transform: translateX(-50%) translateY(10px);
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
   pointer-events: none;
 }
 
@@ -2436,6 +2444,11 @@
   opacity: 1;
   transform: translateX(-50%) translateY(0);
   pointer-events: auto;
+}
+
+.pulse-check {
+  color: #065F46;
+  font-weight: 600;
 }
 
 .pulse-header {
@@ -2494,19 +2507,12 @@
   color: var(--silver-600);
 }
 
-/* Dark mode */
+/* Dark mode - keep pulse white for visibility */
 @media (prefers-color-scheme: dark) {
   .knowledge-pulse {
-    background: var(--silver-900);
-    border-color: var(--silver-700);
-  }
-
-  .pulse-item-icon.primary {
-    color: var(--paper);
-  }
-
-  .pulse-item-entity {
-    color: var(--paper);
+    background: #FFFFFF;
+    border-color: rgba(0, 0, 0, 0.08);
+    color: var(--ink);
   }
 }
 
