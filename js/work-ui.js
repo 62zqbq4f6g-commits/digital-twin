@@ -570,19 +570,25 @@ const WorkUI = {
 
       // Extract attendees - prefer from metadata, then parse from content
       let attendees = meetingMeta.attendees || [];
-      if (attendees.length === 0 && rawContent.toLowerCase().startsWith('meeting with')) {
-        // Parse "Meeting with X, Y:" from content
-        const firstLine = rawContent.split('\n')[0];
-        const match = firstLine.match(/^meeting with\s+([^:]+)/i);
-        if (match && match[1] && match[1].toLowerCase() !== 'team') {
-          attendees = match[1].split(/[,;]/).map(n => n.trim()).filter(n => n);
+      if (attendees.length === 0) {
+        // Try to parse attendees from content
+        // Handle both clean content and corrupted "Meeting with X:Meeting with X:" patterns
+        const match = rawContent.match(/meeting with\s+([^:\n]+)/i);
+        if (match && match[1]) {
+          const namesPart = match[1].trim();
+          if (namesPart.toLowerCase() !== 'team') {
+            attendees = namesPart.split(/[,;]/).map(n => n.trim()).filter(n => n && n.toLowerCase() !== 'team');
+          }
         }
       }
 
       // Build title from attendees
-      const title = attendees.length > 0
-        ? `Meeting with ${attendees.join(', ')}`
-        : 'Meeting';
+      let title = 'Meeting';
+      if (attendees.length > 0) {
+        title = `Meeting with ${attendees.join(', ')}`;
+      } else if (meetingMeta.title && !meetingMeta.title.includes('team')) {
+        title = meetingMeta.title;
+      }
 
       // Extract discussion content (skip the "Meeting with X:" header line)
       let discussionContent = meetingMeta.content || '';
@@ -991,26 +997,33 @@ const WorkUI = {
       return;
     }
 
-    // Get attendees from chips
+    // Get attendees from chips (already added via Enter key)
     let attendees = [...this.meetingAttendees];
+    console.log('[WorkUI] saveMeeting - Attendees from chips:', attendees);
 
     // Also parse any remaining text in the input field (handles "Sarah, Marcus" typed directly)
     const attendeesInput = document.getElementById('meeting-attendees-input');
+    console.log('[WorkUI] saveMeeting - Input field found:', !!attendeesInput);
+    console.log('[WorkUI] saveMeeting - Input field value:', attendeesInput?.value);
+
     if (attendeesInput && attendeesInput.value.trim()) {
-      const inputNames = attendeesInput.value
+      const inputValue = attendeesInput.value.trim();
+      const inputNames = inputValue
         .split(/[,;]+/)
         .map(name => name.trim())
-        .filter(name => name && !attendees.includes(name));
+        .filter(name => name && name.length > 0 && !attendees.includes(name));
+      console.log('[WorkUI] saveMeeting - Parsed names from input:', inputNames);
       attendees = [...attendees, ...inputNames];
     }
 
-    // Create clean note content (no markers)
-    const noteContent = `Meeting with ${attendees.join(', ') || 'team'}:\n\n${content}`;
+    // Final attendees list
+    console.log('[WorkUI] saveMeeting - Final attendees:', attendees);
 
-    console.log('[WorkUI] saveMeeting - Starting save:', {
-      content: content.substring(0, 50),
-      attendees
-    });
+    // Create note content with attendees
+    const attendeesStr = attendees.length > 0 ? attendees.join(', ') : 'team';
+    const noteContent = `Meeting with ${attendeesStr}:\n\n${content}`;
+
+    console.log('[WorkUI] saveMeeting - Note content start:', noteContent.substring(0, 100));
 
     // Close modal first
     this.closeMeetingModal();
@@ -1336,6 +1349,69 @@ const WorkUI = {
     } else {
       console.error('[WorkUI] UI.openNoteDetail not available');
     }
+  },
+
+  /**
+   * Fix corrupted meeting notes that have repeated "Meeting with team:" in content
+   * Run this from console: WorkUI.fixCorruptedMeetings()
+   */
+  async fixCorruptedMeetings() {
+    console.log('[WorkUI] Starting corrupted meetings fix...');
+
+    const notes = await DB.getAllNotes();
+    let fixedCount = 0;
+
+    for (const note of notes) {
+      const content = note.content || note.input?.raw_text || '';
+
+      // Check for corrupted pattern: "Meeting with team:Meeting with team:"
+      if (content.includes('Meeting with team:Meeting with')) {
+        console.log('[WorkUI] Found corrupted note:', note.id);
+
+        // Extract the actual content by removing repeated headers
+        let cleanContent = content;
+
+        // Remove all "Meeting with team:" prefixes
+        while (cleanContent.match(/^meeting with [^:]+:/i)) {
+          cleanContent = cleanContent.replace(/^meeting with [^:]+:\s*/i, '');
+        }
+
+        // Try to extract attendee names from the original content
+        const attendeeMatch = content.match(/meeting with ([^:]+):/i);
+        let attendees = [];
+        if (attendeeMatch && attendeeMatch[1]) {
+          const names = attendeeMatch[1].split(/[,;]/).map(n => n.trim()).filter(n => n && n !== 'team');
+          if (names.length > 0) {
+            attendees = names;
+          }
+        }
+
+        // Update note
+        const attendeesStr = attendees.length > 0 ? attendees.join(', ') : 'team';
+        const newContent = `Meeting with ${attendeesStr}:\n\n${cleanContent.trim()}`;
+
+        if (note.input) {
+          note.input.raw_text = newContent;
+        }
+        note.content = newContent;
+
+        // Update meeting metadata
+        note.type = 'meeting';
+        note.meeting = {
+          title: `Meeting with ${attendeesStr}`,
+          attendees: attendees,
+          content: cleanContent.trim()
+        };
+
+        await DB.saveNote(note);
+        fixedCount++;
+        console.log('[WorkUI] Fixed note:', note.id, '- new content:', newContent.substring(0, 50));
+      }
+    }
+
+    console.log('[WorkUI] Fix complete. Fixed', fixedCount, 'corrupted notes');
+    this.loadMeetings();
+    return { fixed: fixedCount };
   },
 
   /**
