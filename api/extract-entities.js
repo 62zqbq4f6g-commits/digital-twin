@@ -198,8 +198,46 @@ Rules:
     // Normalize response - support both old and new format
     const memories = result.memories || [];
 
+    // Job title filter - remove any entities that look like job titles
+    const JOB_TITLES = new Set([
+      'ceo', 'cto', 'cfo', 'coo', 'cmo', 'cpo', 'vp', 'svp', 'evp',
+      'director', 'manager', 'lead', 'head', 'chief', 'president', 'founder',
+      'engineer', 'developer', 'designer', 'analyst', 'consultant', 'specialist',
+      'coordinator', 'associate', 'assistant', 'intern', 'executive', 'officer',
+      'senior engineer', 'staff engineer', 'principal engineer', 'senior developer',
+      'product manager', 'project manager', 'engineering manager', 'design lead',
+      'software engineer', 'data scientist', 'data analyst', 'ux designer',
+      'frontend developer', 'backend developer', 'fullstack developer',
+      'devops engineer', 'qa engineer', 'test engineer', 'security engineer',
+      'tech lead', 'team lead', 'architect', 'solutions architect'
+    ]);
+
+    const isJobTitle = (name) => {
+      if (!name) return false;
+      const normalized = name.toLowerCase().trim();
+      // Check exact match
+      if (JOB_TITLES.has(normalized)) return true;
+      // Check if starts with common title prefixes
+      if (/^(senior|junior|lead|staff|principal|associate|assistant)\s/i.test(name)) {
+        const withoutPrefix = name.replace(/^(senior|junior|lead|staff|principal|associate|assistant)\s+/i, '').toLowerCase();
+        if (JOB_TITLES.has(withoutPrefix)) return true;
+      }
+      // Check if ends with common suffixes
+      if (/\s(manager|engineer|developer|designer|analyst|lead|director|vp|head)$/i.test(name)) return true;
+      return false;
+    };
+
+    // Filter out job titles from memories
+    const filteredMemories = memories.filter(m => {
+      if (m.entity_type === 'person' && isJobTitle(m.name)) {
+        console.log('[Extract API] Filtered job title:', m.name);
+        return false;
+      }
+      return true;
+    });
+
     // Convert memories to entities format for backward compatibility
-    const entities = memories.map(m => ({
+    const entities = filteredMemories.map(m => ({
       name: m.name,
       type: m.entity_type || 'other',
       relationship: m.relationship || null,
@@ -226,7 +264,8 @@ Rules:
     const actions = result.actions || [];
 
     console.log('[Extract API] Extracted:', {
-      memories: memories.length,
+      memories: filteredMemories.length,
+      filtered: memories.length - filteredMemories.length,
       entities: entities.length,
       relationships: relationships.length,
       changes: changes_detected.length,
@@ -236,7 +275,7 @@ Rules:
 
     return res.status(200).json({
       // New format
-      memories,
+      memories: filteredMemories,
       decisions,
       actions,
       // Backward compatible format
