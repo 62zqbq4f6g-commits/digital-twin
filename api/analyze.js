@@ -3381,6 +3381,50 @@ function getDefaultFutureState(actionText) {
   return '→ Done';
 }
 
+// Non-actionable phrases - feelings, states, internal experiences (not tasks)
+const NON_ACTIONABLE_STARTS = [
+  'stay ', 'be ', 'feel ', 'keep ', 'remain ',
+  'relax', 'calm down', 'focus', 'sleep', 'rest', 'breathe',
+  'think about it', 'remember that', 'know that', 'believe',
+  'do something', 'figure it out', 'deal with it', 'work on it',
+  'handle it', 'take care of it', 'sort it out'
+];
+
+const NON_ACTIONABLE_ENDS = [
+  'awake', 'asleep', 'happy', 'sad', 'calm', 'relaxed',
+  'better', 'worse', 'okay', 'fine', 'good', 'bad',
+  'positive', 'negative', 'motivated', 'energized', 'tired',
+  'focused', 'productive', 'healthy', 'strong', 'confident'
+];
+
+/**
+ * Check if an action is actually actionable (not a feeling/state)
+ */
+function isActionable(action) {
+  const lower = action.toLowerCase().trim();
+
+  // Filter non-actionable starts
+  for (const start of NON_ACTIONABLE_STARTS) {
+    if (lower.startsWith(start)) {
+      return false;
+    }
+  }
+
+  // Filter non-actionable endings
+  for (const end of NON_ACTIONABLE_ENDS) {
+    if (lower.endsWith(end) || lower.endsWith(end + '.') || lower.endsWith(end + '!')) {
+      return false;
+    }
+  }
+
+  // Too short to be a real action (e.g., "call" alone)
+  if (lower.split(' ').length < 2) {
+    return false;
+  }
+
+  return true;
+}
+
 /**
  * Phase 5E: Improved fallback action extraction
  * Extracts actions from text patterns when AI misses obvious actions
@@ -3447,9 +3491,9 @@ function extractFallbackActions(text) {
       // Capitalize first letter
       actionText = capitalizeFirst(actionText);
 
-      // Skip if too short or already seen
+      // Skip if too short, already seen, or not actionable
       const normalizedKey = actionText.toLowerCase();
-      if (actionText.length >= 5 && !seen.has(normalizedKey)) {
+      if (actionText.length >= 5 && !seen.has(normalizedKey) && isActionable(actionText)) {
         // Check for duplicates with similar meaning
         const isDuplicate = Array.from(seen).some(existing =>
           existing.includes(normalizedKey) || normalizedKey.includes(existing)
@@ -3787,11 +3831,12 @@ function getFallbackAnalysis(content, noteType) {
     /going to ([^.!?]+)/gi
   ];
   // Phase 5C.5: Use normalizeAction() for complete action objects
+  // Phase 13: Filter non-actionable items (feelings, states)
   actionPatterns.forEach(pattern => {
     let match;
     while ((match = pattern.exec(text)) !== null) {
       const action = match[1].trim();
-      if (action.length > 3 && action.length < 100) {
+      if (action.length > 3 && action.length < 100 && isActionable(action)) {
         const actionText = action.charAt(0).toUpperCase() + action.slice(1);
         actions.push(normalizeAction(actionText));
       }

@@ -25,6 +25,56 @@ const ACTION_TRIGGERS = [
 
 const FALSE_POSITIVES = ['used to', 'supposed to', 'want to know', 'want to see'];
 
+// Non-actionable phrases - feelings, states, internal experiences (not tasks)
+// These are things you can't check off a todo list
+const NON_ACTIONABLE_STARTS = [
+  // State verbs (being in a state is not a task)
+  'stay ', 'be ', 'feel ', 'keep ', 'remain ',
+  // Mental/emotional states
+  'relax', 'calm down', 'focus', 'sleep', 'rest', 'breathe',
+  'think about it', 'remember that', 'know that', 'believe',
+  // Vague intentions (not specific actionable tasks)
+  'do something', 'figure it out', 'deal with it', 'work on it',
+  'handle it', 'take care of it', 'sort it out'
+];
+
+// Non-actionable endings - states/feelings you want to achieve
+const NON_ACTIONABLE_ENDS = [
+  'awake', 'asleep', 'happy', 'sad', 'calm', 'relaxed',
+  'better', 'worse', 'okay', 'fine', 'good', 'bad',
+  'positive', 'negative', 'motivated', 'energized', 'tired',
+  'focused', 'productive', 'healthy', 'strong', 'confident'
+];
+
+/**
+ * Check if an action is actually an actionable task
+ * Filters out feelings, states, and vague intentions
+ */
+function isActionable(action) {
+  const lower = action.toLowerCase().trim();
+
+  // Filter non-actionable starts
+  for (const start of NON_ACTIONABLE_STARTS) {
+    if (lower.startsWith(start)) {
+      return false;
+    }
+  }
+
+  // Filter non-actionable endings
+  for (const end of NON_ACTIONABLE_ENDS) {
+    if (lower.endsWith(end) || lower.endsWith(end + '.') || lower.endsWith(end + '!')) {
+      return false;
+    }
+  }
+
+  // Too short to be a real action
+  if (lower.split(' ').length < 2) {
+    return false;
+  }
+
+  return true;
+}
+
 // Sentiment words (from CLAUDE.md 8.3)
 const POSITIVE_WORDS = [
   'good', 'great', 'excellent', 'amazing', 'wonderful', 'fantastic',
@@ -141,7 +191,8 @@ function extractActions(text) {
       const isFalsePositive = FALSE_POSITIVES.some(fp =>
         match[0].toLowerCase().includes(fp)
       );
-      if (!isFalsePositive && action.length > 3) {
+      // Filter non-actionable items (feelings, states, vague intentions)
+      if (!isFalsePositive && action.length > 3 && isActionable(action)) {
         const cleanedAction = action.charAt(0).toUpperCase() + action.slice(1);
         if (!actions.includes(cleanedAction)) {
           actions.push(cleanedAction);
