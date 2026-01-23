@@ -104,8 +104,16 @@
 
 | Task | Location | Status |
 |------|----------|--------|
+| **Optimize app load speed** | `js/app.js`, `js/sync.js`, `js/twin-ui.js` | 🔴 Critical |
 | Set up Vercel Cron for memory maintenance | `/api/cron/` | Open |
 | Begin Phase 15 Task #0 (RLS Policies) | Supabase | Open |
+
+#### Load Speed Investigation Areas
+- Sync pulls all notes sequentially (should parallelize)
+- TwinUI, Entities, Patterns init independently (should coordinate)
+- May be hitting Tier 3 retrieval unnecessarily
+- Large JS files (ui.js 4900 lines) slow to parse
+- Consider lazy loading tabs, skeleton UI, aggressive caching
 
 ### P1 — Important (This Sprint)
 
