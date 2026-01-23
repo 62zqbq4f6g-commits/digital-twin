@@ -453,7 +453,17 @@ const WorkUI = {
   },
 
   formatRelativeDate(dateStr) {
+    // Handle missing or invalid dates
+    if (!dateStr) return 'Unknown date';
+
     const date = new Date(dateStr);
+
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+      console.warn('[WorkUI] Invalid date string:', dateStr);
+      return 'Unknown date';
+    }
+
     const now = new Date();
     const diffDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
 
@@ -1002,17 +1012,28 @@ const WorkUI = {
    * Save the meeting
    */
   async saveMeeting() {
-    // Prevent double saves
+    // Prevent double saves - set flag IMMEDIATELY before any async work
     if (this.isSavingMeeting) {
       console.log('[WorkUI] saveMeeting - Already saving, ignoring duplicate call');
       return;
     }
     this.isSavingMeeting = true;
 
+    // Also disable the save button to prevent race conditions
+    const saveBtn = document.getElementById('meeting-save-btn');
+    if (saveBtn) {
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Saving...';
+    }
+
     const content = document.getElementById('meeting-content').value.trim();
     if (!content) {
       alert('Please add meeting content');
       this.isSavingMeeting = false;
+      if (saveBtn) {
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Save Meeting';
+      }
       return;
     }
 
@@ -1098,8 +1119,13 @@ const WorkUI = {
         UI.showToast('Failed to save meeting');
       }
     } finally {
-      // Reset save flag
+      // Reset save flag and re-enable button
       this.isSavingMeeting = false;
+      const btn = document.getElementById('meeting-save-btn');
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Save Meeting';
+      }
     }
   },
 
