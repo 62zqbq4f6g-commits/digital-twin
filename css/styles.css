@@ -6947,11 +6947,21 @@ body {
   border: 1px solid var(--silver-200);
   border-radius: 8px;
   cursor: pointer;
-  transition: border-color 0.15s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  margin-bottom: var(--space-3);
 }
 
 .meeting-card:hover {
   border-color: var(--silver-400);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.meeting-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
 }
 
 .meeting-card-title {
@@ -6959,7 +6969,45 @@ body {
   font-size: 0.9375rem;
   font-weight: 500;
   color: var(--ink);
-  margin-bottom: var(--space-1);
+  flex: 1;
+}
+
+.meeting-card-date {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: var(--silver-500);
+  white-space: nowrap;
+}
+
+.meeting-card-preview {
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  color: var(--silver-600);
+  line-height: 1.5;
+  margin-bottom: var(--space-3);
+}
+
+.meeting-card-action-preview {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: var(--ink-soft);
+  background: var(--silver-50);
+  padding: var(--space-2) var(--space-3);
+  border-radius: 4px;
+}
+
+.meeting-card-action-preview .action-bullet {
+  color: var(--silver-400);
+  font-weight: 600;
+}
+
+.meeting-card-action-preview .more-actions {
+  color: var(--silver-500);
+  font-size: 0.6875rem;
+  margin-left: auto;
 }
 
 .meeting-card-meta {
@@ -7099,6 +7147,119 @@ body {
 .commitment-btn-wont:hover {
   border-color: var(--silver-400);
   color: var(--silver-600);
+}
+
+/* ─────────────────────────────────────────
+   Actions Extras (Commitments + Decisions in ACTIONS tab)
+   ───────────────────────────────────────── */
+
+.actions-extras {
+  margin-top: var(--space-6);
+  border-top: 1px solid var(--silver-200);
+  padding-top: var(--space-6);
+}
+
+.actions-extra-section {
+  margin-bottom: var(--space-6);
+}
+
+.actions-extra-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.actions-extra-label {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: var(--silver-500);
+  text-transform: uppercase;
+}
+
+.actions-extra-count {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--silver-400);
+  background: var(--silver-100);
+  padding: 2px 6px;
+  border-radius: 10px;
+}
+
+.actions-extra-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.commitment-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--paper-cream);
+  border-radius: 6px;
+}
+
+.commitment-quote {
+  flex: 1;
+  font-family: var(--font-editorial);
+  font-style: italic;
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+}
+
+.commitment-date {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--silver-500);
+}
+
+.commitment-done-btn {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  padding: 4px 10px;
+  background: var(--ink);
+  color: var(--paper);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.commitment-done-btn:hover {
+  opacity: 0.8;
+}
+
+.decision-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--paper-warm);
+  border: 1px solid var(--silver-200);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.decision-item:hover {
+  border-color: var(--silver-400);
+}
+
+.decision-topic {
+  flex: 1;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  color: var(--ink);
+}
+
+.decision-date {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--silver-500);
 }
 
 /* ─────────────────────────────────────────

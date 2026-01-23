@@ -163,17 +163,21 @@ const WorkUI = {
    * Load content for a specific tab
    */
   async loadTabContent(tabName) {
+    console.log('[WorkUI] loadTabContent:', tabName);
     switch (tabName) {
       case 'pulse':
         await this.loadPulse();
         break;
       case 'actions':
-        // Actions are handled by ActionsUI
+        // Actions are handled by ActionsUI, plus our extras (commitments/decisions)
         if (typeof ActionsUI !== 'undefined') {
           ActionsUI.refresh();
         }
+        // Load commitments and decisions into actions view
+        await this.loadActionsWithExtras();
         break;
       case 'meetings':
+        console.log('[WorkUI] Loading meetings tab...');
         await this.loadMeetings();
         break;
       case 'commitments':
@@ -460,22 +464,88 @@ const WorkUI = {
    */
   async loadMeetings() {
     const container = document.getElementById('meetings-list');
-    if (!container) return;
+    if (!container) {
+      console.warn('[WorkUI] meetings-list container not found');
+      return;
+    }
 
     const notes = await DB.getAllNotes();
+    console.log('[WorkUI] loadMeetings - Total notes:', notes.length);
 
     // Filter notes that are meetings
     // Check: note.type === 'meeting' OR note.meeting exists OR content starts with "Meeting with"
     this.meetings = notes
       .filter(n => {
-        if (n.type === 'meeting') return true;
-        if (n.meeting) return true;
-        // Also detect notes that look like meetings
+        const isMeetingType = n.type === 'meeting';
+        const hasMeetingData = !!n.meeting;
         const content = n.content || n.input?.raw_text || '';
-        if (content.toLowerCase().startsWith('meeting with')) return true;
-        return false;
+        const contentStartsWithMeeting = content.toLowerCase().startsWith('meeting with');
+
+        const isMeeting = isMeetingType || hasMeetingData || contentStartsWithMeeting;
+
+        if (isMeeting) {
+          console.log('[WorkUI] Found meeting note:', {
+            id: n.id,
+            type: n.type,
+            hasMeetingData,
+            contentStart: content.substring(0, 50)
+          });
+        }
+
+        return isMeeting;
       })
-      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      .sort((a, b) => {
+        // Handle both timestamp formats
+        const dateA = new Date(a.timestamps?.created_at || a.created_at);
+        const dateB = new Date(b.timestamps?.created_at || b.created_at);
+        return dateB - dateA;
+      });
+
+    console.log('[WorkUI] loadMeetings - Found meetings before dedup:', this.meetings.length);
+
+    // Sort to prioritize notes with proper meeting metadata (type='meeting')
+    // This ensures we keep the properly tagged version when deduplicating
+    this.meetings.sort((a, b) => {
+      // First sort by having meeting type/data (prefer these)
+      const aHasMeetingData = a.type === 'meeting' || a.meeting ? 1 : 0;
+      const bHasMeetingData = b.type === 'meeting' || b.meeting ? 1 : 0;
+      if (bHasMeetingData !== aHasMeetingData) return bHasMeetingData - aHasMeetingData;
+
+      // Then sort by date (newest first)
+      const dateA = new Date(a.timestamps?.created_at || a.created_at);
+      const dateB = new Date(b.timestamps?.created_at || b.created_at);
+      return dateB - dateA;
+    });
+
+    // Deduplicate meetings based on content similarity
+    const seenContent = new Set();
+    this.meetings = this.meetings.filter(meeting => {
+      const content = meeting.content || meeting.input?.raw_text || '';
+      // Create a content key (first 100 chars, normalized, remove markers)
+      const contentKey = content
+        .substring(0, 100)
+        .toLowerCase()
+        .replace(/__meeting_\d+__/gi, '')
+        .replace(/__decision_\d+__/gi, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      if (seenContent.has(contentKey)) {
+        console.log('[WorkUI] Filtering duplicate meeting:', meeting.id, '- keeping version with metadata');
+        return false;
+      }
+      seenContent.add(contentKey);
+      return true;
+    });
+
+    // Re-sort by date after deduplication
+    this.meetings.sort((a, b) => {
+      const dateA = new Date(a.timestamps?.created_at || a.created_at);
+      const dateB = new Date(b.timestamps?.created_at || b.created_at);
+      return dateB - dateA;
+    });
+
+    console.log('[WorkUI] loadMeetings - After dedup:', this.meetings.length);
 
     if (this.meetings.length === 0) {
       container.innerHTML = '<p class="meetings-empty">No meetings recorded yet.</p>';
@@ -483,36 +553,105 @@ const WorkUI = {
     }
 
     container.innerHTML = this.meetings.map(meeting => {
-      // Get meeting data from either note.meeting or construct from content
-      const data = meeting.meeting || {};
-      const content = meeting.content || meeting.input?.raw_text || '';
+      // Get meeting metadata if it exists
+      const meetingMeta = meeting.meeting || {};
 
-      // Extract title
-      let title = data.title || 'Meeting';
-      if (!data.title && content.toLowerCase().startsWith('meeting with')) {
-        const firstLine = content.split('\n')[0];
-        title = firstLine.substring(0, 50) + (firstLine.length > 50 ? '...' : '');
+      // Get raw content from note
+      const rawContent = meeting.content || meeting.input?.raw_text || '';
+
+      // Debug logging
+      console.log('[WorkUI] Rendering meeting:', {
+        id: meeting.id,
+        hasMeetingMeta: !!meeting.meeting,
+        metaTitle: meetingMeta.title,
+        metaAttendees: meetingMeta.attendees,
+        rawContentStart: rawContent.substring(0, 50)
+      });
+
+      // Extract attendees - prefer from metadata, then parse from content
+      let attendees = meetingMeta.attendees || [];
+      if (attendees.length === 0 && rawContent.toLowerCase().startsWith('meeting with')) {
+        // Parse "Meeting with X, Y:" from content
+        const firstLine = rawContent.split('\n')[0];
+        const match = firstLine.match(/^meeting with\s+([^:]+)/i);
+        if (match && match[1] && match[1].toLowerCase() !== 'team') {
+          attendees = match[1].split(/[,;]/).map(n => n.trim()).filter(n => n);
+        }
       }
 
-      // Get attendees
-      const attendees = data.attendees || [];
+      // Build title from attendees
+      const title = attendees.length > 0
+        ? `Meeting with ${attendees.join(', ')}`
+        : 'Meeting';
+
+      // Extract discussion content (skip the "Meeting with X:" header line)
+      let discussionContent = meetingMeta.content || '';
+      if (!discussionContent && rawContent) {
+        // Find content after the first line
+        const firstNewline = rawContent.indexOf('\n');
+        if (firstNewline > -1) {
+          discussionContent = rawContent.substring(firstNewline + 1).trim();
+        }
+      }
+      // Remove any markers from content
+      discussionContent = discussionContent
+        .replace(/__meeting_\d+__/gi, '')
+        .replace(/__decision_\d+__/gi, '')
+        .trim();
+
+      // Create a preview (first 80 chars)
+      const contentPreview = discussionContent.length > 80
+        ? discussionContent.substring(0, 80) + '...'
+        : discussionContent;
 
       // Get action items from meeting data or from analysis
-      const actionItems = data.actionItems || meeting.analysis?.actions || [];
+      const actionItems = meetingMeta.actionItems || meeting.analysis?.actions || [];
       const actionCount = actionItems.length;
       const completed = meeting.analysis?.actionsCompleted || [];
       const openCount = actionCount - completed.length;
 
+      // Get first open action item for preview
+      let firstAction = '';
+      if (actionItems.length > 0) {
+        const firstItem = actionItems[0];
+        let actionText = typeof firstItem === 'string' ? firstItem : firstItem.action || firstItem.text || '';
+        // Clean up action text
+        actionText = actionText.replace(/__meeting_\d+__/gi, '').replace(/__decision_\d+__/gi, '').trim();
+        if (actionText.length > 60) actionText = actionText.substring(0, 60) + '...';
+        firstAction = actionText;
+      }
+
+      // Handle timestamp - try multiple formats
+      let formattedDate = 'Unknown date';
+      const timestamp = meeting.timestamps?.created_at || meeting.created_at || meeting.timestamps?.input_date;
+      if (timestamp) {
+        try {
+          const dateObj = new Date(timestamp);
+          if (!isNaN(dateObj.getTime())) {
+            formattedDate = dateObj.toLocaleDateString('en-US', {
+              weekday: 'short',
+              month: 'short',
+              day: 'numeric'
+            });
+          }
+        } catch (e) {
+          console.warn('[WorkUI] Date parse error:', timestamp);
+        }
+      }
+
       return `
         <div class="meeting-card" data-note-id="${meeting.id}" onclick="WorkUI.openMeetingDetail('${meeting.id}')">
-          <div class="meeting-card-title">${title}</div>
-          <div class="meeting-card-meta">
-            <span class="meeting-card-date">${new Date(meeting.created_at).toLocaleDateString()}</span>
-            ${attendees.length > 0 ? `<span class="meeting-card-attendees">${attendees.join(', ')}</span>` : ''}
+          <div class="meeting-card-header">
+            <div class="meeting-card-title">${title}</div>
+            <div class="meeting-card-date">${formattedDate}</div>
           </div>
-          ${actionCount > 0 ? `
-            <div class="meeting-card-actions">
-              ${actionCount} action item${actionCount > 1 ? 's' : ''} · ${openCount > 0 ? openCount + ' open' : 'all done'}
+          ${contentPreview ? `
+            <div class="meeting-card-preview">${contentPreview}</div>
+          ` : ''}
+          ${firstAction ? `
+            <div class="meeting-card-action-preview">
+              <span class="action-bullet">→</span> ${firstAction}
+              ${openCount > 1 ? `<span class="more-actions">+${openCount - 1} more</span>` : ''}
             </div>
           ` : ''}
         </div>
@@ -524,9 +663,12 @@ const WorkUI = {
    * Open meeting detail view
    */
   openMeetingDetail(noteId) {
-    // For now, just open the note detail
-    if (typeof UI !== 'undefined' && UI.showNoteDetail) {
-      UI.showNoteDetail(noteId);
+    console.log('[WorkUI] openMeetingDetail called with noteId:', noteId);
+    // Open the note detail view
+    if (typeof UI !== 'undefined' && UI.openNoteDetail) {
+      UI.openNoteDetail(noteId);
+    } else {
+      console.error('[WorkUI] UI.openNoteDetail not available');
     }
   },
 
@@ -849,10 +991,26 @@ const WorkUI = {
       return;
     }
 
-    const attendees = [...this.meetingAttendees];
+    // Get attendees from chips
+    let attendees = [...this.meetingAttendees];
 
-    // Create a note with meeting type
+    // Also parse any remaining text in the input field (handles "Sarah, Marcus" typed directly)
+    const attendeesInput = document.getElementById('meeting-attendees-input');
+    if (attendeesInput && attendeesInput.value.trim()) {
+      const inputNames = attendeesInput.value
+        .split(/[,;]+/)
+        .map(name => name.trim())
+        .filter(name => name && !attendees.includes(name));
+      attendees = [...attendees, ...inputNames];
+    }
+
+    // Create clean note content (no markers)
     const noteContent = `Meeting with ${attendees.join(', ') || 'team'}:\n\n${content}`;
+
+    console.log('[WorkUI] saveMeeting - Starting save:', {
+      content: content.substring(0, 50),
+      attendees
+    });
 
     // Close modal first
     this.closeMeetingModal();
@@ -863,43 +1021,44 @@ const WorkUI = {
     }
 
     try {
-      // Process note through App pipeline (handles analysis, entities, etc.)
-      await App.processNote(noteContent, 'text');
+      // Process note through App pipeline - returns the saved note directly
+      console.log('[WorkUI] saveMeeting - Calling App.processNote...');
+      const savedNote = await App.processNote(noteContent, 'text');
+      console.log('[WorkUI] saveMeeting - App.processNote complete, note ID:', savedNote.id);
 
-      // Get the most recent note (the one we just saved)
-      const notes = await DB.getAllNotes();
-      const recentNote = notes.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+      // Add meeting metadata to the saved note
+      savedNote.type = 'meeting';
+      savedNote.meeting = {
+        title: `Meeting with ${attendees.join(', ') || 'team'}`,
+        attendees: attendees,
+        content: content
+      };
 
-      if (recentNote) {
-        // Add meeting metadata
-        recentNote.type = 'meeting';
-        recentNote.meeting = {
-          title: `Meeting with ${attendees.join(', ') || 'team'}`,
-          attendees: attendees,
-          content: content
-        };
-
-        // Extract action items from analysis if present
-        if (recentNote.analysis?.actions) {
-          recentNote.meeting.actionItems = recentNote.analysis.actions.map(a => ({
-            text: typeof a === 'string' ? a : a.action || a.text,
-            owner: 'you',
-            done: false
-          }));
-        }
-
-        // Save the updated note
-        await DB.saveNote(recentNote);
-        console.log('[WorkUI] Meeting saved with metadata:', recentNote.id);
+      // Extract action items from analysis if present
+      if (savedNote.analysis?.actions) {
+        savedNote.meeting.actionItems = savedNote.analysis.actions.map(a => ({
+          text: typeof a === 'string' ? a : a.action || a.text,
+          owner: 'you',
+          done: false
+        }));
       }
 
-      // Refresh UI
-      UI.loadNotes();
+      console.log('[WorkUI] saveMeeting - Updating with meeting metadata:', {
+        id: savedNote.id,
+        type: savedNote.type,
+        title: savedNote.meeting.title
+      });
 
-      // Switch to meetings tab after a delay
+      // Save the updated note with meeting metadata
+      await DB.saveNote(savedNote);
+      console.log('[WorkUI] saveMeeting - Meeting metadata saved');
+
+      // Switch to meetings tab after a short delay
       setTimeout(() => {
+        console.log('[WorkUI] saveMeeting - Switching to meetings tab');
         this.switchTab('meetings');
-      }, 1500);
+        this.loadMeetings();
+      }, 500);
 
     } catch (error) {
       console.error('[WorkUI] Failed to save meeting:', error);
@@ -1028,8 +1187,10 @@ const WorkUI = {
       return;
     }
 
-    // Create a note with decision type
+    // Create clean note content (no markers)
     const noteContent = `Thinking through: ${topic}\n\n${content}`;
+
+    console.log('[WorkUI] saveDecision - Starting save:', { topic });
 
     // Close modal first
     this.closeDecisionModal();
@@ -1040,29 +1201,28 @@ const WorkUI = {
     }
 
     try {
-      // Process note through App pipeline
-      await App.processNote(noteContent, 'text');
+      // Process note through App pipeline - returns the saved note directly
+      const savedNote = await App.processNote(noteContent, 'text');
+      console.log('[WorkUI] saveDecision - App.processNote complete, note ID:', savedNote.id);
 
-      // Get the most recent note
-      const notes = await DB.getAllNotes();
-      const recentNote = notes.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+      // Add decision metadata to the saved note
+      savedNote.type = 'decision';
+      savedNote.decision = {
+        topic: topic,
+        content: content,
+        createdAt: new Date().toISOString()
+      };
 
-      if (recentNote) {
-        // Add decision metadata
-        recentNote.type = 'decision';
-        recentNote.decision = {
-          topic: topic,
-          content: content,
-          createdAt: new Date().toISOString()
-        };
+      // Save the updated note with decision metadata
+      await DB.saveNote(savedNote);
+      console.log('[WorkUI] saveDecision - Decision metadata saved:', savedNote.id);
 
-        // Save the updated note
-        await DB.saveNote(recentNote);
-        console.log('[WorkUI] Decision saved with metadata:', recentNote.id);
-      }
-
-      // Refresh UI
-      UI.loadNotes();
+      // Switch to actions tab after a short delay
+      setTimeout(() => {
+        if (this.activeTab === 'actions') {
+          this.loadActionsWithExtras();
+        }
+      }, 500);
 
     } catch (error) {
       console.error('[WorkUI] Failed to save decision:', error);
@@ -1070,6 +1230,184 @@ const WorkUI = {
         UI.showToast('Failed to save');
       }
     }
+  },
+
+  /**
+   * Load actions with commitments and decisions
+   * Called when ACTIONS sub-tab is active
+   */
+  async loadActionsWithExtras() {
+    // ActionsUI handles the main actions
+    // We'll add commitments and decisions sections below
+    const container = document.getElementById('work-actions');
+    if (!container) return;
+
+    const notes = await DB.getAllNotes();
+
+    // Extract commitments
+    const commitments = [];
+    notes.forEach(note => {
+      const actions = note.analysis?.actions || [];
+      const completed = note.analysis?.actionsCompleted || [];
+
+      actions.forEach((action, idx) => {
+        if (action?.commitment && !completed.includes(idx)) {
+          commitments.push({
+            id: `${note.id}-${idx}`,
+            text: action.commitment,
+            noteId: note.id,
+            noteDate: note.timestamps?.created_at || note.created_at,
+            actionIndex: idx
+          });
+        }
+      });
+    });
+
+    // Extract unresolved decisions
+    const decisions = notes
+      .filter(n => n.type === 'decision' && !n.decision?.resolved)
+      .map(n => ({
+        id: n.id,
+        topic: n.decision?.topic || 'Decision',
+        noteDate: n.timestamps?.created_at || n.created_at
+      }));
+
+    // Find or create the extras container
+    let extrasContainer = container.querySelector('.actions-extras');
+    if (!extrasContainer) {
+      extrasContainer = document.createElement('div');
+      extrasContainer.className = 'actions-extras';
+      container.appendChild(extrasContainer);
+    }
+
+    let extrasHtml = '';
+
+    // Commitments section
+    if (commitments.length > 0) {
+      extrasHtml += `
+        <div class="actions-extra-section">
+          <h3 class="actions-extra-title">
+            <span class="actions-extra-label">COMMITMENTS</span>
+            <span class="actions-extra-count">${commitments.length}</span>
+          </h3>
+          <div class="actions-extra-list">
+            ${commitments.slice(0, 5).map(c => `
+              <div class="commitment-item" data-id="${c.id}">
+                <span class="commitment-quote">"${c.text}"</span>
+                <span class="commitment-date">${this.formatRelativeDate(c.noteDate)}</span>
+                <button class="commitment-done-btn" onclick="WorkUI.resolveCommitment('${c.id}', 'done')">Done</button>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    // Decisions section
+    if (decisions.length > 0) {
+      extrasHtml += `
+        <div class="actions-extra-section">
+          <h3 class="actions-extra-title">
+            <span class="actions-extra-label">DECISIONS</span>
+            <span class="actions-extra-count">${decisions.length}</span>
+          </h3>
+          <div class="actions-extra-list">
+            ${decisions.slice(0, 5).map(d => `
+              <div class="decision-item" data-id="${d.id}" onclick="WorkUI.openDecisionDetail('${d.id}')">
+                <span class="decision-topic">${d.topic}</span>
+                <span class="decision-date">${this.formatRelativeDate(d.noteDate)}</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    extrasContainer.innerHTML = extrasHtml;
+  },
+
+  /**
+   * Open decision detail (shows the note)
+   */
+  openDecisionDetail(noteId) {
+    console.log('[WorkUI] openDecisionDetail called with noteId:', noteId);
+    if (typeof UI !== 'undefined' && UI.openNoteDetail) {
+      UI.openNoteDetail(noteId);
+    } else {
+      console.error('[WorkUI] UI.openNoteDetail not available');
+    }
+  },
+
+  /**
+   * Clean up duplicate meeting notes from the database
+   * Run this from console: WorkUI.cleanupDuplicates()
+   */
+  async cleanupDuplicates() {
+    console.log('[WorkUI] Starting duplicate cleanup...');
+
+    const notes = await DB.getAllNotes();
+    const meetings = notes.filter(n => {
+      if (n.type === 'meeting') return true;
+      if (n.meeting) return true;
+      const content = n.content || n.input?.raw_text || '';
+      if (content.toLowerCase().startsWith('meeting with')) return true;
+      return false;
+    });
+
+    console.log('[WorkUI] Found', meetings.length, 'meeting notes');
+
+    // Group by content similarity
+    const groups = {};
+    meetings.forEach(meeting => {
+      const content = meeting.content || meeting.input?.raw_text || '';
+      const contentKey = content
+        .substring(0, 100)
+        .toLowerCase()
+        .replace(/__meeting_\d+__/gi, '')
+        .replace(/__decision_\d+__/gi, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      if (!groups[contentKey]) {
+        groups[contentKey] = [];
+      }
+      groups[contentKey].push(meeting);
+    });
+
+    // Find duplicates and delete them (keep the one with best metadata)
+    let deletedCount = 0;
+    for (const key of Object.keys(groups)) {
+      const group = groups[key];
+      if (group.length > 1) {
+        console.log('[WorkUI] Found', group.length, 'duplicates for:', key.substring(0, 50));
+
+        // Sort: prefer type='meeting', then newest
+        group.sort((a, b) => {
+          const aScore = (a.type === 'meeting' ? 10 : 0) + (a.meeting ? 5 : 0);
+          const bScore = (b.type === 'meeting' ? 10 : 0) + (b.meeting ? 5 : 0);
+          if (bScore !== aScore) return bScore - aScore;
+
+          const dateA = new Date(a.timestamps?.created_at || a.created_at);
+          const dateB = new Date(b.timestamps?.created_at || b.created_at);
+          return dateB - dateA;
+        });
+
+        // Keep first (best), delete rest
+        const toDelete = group.slice(1);
+        for (const note of toDelete) {
+          console.log('[WorkUI] Deleting duplicate:', note.id);
+          await DB.deleteNote(note.id);
+          deletedCount++;
+        }
+      }
+    }
+
+    console.log('[WorkUI] Cleanup complete. Deleted', deletedCount, 'duplicates');
+
+    // Refresh the meetings list
+    this.loadMeetings();
+
+    return { deleted: deletedCount };
   }
 };
 
