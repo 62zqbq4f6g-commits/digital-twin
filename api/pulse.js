@@ -2,14 +2,16 @@
  * Inscript API: Morning Pulse
  * Generates a daily briefing with context for the user
  *
+ * Note: Uses unencrypted metadata tables since notes are E2E encrypted
+ *
  * POST /api/pulse
  * Body: { user_id: string }
  *
  * Returns:
  * - greeting: Time-appropriate greeting
- * - themes: Frequently mentioned topics this week
- * - openActions: Incomplete action items
- * - commitments: Things user said they'd do
+ * - themes: Top entities/topics by mention count
+ * - openActions: Incomplete action items from action_signals
+ * - commitments: User commitments from action_signals
  * - people: Recently mentioned people
  */
 
@@ -47,90 +49,58 @@ export default async function handler(req, res) {
       .from('onboarding_data')
       .select('name')
       .eq('user_id', user_id)
-      .single();
+      .maybeSingle();
 
     const userName = onboarding?.name || '';
 
-    // Get recent notes (last 7 days)
-    const weekAgo = new Date();
-    weekAgo.setDate(weekAgo.getDate() - 7);
-
-    const { data: notes, error: notesError } = await supabase
-      .from('notes')
-      .select('id, content, analysis, created_at')
+    // Get open actions from action_signals table
+    const { data: actionSignals, error: actionsError } = await supabase
+      .from('action_signals')
+      .select('id, signal_type, action_text, effort, context, created_at, note_id')
       .eq('user_id', user_id)
-      .gte('created_at', weekAgo.toISOString())
-      .order('created_at', { ascending: false });
+      .is('completed_at', null)
+      .order('created_at', { ascending: false })
+      .limit(10);
 
-    if (notesError) {
-      console.error('[Pulse] Notes query error:', notesError);
-      throw notesError;
+    if (actionsError) {
+      console.error('[Pulse] Action signals error:', actionsError);
     }
 
-    // Get all notes for actions/commitments (not just recent)
-    const { data: allNotes } = await supabase
-      .from('notes')
-      .select('id, content, analysis, created_at')
+    // Format open actions
+    const openActions = (actionSignals || [])
+      .filter(a => a.signal_type === 'action' || !a.signal_type)
+      .slice(0, 5)
+      .map(a => ({
+        text: a.action_text || a.context,
+        effort: a.effort || 'medium',
+        noteId: a.note_id,
+        noteDate: a.created_at
+      }));
+
+    // Format commitments
+    const commitments = (actionSignals || [])
+      .filter(a => a.signal_type === 'commitment')
+      .slice(0, 5)
+      .map(a => ({
+        text: a.action_text || a.context,
+        noteDate: a.created_at,
+        noteId: a.note_id
+      }));
+
+    // Get themes from top entities (not people)
+    const { data: themeEntities } = await supabase
+      .from('user_entities')
+      .select('name, entity_type, mention_count')
       .eq('user_id', user_id)
-      .order('created_at', { ascending: false })
-      .limit(100);
+      .neq('entity_type', 'person')
+      .eq('status', 'active')
+      .order('mention_count', { ascending: false })
+      .limit(10);
 
-    // Extract open actions
-    const openActions = [];
-    (allNotes || []).forEach(note => {
-      try {
-        const analysis = typeof note.analysis === 'string'
-          ? JSON.parse(note.analysis)
-          : note.analysis;
-
-        const actions = analysis?.actions || [];
-        const completed = analysis?.actionsCompleted || [];
-
-        actions.forEach((action, idx) => {
-          if (!completed.includes(idx)) {
-            const text = typeof action === 'string' ? action : action.action || action.text;
-            if (text) {
-              openActions.push({
-                text,
-                effort: action?.effort || 'medium',
-                noteId: note.id,
-                noteDate: note.created_at
-              });
-            }
-          }
-        });
-      } catch (e) {
-        // Skip malformed analysis
-      }
-    });
-
-    // Extract commitments
-    const commitments = [];
-    (allNotes || []).forEach(note => {
-      try {
-        const analysis = typeof note.analysis === 'string'
-          ? JSON.parse(note.analysis)
-          : note.analysis;
-
-        const actions = analysis?.actions || [];
-        const completed = analysis?.actionsCompleted || [];
-
-        actions.forEach((action, idx) => {
-          if (action?.commitment && !completed.includes(idx)) {
-            commitments.push({
-              text: action.commitment,
-              noteDate: note.created_at,
-              noteId: note.id
-            });
-          }
-        });
-      } catch (e) {
-        // Skip malformed analysis
-      }
-    });
-
-    // Extract themes from recent notes (simple word frequency)
-    const themes = extractThemes(notes || []);
+    const themes = (themeEntities || []).map(e => ({
+      word: e.name,
+      count: e.mention_count || 1
+    }));
 
     // Get recent people from entities
     const { data: entities } = await supabase
@@ -138,6 +108,7 @@ export default async function handler(req, res) {
       .select('name, context_summary, relationship, updated_at')
       .eq('user_id', user_id)
       .eq('entity_type', 'person')
+      .eq('status', 'active')
       .order('updated_at', { ascending: false })
       .limit(5);
 
@@ -179,45 +150,4 @@ function getGreeting(name) {
   else timeGreeting = 'Good evening';
 
   return name ? `${timeGreeting}, ${name}.` : `${timeGreeting}.`;
-}
-
-/**
- * Extract common themes from notes
- */
-function extractThemes(notes) {
-  const wordCounts = {};
-  const stopWords = new Set([
-    'the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
-    'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could',
-    'should', 'may', 'might', 'must', 'shall', 'can', 'need', 'dare',
-    'ought', 'used', 'to', 'of', 'in', 'for', 'on', 'with', 'at', 'by',
-    'from', 'up', 'about', 'into', 'over', 'after', 'i', 'me', 'my',
-    'myself', 'we', 'our', 'ours', 'you', 'your', 'he', 'him', 'his',
-    'she', 'her', 'it', 'its', 'they', 'them', 'their', 'what', 'which',
-    'who', 'whom', 'this', 'that', 'these', 'those', 'am', 'and', 'but',
-    'if', 'or', 'because', 'as', 'until', 'while', 'just', 'also', 'than',
-    'so', 'very', 'really', 'think', 'feel', 'like', 'want', 'know', 'get',
-    'got', 'make', 'made', 'going', 'been', 'being', 'today', 'yesterday',
-    'tomorrow', 'now', 'then', 'here', 'there', 'when', 'where', 'how',
-    'all', 'each', 'every', 'both', 'few', 'more', 'most', 'other', 'some',
-    'such', 'no', 'nor', 'not', 'only', 'own', 'same', 'than', 'too'
-  ]);
-
-  notes.forEach(note => {
-    const text = (note.content || '').toLowerCase();
-    const words = text
-      .replace(/[^\w\s]/g, ' ')
-      .split(/\s+/)
-      .filter(w => w.length > 3 && !stopWords.has(w));
-
-    words.forEach(word => {
-      wordCounts[word] = (wordCounts[word] || 0) + 1;
-    });
-  });
-
-  return Object.entries(wordCounts)
-    .filter(([_, count]) => count >= 2)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 10)
-    .map(([word, count]) => ({ word, count }));
 }

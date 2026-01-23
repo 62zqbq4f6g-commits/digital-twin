@@ -80,7 +80,7 @@ window.Onboarding = {
         .from('onboarding_data')
         .select('completed_at')
         .eq('user_id', Sync.user.id)
-        .single();
+        .maybeSingle();
 
       if (!onboardingError && onboardingData && onboardingData.completed_at) {
         console.log('[Onboarding] Already completed (onboarding_data)');
