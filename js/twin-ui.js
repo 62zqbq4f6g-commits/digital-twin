@@ -211,6 +211,11 @@ const TwinUI = {
       // Update stats (async)
       await this.updateStats(summary);
 
+      // PHASE 15 - T2: Load State of You report
+      if (typeof StateOfYouUI !== 'undefined') {
+        StateOfYouUI.load();  // Don't await - load async
+      }
+
       // Update Phase 3b sections
       await this.updateThinkingThroughSection();
       await this.updateThisWeekSection();
