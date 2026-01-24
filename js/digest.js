@@ -171,13 +171,8 @@ const Digest = {
    * @returns {string} Emoji icon
    */
   getCategoryIcon(category) {
-    const icons = {
-      work: '💼',
-      personal: '🏠',
-      health: '💪',
-      ideas: '💡'
-    };
-    return icons[(category || '').toLowerCase()] || '📝';
+    // Text-only per brand guidelines - return empty string
+    return '';
   },
 
   /**

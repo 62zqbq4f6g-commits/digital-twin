@@ -266,7 +266,6 @@
       <section id="screen-twin" class="screen hidden">
         <header class="brand-header" style="margin-bottom: var(--space-6); margin-top: var(--space-4);">
           <h2 class="brand-title">Your mirror in code</h2>
-          <p class="brand-tagline">your mirror in code</p>
         </header>
 
         <!-- Phase 9: About You Section (populated by UIProfile) -->
@@ -763,7 +762,7 @@
       });
     }
 
-    console.log('[App] Version: 7.0.0');
+    console.log('[App] Version: 8.7.0 - Phase 14.3 Load Optimization');
 
     // Main initialization - runs immediately
     (async function init() {
@@ -787,77 +786,67 @@
       }
 
       // STEP 3: Setup Auth authenticated handler
-      // OPTIMIZED: Show UI immediately, sync in background
+      // OPTIMIZED Phase 14.3: Instant UI, lazy TWIN, background everything
       Auth.onAuthenticated = async function() {
+        console.time('[PERF] Total app load');
+        console.time('[PERF] Auth → UI visible');
         const initStart = performance.now();
-        console.log('[Init] onAuthenticated called, initializing App...');
+        console.log('[Init] onAuthenticated called');
 
-        // PHASE 1: Initialize database (fast - just opens IndexedDB)
-        try {
-          const initPromise = App.init();
-          const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('App.init timeout')), 3000)
-          );
-          await Promise.race([initPromise, timeoutPromise]);
-          console.log('[Init] App.init complete in', Math.round(performance.now() - initStart), 'ms');
-        } catch (e) {
-          console.warn('[Init] App.init issue:', e.message);
-        }
-
-        // PHASE 2: Check onboarding (lightweight Supabase queries)
-        // This is MUCH faster than full sync - just checks flags & counts
-        console.log('[Init] Checking onboarding, Sync.user:', Sync.user?.email || 'none');
-        if (typeof Onboarding !== 'undefined') {
-          const shouldShow = await Onboarding.shouldShow();
-          console.log('[Init] Onboarding check complete in', Math.round(performance.now() - initStart), 'ms');
-          if (shouldShow) {
-            console.log('[App] New user detected, starting onboarding');
-            Onboarding.start();
-            return;
-          }
-        }
-
-        // PHASE 3: Initialize UI IMMEDIATELY (shows cached/local data)
-        UI.init();
-        console.log('[Init] UI shown in', Math.round(performance.now() - initStart), 'ms');
-
-        // PHASE 4: Parallel initialization of independent modules
-        // These don't depend on each other, so run them all at once
-        await Promise.all([
-          (async () => { Voice.init(); })(),
-          (async () => { Camera.init(); })(),
-          (async () => { if (typeof UserProfile !== 'undefined') await UserProfile.init(); })(),
-          (async () => { if (typeof TwinEngine !== 'undefined') await TwinEngine.init(); })(),
+        // PHASE 1: DB init + Onboarding check in PARALLEL
+        console.time('[PERF] DB + Onboarding');
+        const [_, shouldOnboard] = await Promise.all([
+          App.init().catch(e => console.warn('[Init] App.init:', e.message)),
+          (async () => {
+            if (typeof Onboarding !== 'undefined') {
+              return await Onboarding.shouldShow();
+            }
+            return false;
+          })()
         ]);
+        console.timeEnd('[PERF] DB + Onboarding');
 
-        // These need profile loaded first
-        TwinUI.init();
-        Feedback.init();
-        ActionsUI.init();
-        if (typeof WorkUI !== 'undefined') {
-          WorkUI.init();
+        if (shouldOnboard) {
+          console.log('[App] New user, starting onboarding');
+          Onboarding.start();
+          console.timeEnd('[PERF] Total app load');
+          return;
         }
-        console.log('[Init] All modules initialized in', Math.round(performance.now() - initStart), 'ms');
 
-        // PHASE 5: Background sync (NON-BLOCKING)
-        // User can interact immediately - UI will refresh when sync completes
+        // PHASE 2: Show UI IMMEDIATELY (cached notes render < 100ms)
+        UI.init();
+        console.timeEnd('[PERF] Auth → UI visible');
+        console.log('[Init] UI visible in', Math.round(performance.now() - initStart), 'ms');
+
+        // PHASE 3: All other modules in background (DON'T await)
+        // User can already interact with cached notes
+        Promise.all([
+          Voice.init(),
+          Camera.init(),
+          (typeof UserProfile !== 'undefined' ? UserProfile.init() : Promise.resolve()),
+          (typeof TwinEngine !== 'undefined' ? TwinEngine.init() : Promise.resolve()),
+        ]).then(() => {
+          // After profile loads, init modules that depend on it
+          TwinUI.init();  // Lazy loads heavy data when tab opened
+          Feedback.init();
+          ActionsUI.init();
+          if (typeof WorkUI !== 'undefined') WorkUI.init();
+          console.log('[Init] All modules ready in', Math.round(performance.now() - initStart), 'ms');
+        });
+
+        // PHASE 4: Background sync (NON-BLOCKING)
         if (typeof Sync !== 'undefined' && Sync.isAuthenticated()) {
-          console.log('[Init] Starting background sync...');
-          // Don't await - let it run in background
           Sync.syncNow().then(() => {
-            console.log('[Init] Background sync complete in', Math.round(performance.now() - initStart), 'ms');
-            // TwinUI already registered Sync.onSyncComplete callback to refresh
-          }).catch(e => {
-            console.warn('[Init] Background sync failed:', e.message);
-          });
+            console.log('[Init] Sync complete in', Math.round(performance.now() - initStart), 'ms');
+          }).catch(e => console.warn('[Init] Sync:', e.message));
         }
 
-        // PHASE 6: Deferred non-critical operations
-        setTimeout(async () => {
-          if (typeof FollowUp !== 'undefined') {
-            await FollowUp.checkPendingFollowUps();
-          }
+        // PHASE 5: Deferred operations
+        setTimeout(() => {
+          if (typeof FollowUp !== 'undefined') FollowUp.checkPendingFollowUps();
         }, 3000);
+
+        console.timeEnd('[PERF] Total app load');
       };
 
       // STEP 4: Check authentication

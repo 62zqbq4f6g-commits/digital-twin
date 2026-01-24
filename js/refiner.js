@@ -84,14 +84,15 @@ function buildFormattedOutput(aiResult, rawText) {
   const dateStr = now.toLocaleDateString('en-US', options);
   const timeStr = now.toLocaleTimeString('en-US', timeOptions) + ' SGT';
 
-  const categoryIcons = {
-    personal: '🏠 Personal',
-    work: '💼 Work',
-    health: '💪 Health',
-    ideas: '💡 Idea'
+  // Category labels (text-only per brand guidelines)
+  const categoryLabels = {
+    personal: 'Personal',
+    work: 'Work',
+    health: 'Health',
+    ideas: 'Idea'
   };
 
-  const categoryLabel = categoryIcons[aiResult.category] || '💼 Work';
+  const categoryLabel = categoryLabels[aiResult.category] || 'Work';
 
   let output = `# ${aiResult.title}
 
@@ -170,14 +171,15 @@ function refineLocal(rawText, classification, extracted) {
   const dateStr = now.toLocaleDateString('en-US', options);
   const timeStr = now.toLocaleTimeString('en-US', timeOptions) + ' SGT';
 
-  const categoryIcons = {
-    personal: '🏠 Personal',
-    work: '💼 Work',
-    health: '💪 Health',
-    ideas: '💡 Idea'
+  // Category labels (text-only per brand guidelines)
+  const categoryLabels = {
+    personal: 'Personal',
+    work: 'Work',
+    health: 'Health',
+    ideas: 'Idea'
   };
 
-  const categoryLabel = categoryIcons[classification.category] || '💼 Work';
+  const categoryLabel = categoryLabels[classification.category] || 'Work';
 
   // Clean the raw text
   const cleanedText = cleanText(rawText);

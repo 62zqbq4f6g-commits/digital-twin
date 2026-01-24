@@ -18,12 +18,12 @@ const UI = {
   currentFilter: 'all',
   currentSearch: '',
 
-  // Category icons
+  // Category icons (text-only per brand guidelines)
   categoryIcons: {
-    personal: '🏠',
-    work: '💼',
-    health: '💪',
-    ideas: '💡'
+    personal: '',
+    work: '',
+    health: '',
+    ideas: ''
   },
 
   // Currently displayed note
@@ -962,9 +962,11 @@ const UI = {
 
   /**
    * Load notes from database with cache-first strategy
-   * Target: < 100ms to first render
+   * Phase 14.3: Optimized for < 100ms to first render
+   * Target: 0ms skeleton, < 100ms cached render, background fresh fetch
    */
   async loadNotes() {
+    console.time('[PERF] loadNotes');
     const startTime = performance.now();
 
     try {
@@ -974,7 +976,7 @@ const UI = {
         if (cachedNotes && cachedNotes.length > 0) {
           this.allNotes = cachedNotes;
           this.renderNotes();
-          console.log(`[UI] Cached notes rendered in ${Math.round(performance.now() - startTime)}ms (${cachedNotes.length} notes)`);
+          console.log(`[PERF] Cached notes rendered in ${Math.round(performance.now() - startTime)}ms (${cachedNotes.length} notes)`);
         } else {
           // No cache - show skeleton while loading
           this.showNotesSkeleton();
@@ -1014,6 +1016,8 @@ const UI = {
         this.allNotes = [];
         this.renderNotes();
       }
+    } finally {
+      console.timeEnd('[PERF] loadNotes');
     }
   },
 
@@ -1161,7 +1165,7 @@ const UI = {
    */
   renderNoteCard(note) {
     const category = note.classification?.category || 'personal';
-    const icon = this.categoryIcons[category] || '📝';
+    const icon = this.categoryIcons[category] || '';
     const title = note.extracted?.title || 'Untitled Note';
     const timestamp = this.formatNoteListTimestamp(note.timestamps?.created_at || note.created_at);
 
@@ -1784,7 +1788,7 @@ const UI = {
 
       // Populate detail view
       const category = note.classification?.category || 'personal';
-      const icon = this.categoryIcons[category] || '📝';
+      const icon = this.categoryIcons[category] || '';
 
       document.getElementById('note-detail-icon').textContent = icon;
       document.getElementById('note-detail-category-label').textContent = category;

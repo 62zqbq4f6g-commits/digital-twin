@@ -3,34 +3,45 @@
  */
 
 const TwinUI = {
+  // Phase 14.3: Track if heavy data has been loaded
+  _hasLoadedFreshStats: false,
+
   /**
-   * Initialize Twin UI
+   * Initialize Twin UI - FAST (no DB/network calls)
+   * Heavy data loads lazily when tab is first opened
    */
   init() {
     this.attachListeners();
 
-    // Load cached stats immediately on init (no flash of 0s)
+    // Load cached stats ONLY (instant from localStorage, no DB calls)
     this.loadCachedStats();
 
-    // IMMEDIATELY load fresh stats from DB (don't wait for full profile)
-    this.loadStatsImmediately();
+    // DON'T load fresh stats on init - defer until tab is opened
+    // this.loadStatsImmediately(); // REMOVED - now lazy
 
     // Register for sync complete callback to refresh UI after cloud sync
     if (typeof Sync !== 'undefined') {
       Sync.onSyncComplete = () => {
         console.log('[TwinUI] Sync complete, refreshing data...');
-        // Always refresh - data may have changed from cloud
-        this.refresh();
+        this._hasLoadedFreshStats = false; // Force reload on next tab open
+        // Only refresh if currently viewing TWIN tab
+        if (typeof UI !== 'undefined' && UI.currentScreen === 'twin') {
+          this.refresh();
+        }
       };
     }
 
     // A4: Listen for note-saved events to refresh TWIN tab data
     window.addEventListener('note-saved', () => {
-      console.log('[TwinUI] Note saved, refreshing data...');
-      this.refresh();
+      console.log('[TwinUI] Note saved, marking data stale...');
+      this._hasLoadedFreshStats = false;
+      // Only refresh if currently viewing TWIN tab
+      if (typeof UI !== 'undefined' && UI.currentScreen === 'twin') {
+        this.refresh();
+      }
     });
 
-    console.log('[TwinUI] Initialized');
+    console.log('[TwinUI] Initialized (lazy mode)');
   },
 
   /**
@@ -149,11 +160,19 @@ const TwinUI = {
 
   /**
    * Refresh the Twin tab display with current profile data
+   * Phase 14.3: Lazy loading - only fetches fresh data when needed
    */
   async refresh() {
     console.log('[TwinUI] Refreshing display...');
 
     try {
+      // Phase 14.3: Load fresh stats on first tab open
+      if (!this._hasLoadedFreshStats) {
+        console.log('[TwinUI] First load - fetching fresh stats...');
+        this.loadStatsImmediately();  // Don't await - let it run async
+        this._hasLoadedFreshStats = true;
+      }
+
       const profile = await TwinProfile.load();
       const summary = await TwinEngine.getProfileSummary();
 
@@ -585,11 +604,11 @@ const TwinUI = {
       html += `<div class="this-week-stat"><span class="stat-value">${decisionsCount}</span><span class="stat-label">decisions</span></div>`;
       html += '</div>';
 
-      // Category breakdown
+      // Category breakdown (text-only per brand guidelines)
       html += '<div class="this-week-categories">';
-      if (categories.work > 0) html += `<span class="week-category">💼 ${categories.work} work</span>`;
-      if (categories.personal > 0) html += `<span class="week-category">🏠 ${categories.personal} personal</span>`;
-      if (categories.ideas > 0) html += `<span class="week-category">💡 ${categories.ideas} ideas</span>`;
+      if (categories.work > 0) html += `<span class="week-category">${categories.work} work</span>`;
+      if (categories.personal > 0) html += `<span class="week-category">${categories.personal} personal</span>`;
+      if (categories.ideas > 0) html += `<span class="week-category">${categories.ideas} ideas</span>`;
       html += '</div>';
 
       container.innerHTML = html;
@@ -652,7 +671,7 @@ const TwinUI = {
         const description = p.description || 'No description available';
         return `
           <div class="pattern-item">
-            <div class="pattern-icon">${p.icon || '💡'}</div>
+            <div class="pattern-icon">${p.icon || '•'}</div>
             <div class="pattern-content">
               <div class="pattern-title">${this.escapeHtml(title)}</div>
               <div class="pattern-description">${this.escapeHtml(description)}</div>
@@ -1182,15 +1201,15 @@ const TwinUI = {
             <div class="learning-stats">
               <div class="stat">
                 <span class="stat-value">${entityStats.people}</span>
-                <span class="stat-label">People</span>
+                <span class="stat-label">${entityStats.people === 1 ? 'Person' : 'People'}</span>
               </div>
               <div class="stat">
                 <span class="stat-value">${entityStats.pets}</span>
-                <span class="stat-label">Pets</span>
+                <span class="stat-label">${entityStats.pets === 1 ? 'Pet' : 'Pets'}</span>
               </div>
               <div class="stat">
                 <span class="stat-value">${entityStats.projects}</span>
-                <span class="stat-label">Projects</span>
+                <span class="stat-label">${entityStats.projects === 1 ? 'Project' : 'Projects'}</span>
               </div>
             </div>
             ${entityStats.topMentioned ? `

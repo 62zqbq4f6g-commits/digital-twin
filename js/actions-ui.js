@@ -527,7 +527,6 @@ const ActionsUI = {
     return `
       <div class="streak-section">
         <div class="streak-header">
-          <span class="streak-fire">🔥</span>
           <span class="streak-days">${streak} day streak</span>
         </div>
         <p class="streak-explanation">${explanation}</p>
@@ -775,7 +774,7 @@ const ActionsUI = {
     if (ageInDays >= 3 && !action.completed) {
       return {
         type: 'stakes_time',
-        icon: '⏳',
+        icon: '•',
         text: this.getAgingText(ageInDays)
       };
     }
@@ -1515,13 +1514,14 @@ const ActionsUI = {
    * @returns {string} Icon emoji
    */
   getCategoryIcon(category) {
+    // Text-only per brand guidelines
     const icons = {
-      personal: '🏠',
-      work: '💼',
-      health: '💪',
-      ideas: '💡'
+      personal: '',
+      work: '',
+      health: '',
+      ideas: ''
     };
-    return icons[category] || '📝';
+    return icons[category] || '';
   },
 
   /**

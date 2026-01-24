@@ -1,5 +1,7 @@
 # Terminal 1 (Backend) — Phase 15 Build Prompt
 
+## Version 1.1.0 (Critical Fixes Applied)
+
 ## Start Command
 
 ```bash
@@ -15,6 +17,18 @@ You are **Terminal 1 (Backend)** for Inscript Phase 15 Experience Transformation
 
 ---
 
+## CRITICAL FIXES YOU MUST FOLLOW
+
+| Fix | Description |
+|-----|-------------|
+| **FIX 1** | Add RLS Policies BEFORE creating any table (Task #0) |
+| **FIX 2** | Whispers table uses `content_encrypted` + `iv` (NO plaintext `content` column) |
+| **FIX 3** | Whispers V1 is TEXT-ONLY (no voice support) |
+| **FIX 4** | state-of-you.js is split into 5 subtasks (5a-e) |
+| **FIX 6** | notification_preferences has `timezone` column |
+
+---
+
 ## Your Ownership
 
 You own ALL backend files. Create and modify only these:
@@ -22,23 +36,96 @@ You own ALL backend files. Create and modify only these:
 ### API Files (New)
 ```
 api/
-├── state-of-you.js          ← Monthly report generation
-├── whisper.js               ← Quick capture processing
+├── state-of-you.js          ← Monthly report generation (split into 5a-e logic)
+├── whisper.js               ← Quick capture (E2E encrypted, text-only)
 ├── memory-moments.js        ← Proactive surfacing logic
+├── analytics.js             ← Event tracking (FIX 7)
 └── cron/
     ├── monthly-report.js    ← Cron for monthly reports
     └── memory-moments.js    ← Cron for proactive surfacing
 ```
 
-### Database Migrations
-- `user_reports` table
-- `whispers` table
-- `memory_moments` table
-- `user_notification_preferences` table
+### Database Migrations (Supabase)
 
-### You May Modify (carefully)
-- Existing `api/*.js` files when needed for integration
-- Add exports to existing modules
+**⚠️ TASK #0 MUST BE FIRST: RLS Policies**
+
+```sql
+-- Enable RLS on all new tables
+ALTER TABLE user_reports ENABLE ROW LEVEL SECURITY;
+ALTER TABLE whispers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE memory_moments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_notification_preferences ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies
+CREATE POLICY "Users can only access own reports"
+ON user_reports FOR ALL USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can only access own whispers"
+ON whispers FOR ALL USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can only access own moments"
+ON memory_moments FOR ALL USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can only access own preferences"
+ON user_notification_preferences FOR ALL USING (auth.uid() = user_id);
+```
+
+**Table Schemas (After RLS):**
+
+```sql
+-- 1. user_reports
+CREATE TABLE user_reports (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  report_month DATE NOT NULL,
+  report_data JSONB NOT NULL,
+  generated_at TIMESTAMP DEFAULT NOW(),
+  viewed_at TIMESTAMP,
+  UNIQUE(user_id, report_month)
+);
+
+-- 2. whispers (FIX 2: E2E Encrypted, NO plaintext content)
+CREATE TABLE whispers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  content_encrypted TEXT NOT NULL,  -- E2E encrypted (NO plaintext)
+  iv TEXT NOT NULL,                  -- Initialization vector
+  source TEXT DEFAULT 'text',        -- FIX 3: V1 text-only
+  processed BOOLEAN DEFAULT FALSE,
+  entities_extracted JSONB,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- 3. memory_moments
+CREATE TABLE memory_moments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  moment_type TEXT NOT NULL,
+  title TEXT NOT NULL,
+  content TEXT NOT NULL,
+  related_entity_id UUID REFERENCES user_entities(id),
+  related_note_ids UUID[],
+  priority INTEGER DEFAULT 5,
+  shown_at TIMESTAMP,
+  dismissed_at TIMESTAMP,
+  engaged_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- 4. user_notification_preferences (FIX 6: timezone column)
+CREATE TABLE user_notification_preferences (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE UNIQUE,
+  timezone TEXT DEFAULT 'UTC',  -- FIX 6: Infer from browser
+  memory_moments_enabled BOOLEAN DEFAULT TRUE,
+  monthly_report_enabled BOOLEAN DEFAULT TRUE,
+  monthly_report_day INTEGER DEFAULT 1,
+  quiet_hours_start TIME,
+  quiet_hours_end TIME,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+```
 
 ---
 
@@ -46,158 +133,75 @@ api/
 
 - `js/*.js` (frontend files)
 - `css/*.css` (stylesheets)
-- `index.html` (except adding script tags if needed, marked with `<!-- PHASE 15 - T1 -->`)
+- `index.html` (UI sections)
 
 ---
 
-## Workflow
+## Task Execution Order
 
-1. **Check TaskList** — See available tasks
-2. **Claim task** — Use TaskUpdate to set status to `in_progress` and owner to `T1`
-3. **Check blockedBy** — Ensure dependencies are complete
-4. **Complete task** — Write the code
-5. **Git commit** — Format: `T1: [Feature] - [Description]`
-6. **Mark complete** — Use TaskUpdate to set status to `completed`
-7. **Repeat** — Check TaskList for next task
+### Phase 1: Foundation (Do First)
 
----
+1. **Task #0: Add RLS Policies** ⚠️ MUST BE FIRST
+2. **Task #1: Create user_reports table** (blockedBy: #0)
+3. **Task #2: Create whispers table** (blockedBy: #0) — Use E2E schema
+4. **Task #3: Create memory_moments table** (blockedBy: #0)
+5. **Task #4: Create notification_preferences table** (blockedBy: #0) — Include timezone
 
-## First Session Actions
+### Phase 2: State of You (FIX 4: Split into 5a-e)
 
-1. **Read the full build spec:**
-   ```
-   Read /Users/airoxthebox/Projects/digital-twin/PHASE-15-BUILD.md
-   ```
+6. **Task #5a: Report data aggregation** (blockedBy: #1)
+   - Query notes from the month
+   - Aggregate entity mentions
+   - Calculate theme frequencies
 
-2. **Check existing tasks:**
-   ```
-   TaskList
-   ```
+7. **Task #5b: Sentiment calculation** (blockedBy: #5a)
+   - Calculate sentiment trajectory
+   - Compare start vs end of month
 
-3. **If no tasks exist, create them** (see Task Creation below)
+8. **Task #5c: Pattern detection for reports** (blockedBy: #5a)
+   - Detect patterns relevant to the month
+   - Filter for meaningful patterns only
 
-4. **Start with Epic 1 or Epic 2 tasks**
+9. **Task #5d: LLM reflection question generation** (blockedBy: #5b, #5c)
+   - Generate personalized reflection question
+   - Based on themes, sentiment, patterns
 
----
+10. **Task #5e: Report storage and retrieval API** (blockedBy: #5d)
+    - GET /api/state-of-you?month=YYYY-MM
+    - POST /api/state-of-you/generate
+    - Store in user_reports table
 
-## Task Creation (If None Exist)
+11. **Task #6: Create api/cron/monthly-report.js** (blockedBy: #5e)
 
-Create tasks in this order with proper dependencies:
+### Phase 3: Whispers
 
-### Epic 1: Documentation (Already done by setup)
-Skip if docs already updated.
+12. **Task #7: Create api/whisper.js** (blockedBy: #2)
+    - POST /api/whisper — E2E encrypted, text-only
+    - GET /api/whispers — Return history
+    - POST /api/whispers/reflect — Batch reflection
 
-### Epic 2: Database Setup
+### Phase 4: Memory Moments
 
-```javascript
-// Task 2.1
-TaskCreate({
-  subject: "Create user_reports table",
-  description: "Create Supabase table for monthly State of You reports. Schema: id, user_id, report_month, report_data (JSONB), generated_at, viewed_at. Add unique constraint on (user_id, report_month).",
-  activeForm: "Creating user_reports table"
-})
+13. **Task #8: Create api/memory-moments.js** (blockedBy: #3)
+14. **Task #9: Create api/cron/memory-moments.js** (blockedBy: #8)
+15. **Task #10: Implement anniversary triggers** (blockedBy: #8)
+16. **Task #11: Implement dormant entity triggers** (blockedBy: #8)
+17. **Task #12: Implement progress triggers** (blockedBy: #8)
 
-// Task 2.2
-TaskCreate({
-  subject: "Create whispers table",
-  description: "Create Supabase table for quick captures. Schema: id, user_id, content, content_encrypted, source ('text'/'voice'), processed (boolean), entities_extracted (JSONB), created_at.",
-  activeForm: "Creating whispers table"
-})
+### Phase 5: Analytics (FIX 7)
 
-// Task 2.3
-TaskCreate({
-  subject: "Create memory_moments table",
-  description: "Create Supabase table for proactive surfacing. Schema: id, user_id, moment_type, title, content, related_entity_id, related_note_ids (UUID[]), priority (1-10), shown_at, dismissed_at, engaged_at, created_at.",
-  activeForm: "Creating memory_moments table"
-})
-
-// Task 2.4
-TaskCreate({
-  subject: "Create user_notification_preferences table",
-  description: "Create Supabase table for notification settings. Schema: id, user_id (unique), memory_moments_enabled, monthly_report_enabled, monthly_report_day, quiet_hours_start, quiet_hours_end, created_at, updated_at.",
-  activeForm: "Creating notification preferences table"
-})
-```
-
-### Epic 3: State of You API
-
-```javascript
-// Task 3.1 (blockedBy: 2.1)
-TaskCreate({
-  subject: "Create api/state-of-you.js",
-  description: "Create main State of You API endpoint. GET /api/state-of-you?month=YYYY-MM returns report or generates if missing. POST /api/state-of-you/generate forces regeneration. Report includes: themes, people, sentiment_trajectory, patterns_detected, reflection_question, stats.",
-  activeForm: "Creating State of You API"
-})
-
-// Task 3.2 (blockedBy: 3.1)
-TaskCreate({
-  subject: "Create api/cron/monthly-report.js",
-  description: "Create Vercel Cron job that runs on 1st of each month. Generates State of You reports for all active users. Should be idempotent.",
-  activeForm: "Creating monthly report cron"
-})
-```
-
-### Epic 4: Whispers API
-
-```javascript
-// Task 4.1 (blockedBy: 2.2)
-TaskCreate({
-  subject: "Create api/whisper.js",
-  description: "Create Whisper API. POST /api/whisper saves quick capture, extracts entities in background, returns {id, status, entities_detected}. GET /api/whispers?limit=50&offset=0 returns history. POST /api/whispers/reflect triggers reflection on selected whispers.",
-  activeForm: "Creating Whisper API"
-})
-```
-
-### Epic 5: Memory Moments API
-
-```javascript
-// Task 5.1 (blockedBy: 2.3)
-TaskCreate({
-  subject: "Create api/memory-moments.js",
-  description: "Create Memory Moments API. GET /api/memory-moments?status=pending returns pending moments. POST /api/memory-moments/:id/engage tracks engagement. POST /api/memory-moments/:id/dismiss dismisses moment.",
-  activeForm: "Creating Memory Moments API"
-})
-
-// Task 5.2 (blockedBy: 5.1)
-TaskCreate({
-  subject: "Create api/cron/memory-moments.js",
-  description: "Create Vercel Cron job that runs daily at 9 AM. Generates new memory moments based on triggers. Respects user quiet hours.",
-  activeForm: "Creating memory moments cron"
-})
-
-// Task 5.3 (blockedBy: 5.1)
-TaskCreate({
-  subject: "Implement anniversary triggers",
-  description: "Add logic to detect anniversaries from notes (dates mentioned + 1 year). Create memory moments for significant anniversaries.",
-  activeForm: "Implementing anniversary triggers"
-})
-
-// Task 5.4 (blockedBy: 5.1)
-TaskCreate({
-  subject: "Implement dormant entity triggers",
-  description: "Add logic to detect dormant entities (Key People not mentioned in 21+ days). Create gentle check-in memory moments.",
-  activeForm: "Implementing dormant entity triggers"
-})
-
-// Task 5.5 (blockedBy: 5.1)
-TaskCreate({
-  subject: "Implement progress triggers",
-  description: "Add logic to detect sentiment improvements (e.g., 'imposter syndrome' mentioned less often). Create progress celebration moments.",
-  activeForm: "Implementing progress triggers"
-})
-```
+18. **Task #30: Create api/analytics.js** (blockedBy: #28)
+    - POST /api/analytics
+    - Track: report_viewed, whisper_created, moment_engaged, etc.
 
 ---
 
-## API Interface Contracts
-
-Terminal 2 will consume these APIs. Ensure you follow these contracts:
+## API Contracts
 
 ### State of You API
 
 ```javascript
 // GET /api/state-of-you?month=2026-01
-// Response:
 {
   report: {
     month: "2026-01",
@@ -212,14 +216,14 @@ Terminal 2 will consume these APIs. Ensure you follow these contracts:
 }
 
 // POST /api/state-of-you/generate
-// Response: { report: ReportObject }
+{ report: ReportObject }
 ```
 
-### Whisper API
+### Whisper API (FIX 2: E2E Encrypted)
 
 ```javascript
 // POST /api/whisper
-// Body: { content: string, source: "text"|"voice" }
+// Body: { content_encrypted: string, iv: string }  // NO plaintext
 // Response: { id: string, status: "saved", entities_detected: string[] }
 
 // GET /api/whispers?limit=50&offset=0
@@ -241,7 +245,35 @@ Terminal 2 will consume these APIs. Ensure you follow these contracts:
 
 // POST /api/memory-moments/:id/dismiss
 // Response: { success: true }
+
+// GET /api/memory-moments/preferences
+// PUT /api/memory-moments/preferences
+// Body includes timezone field (FIX 6)
 ```
+
+### Analytics API (FIX 7)
+
+```javascript
+// POST /api/analytics
+// Body: { event: string, properties: object }
+// Response: { success: true }
+
+// Events: report_viewed, report_shared, whisper_created,
+//         whisper_reflected, moment_engaged, moment_dismissed
+```
+
+---
+
+## Workflow
+
+1. **Read PHASE-15-BUILD.md** for full context
+2. **Check TaskList** — See available tasks
+3. **Start with Task #0** — RLS Policies (MUST BE FIRST)
+4. **Mark task in_progress** before starting
+5. **Complete task** — Write the code
+6. **Git commit** — Format: `T1: [Feature] - [Description]`
+7. **Mark task completed**
+8. **Repeat** — Check TaskList for next unblocked task
 
 ---
 
@@ -251,8 +283,11 @@ Terminal 2 will consume these APIs. Ensure you follow these contracts:
 T1: [Feature] - [Description]
 
 Examples:
-T1: State of You - Create report generation API
-T1: Database - Create user_reports table
+T1: Database - Add RLS policies for all Phase 15 tables
+T1: Database - Create whispers table (E2E encrypted)
+T1: State of You - Create report data aggregation (5a)
+T1: State of You - Create sentiment calculation (5b)
+T1: Whispers - Create whisper API (E2E encrypted)
 T1: Memory Moments - Implement dormant entity triggers
 ```
 
@@ -260,12 +295,14 @@ T1: Memory Moments - Implement dormant entity triggers
 
 ## Critical Rules
 
-1. **Always check blockedBy** before starting a task
-2. **Never edit frontend files** (js/, css/)
-3. **Commit after each completed task**
-4. **Follow API contracts exactly** — Terminal 2 depends on them
-5. **Mark tasks completed** when done
-6. **Create clear error handling** in all APIs
+1. **Task #0 MUST be first** — No tables without RLS
+2. **Whispers = E2E encrypted** — No plaintext content column
+3. **Whispers = text-only** — No voice in V1
+4. **State of You = 5 subtasks** — Don't combine into one
+5. **Notification preferences = timezone** — Required for cron timing
+6. **Never edit frontend files**
+7. **Commit after each task**
+8. **Check blockedBy before starting**
 
 ---
 
@@ -287,5 +324,6 @@ git add -A && git commit -m "T1: Feature - Description"
 
 ---
 
-*Terminal 1 (Backend) — Phase 15 Build*
+*Terminal 1 (Backend) — Phase 15 Build v1.1.0*
 *Task List ID: phase15-experience-transform*
+*Critical Fixes Applied*

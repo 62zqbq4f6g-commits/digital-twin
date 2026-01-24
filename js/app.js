@@ -4,9 +4,10 @@
  */
 
 // App version - displayed in console on load
-const APP_VERSION = '8.6.0';
+const APP_VERSION = '8.8.0';
 console.log('[App] Inscript v' + APP_VERSION);
-// Phase 14.3: Load speed optimization - parallel init, background sync, skeleton UI
+// Phase 14.4: UI refinement - emoji removal for brand compliance, grammar fixes
+// Phase 14.3: Load speed optimization - parallel init, background sync, lazy TWIN tab
 // Phase 11: Inscript rebrand, 7-screen onboarding, privacy settings, design system update
 // Phase 10.9: UI modularization - split chat, camera, entity editor into separate modules
 // Phase 10.6-10.8: Complete Mem0 Parity - cross-memory reasoning, importance classification, automatic forgetting
