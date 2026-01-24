@@ -1159,60 +1159,72 @@ const UI = {
   },
 
   /**
-   * Render a single note card
+   * Render a single note card - SuperDesign v2
    * @param {Object} note - Note object
    * @returns {string} HTML string
    */
   renderNoteCard(note) {
-    const category = note.classification?.category || 'personal';
-    const icon = this.categoryIcons[category] || '';
+    // Category with diamond indicator
+    const category = note.classification?.category || note.analysis?.category || 'personal';
     const title = note.extracted?.title || 'Untitled Note';
     const timestamp = this.formatNoteListTimestamp(note.timestamps?.created_at || note.created_at);
 
-    // Get user's original words - prioritize fields that contain user input
-    // AVOID: note.summary, note.content, note.refined (these are AI-generated)
-    // PREFER: raw_text, raw_content, text (user-authored fields)
+    // Get user's original words
     const rawText = note.input?.raw_text ||
                     note.input?.raw_content ||
-                    note.text ||  // Legacy field for very old notes
+                    note.text ||
                     '';
 
     // Normalize whitespace and prepare preview
     const normalizedText = rawText.replace(/\s+/g, ' ').trim();
 
-    // Generate preview with proper handling
+    // Generate preview (120 chars for SuperDesign)
     let preview;
     if (!normalizedText) {
-      // No original text available - show placeholder instead of AI summary
-      preview = '(no preview)';
-    } else if (normalizedText.length <= 80) {
+      preview = '';
+    } else if (normalizedText.length <= 120) {
       preview = normalizedText;
     } else {
-      // Truncate at word boundary to avoid mid-word cuts
-      // Using safer truncation that handles unicode better
-      const truncated = normalizedText.substring(0, 80).trim();
-      // Find last space to avoid cutting mid-word
+      const truncated = normalizedText.substring(0, 120).trim();
       const lastSpace = truncated.lastIndexOf(' ');
-      preview = (lastSpace > 40 ? truncated.substring(0, lastSpace) : truncated) + '...';
+      preview = (lastSpace > 60 ? truncated.substring(0, lastSpace) : truncated) + '...';
     }
+
+    // Get reflection text (AI insight)
+    const reflection = note.analysis?.heard ||
+                       note.analysis?.noticed ||
+                       note.analysis?.insight ||
+                       note.refined?.summary ||
+                       '';
+
+    // Truncate reflection to ~100 chars
+    let reflectionPreview = '';
+    if (reflection) {
+      if (reflection.length <= 100) {
+        reflectionPreview = reflection;
+      } else {
+        const truncated = reflection.substring(0, 100).trim();
+        const lastSpace = truncated.lastIndexOf(' ');
+        reflectionPreview = (lastSpace > 50 ? truncated.substring(0, lastSpace) : truncated) + '...';
+      }
+    }
+
     const hasComment = note.feedback?.comment ? true : false;
-    // Phase 4.5.3: Check all possible image locations
     const imageData = note.imageData || note.input?.image_thumbnail || note.input?.image_url || note.input?.image_data;
 
     return `
       <div class="note-card ${imageData ? 'has-thumbnail' : ''}" data-note-id="${note.id}" role="button" tabindex="0" aria-label="${this.escapeHtml(title)}">
         ${imageData ? `<div class="note-card-thumbnail"><img src="${imageData}" alt="" /></div>` : ''}
         <div class="note-card-content">
-          <div class="category-badge">
-            <span>${icon}</span>
-            <span>${category}</span>
-            ${hasComment ? '<span class="note-comment-indicator" title="Has feedback">●</span>' : ''}
+          <div class="note-category ${category.toLowerCase()}">
+            ${category}${hasComment ? '<span class="note-comment-indicator" title="Has feedback">●</span>' : ''}
           </div>
           <div class="note-card-header">
             <h4 class="note-card-title">${this.escapeHtml(title)}</h4>
             <span class="note-card-time">${timestamp}</span>
           </div>
-          <p class="note-card-preview">${this.escapeHtml(preview)}</p>
+          ${preview ? `<p class="note-card-preview">${this.escapeHtml(preview)}</p>` : ''}
+          ${reflectionPreview ? `<p class="note-reflection">${this.escapeHtml(reflectionPreview)}</p>` : ''}
         </div>
       </div>
     `;
