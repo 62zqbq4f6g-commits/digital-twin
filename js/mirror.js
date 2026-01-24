@@ -133,7 +133,7 @@ class Mirror {
       console.warn('[Mirror] Failed to get client context:', error);
       return {};
     }
-  },
+  }
 
   /**
    * Open MIRROR tab - initialize or resume conversation
