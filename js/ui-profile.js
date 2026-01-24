@@ -59,13 +59,43 @@ window.UIProfile = {
       const profile = profileResult.data || {};
       const onboarding = onboardingResult.data || {};
 
+      // Helper to convert legacy UPPERCASE values to lowercase IDs
+      const toLowerIds = (arr) => (arr || []).map(v => v?.toLowerCase?.() || v);
+
+      // Get life_seasons: prefer onboarding_data, fallback to legacy role_types/role_type
+      let lifeSeasons = [];
+      if (onboarding.life_seasons?.length > 0) {
+        lifeSeasons = onboarding.life_seasons;
+      } else if (profile.role_types?.length > 0) {
+        lifeSeasons = toLowerIds(profile.role_types);
+      } else if (profile.role_type) {
+        lifeSeasons = toLowerIds([profile.role_type]);
+      }
+
+      // Get mental_focus: prefer onboarding_data, fallback to legacy goals
+      let mentalFocus = [];
+      if (onboarding.mental_focus?.length > 0) {
+        mentalFocus = onboarding.mental_focus;
+      } else if (profile.goals?.length > 0) {
+        // Map legacy goal IDs to mental_focus IDs
+        const goalMapping = {
+          'SELF_UNDERSTANDING': 'myself',
+          'ORGANIZE': 'work',
+          'PROCESS': 'relationships',
+          'DECIDE': 'decision',
+          'REMEMBER': 'future',
+          'CREATE': 'project'
+        };
+        mentalFocus = profile.goals.map(g => goalMapping[g] || g.toLowerCase());
+      }
+
       // Merge: onboarding data takes priority for onboarding fields
       this.profile = {
         ...profile,
         // Use onboarding data for these fields (source of truth)
         name: onboarding.name || profile.name,
-        life_seasons: onboarding.life_seasons || [],
-        mental_focus: onboarding.mental_focus || [],
+        life_seasons: lifeSeasons,
+        mental_focus: mentalFocus,
         seeded_people: onboarding.seeded_people || [],
         depth_answer: onboarding.depth_answer || null
       };
