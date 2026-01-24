@@ -289,7 +289,7 @@ const WhisperUI = {
         return;
       }
 
-      const response = await fetch(`/api/whispers?user_id=${userId}&limit=50`);
+      const response = await fetch(`/api/whisper?user_id=${userId}&limit=50`);
       const data = await response.json();
 
       if (!response.ok) {
@@ -461,7 +461,7 @@ const WhisperUI = {
       }
 
       // Call batch reflect API
-      const response = await fetch('/api/whispers/reflect', {
+      const response = await fetch('/api/whisper/reflect', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
