@@ -224,24 +224,22 @@
   border-color: #404040 !important;
 }
 
-/* User messages - white background */
+/* User messages - dark background (design system) */
 .mirror-bubble-user {
-  background: #FFFFFF !important;
-  border: 1px solid rgba(0, 0, 0, 0.06) !important;
+  background: #1A1A1A !important;
+  border: none !important;
   border-radius: 16px 16px 4px 16px;
 }
 
 /* Override system dark mode */
 @media (prefers-color-scheme: dark) {
   .mirror-bubble-user {
-    background: #FFFFFF !important;
-    border-color: rgba(0, 0, 0, 0.06) !important;
+    background: #1A1A1A !important;
   }
 }
 
 [data-theme="dark"] .mirror-bubble-user {
   background: #333333 !important;
-  border-color: #404040 !important;
 }
 
 .mirror-bubble-text {
@@ -261,6 +259,11 @@
   color: #333333 !important;
 }
 
+/* User messages - white text on dark background */
+.mirror-bubble-user .mirror-bubble-text {
+  color: #FFFFFF !important;
+}
+
 /* Override system dark mode */
 @media (prefers-color-scheme: dark) {
   .mirror-bubble-text {
@@ -268,6 +271,9 @@
   }
   .mirror-bubble-inscript .mirror-bubble-text {
     color: #333333 !important;
+  }
+  .mirror-bubble-user .mirror-bubble-text {
+    color: #FFFFFF !important;
   }
 }
 
