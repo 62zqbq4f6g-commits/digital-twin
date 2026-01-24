@@ -5,6 +5,7 @@
 
 // App version - displayed in console on load
 const APP_VERSION = '8.8.0';
+window.APP_VERSION = APP_VERSION; // Export for settings.js
 console.log('[App] Inscript v' + APP_VERSION);
 // Phase 14.4: UI refinement - emoji removal for brand compliance, grammar fixes
 // Phase 14.3: Load speed optimization - parallel init, background sync, lazy TWIN tab

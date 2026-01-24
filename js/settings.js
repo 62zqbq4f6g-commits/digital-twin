@@ -102,7 +102,7 @@ window.Settings = {
             <h2 class="settings-section-title">About</h2>
             <div class="settings-item">
               <span class="settings-item-label">Version</span>
-              <span class="settings-item-value">${window.APP_VERSION || '5.3.0'}</span>
+              <span class="settings-item-value">${window.APP_VERSION || '8.8.0'}</span>
             </div>
             <button class="settings-btn btn-secondary" onclick="Settings.checkForUpdates()">
               Check for Updates
