@@ -352,6 +352,10 @@ const App = {
    */
   async init() {
     try {
+      // Update version display in Settings
+      const versionEl = document.getElementById('app-version');
+      if (versionEl) versionEl.textContent = APP_VERSION;
+
       // Initialize database
       await DB.initDB();
       console.log('Database initialized');
