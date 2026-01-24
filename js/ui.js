@@ -2989,9 +2989,19 @@ const UI = {
 
     console.log('[UI] reflectAndUpgrade - originalTier:', originalTier, 'input:', inputContent.substring(0, 50));
 
+    // Get encryption key for secure context transmission
+    const encryptionKeyB64 = typeof Auth !== 'undefined' && Auth.getEncryptionKeyBase64
+      ? await Auth.getEncryptionKeyBase64()
+      : null;
+
+    const headers = { 'Content-Type': 'application/json' };
+    if (encryptionKeyB64) {
+      headers['X-Encryption-Key'] = encryptionKeyB64;
+    }
+
     const response = await fetch('/api/analyze', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({
         input: {
           content: inputContent,
@@ -3108,9 +3118,19 @@ const UI = {
   async refineWithAnswer(note, answer) {
     const inputContent = note.input?.raw_text || note.analysis?.cleanedInput || '';
 
+    // Get encryption key for secure context transmission
+    const encryptionKeyB64 = typeof Auth !== 'undefined' && Auth.getEncryptionKeyBase64
+      ? await Auth.getEncryptionKeyBase64()
+      : null;
+
+    const headers = { 'Content-Type': 'application/json' };
+    if (encryptionKeyB64) {
+      headers['X-Encryption-Key'] = encryptionKeyB64;
+    }
+
     const response = await fetch('/api/analyze', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({
         input: {
           content: inputContent,

@@ -5,6 +5,43 @@
 const TwinUI = {
   // Phase 14.3: Track if heavy data has been loaded
   _hasLoadedFreshStats: false,
+  // Cached decrypted memory for efficiency
+  _decryptedMemory: null,
+
+  /**
+   * Get decrypted memory data using MemoryDecrypt
+   * Falls back to existing loaders if MemoryDecrypt not available
+   * @returns {Object} { entities, patterns, summaries, keyPeople }
+   */
+  async getDecryptedMemory() {
+    // Return cached if available and fresh
+    if (this._decryptedMemory) {
+      return this._decryptedMemory;
+    }
+
+    const userId = Sync?.user?.id;
+    if (!userId) {
+      return { entities: [], patterns: [], summaries: [], keyPeople: [] };
+    }
+
+    // Use MemoryDecrypt if available
+    if (typeof MemoryDecrypt !== 'undefined') {
+      console.log('[TwinUI] Loading decrypted memory via MemoryDecrypt');
+      this._decryptedMemory = await MemoryDecrypt.getDecryptedMemory(userId);
+      return this._decryptedMemory;
+    }
+
+    // Fallback: use existing loaders
+    console.log('[TwinUI] MemoryDecrypt not available, using fallback loaders');
+    return { entities: [], patterns: [], summaries: [], keyPeople: [] };
+  },
+
+  /**
+   * Clear cached decrypted memory (call when data changes)
+   */
+  clearDecryptedMemoryCache() {
+    this._decryptedMemory = null;
+  },
 
   /**
    * Initialize Twin UI - FAST (no DB/network calls)
@@ -35,6 +72,7 @@ const TwinUI = {
     window.addEventListener('note-saved', () => {
       console.log('[TwinUI] Note saved, marking data stale...');
       this._hasLoadedFreshStats = false;
+      this.clearDecryptedMemoryCache(); // Clear cached decrypted memory
       // Only refresh if currently viewing TWIN tab
       if (typeof UI !== 'undefined' && UI.currentScreen === 'twin') {
         this.refresh();

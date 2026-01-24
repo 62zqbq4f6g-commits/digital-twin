@@ -232,9 +232,19 @@ const Analyzer = {
       const currentUserId = Sync.user?.id || null;
       console.log('[Analyzer] Phase 11 - Sending userId:', currentUserId);
 
+      // Get encryption key for secure context transmission
+      const encryptionKeyB64 = typeof Auth !== 'undefined' && Auth.getEncryptionKeyBase64
+        ? await Auth.getEncryptionKeyBase64()
+        : null;
+
+      const headers = { 'Content-Type': 'application/json' };
+      if (encryptionKeyB64) {
+        headers['X-Encryption-Key'] = encryptionKeyB64;
+      }
+
       const response = await fetch('/api/analyze-edge', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           input: {
             type: input.type || 'text',

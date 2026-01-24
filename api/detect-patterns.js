@@ -11,6 +11,7 @@
 
 const { createClient } = require('@supabase/supabase-js');
 const Anthropic = require('@anthropic-ai/sdk');
+const { encryptForStorage, isValidKey } = require('./lib/encryption');
 
 const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = createClient(
@@ -39,14 +40,18 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { user_id } = req.body;
+  const { user_id, encryptionKey } = req.body;
 
   if (!user_id) {
     return res.status(400).json({ error: 'user_id required' });
   }
 
+  // Validate encryption key if provided
+  const hasValidEncryption = encryptionKey && isValidKey(encryptionKey);
+
   try {
     console.log('[detect-patterns] Starting hybrid LLM pattern detection for user:', user_id);
+    console.log('[detect-patterns] Encryption:', hasValidEncryption ? 'enabled' : 'disabled');
 
     // ===== STEP 1: GATHER RAW DATA =====
 
@@ -284,26 +289,39 @@ IMPORTANT:
 
     const newPatterns = [];
     for (const pattern of patterns) {
-      const { data: inserted, error: insertError } = await supabase
-        .from('user_patterns')
-        .insert({
-          user_id,
+      const insertData = {
+        user_id,
+        pattern_type: pattern.pattern_type || 'thematic',
+        pattern_text: pattern.short_description,
+        description: pattern.description,
+        short_description: pattern.short_description,
+        confidence: pattern.confidence || 0.7,
+        evidence: { evidence_count: pattern.evidence_count },
+        detection_method: 'llm_hybrid',
+        status: 'detected'
+      };
+
+      // If encryption is enabled, encrypt sensitive fields
+      if (hasValidEncryption) {
+        const sensitiveData = {
           pattern_type: pattern.pattern_type || 'thematic',
-          pattern_text: pattern.short_description,
           description: pattern.description,
           short_description: pattern.short_description,
-          confidence: pattern.confidence || 0.7,
-          evidence: { evidence_count: pattern.evidence_count },
-          detection_method: 'llm_hybrid',
-          status: 'detected'
-        })
+          evidence: { evidence_count: pattern.evidence_count }
+        };
+        insertData.encrypted_data = encryptForStorage(sensitiveData, encryptionKey);
+      }
+
+      const { data: inserted, error: insertError } = await supabase
+        .from('user_patterns')
+        .insert(insertData)
         .select()
         .single();
 
       if (insertError) {
         console.error('[detect-patterns] Insert error:', insertError);
       } else if (inserted) {
-        console.log('[detect-patterns] Inserted pattern:', inserted.short_description);
+        console.log(`[detect-patterns] Inserted pattern: ${inserted.short_description}${hasValidEncryption ? ' [encrypted]' : ''}`);
         newPatterns.push(inserted);
       }
     }

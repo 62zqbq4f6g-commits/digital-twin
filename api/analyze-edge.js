@@ -10,6 +10,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import Anthropic from '@anthropic-ai/sdk';
+import { encryptForStorage, isValidKey } from './lib/encryption-edge.js';
 
 export const config = { runtime: 'edge' };
 
@@ -41,8 +42,14 @@ export default async function handler(req, ctx) {
 
   try {
     const body = await req.json();
-    const { input, userId, noteId, context = {} } = body;
+    const { input, userId, noteId, context = {}, encryptionKey } = body;
     const content = input?.content || '';
+
+    // Validate encryption key if provided
+    const hasValidEncryption = encryptionKey && isValidKey(encryptionKey);
+    if (encryptionKey && !hasValidEncryption) {
+      console.warn('[Analyze-Edge] Invalid encryption key provided');
+    }
 
     if (!content || content.trim().length < 5) {
       return new Response(
@@ -96,13 +103,13 @@ export default async function handler(req, ctx) {
     // Step 3: Queue background work (user doesn't wait)
     if (ctx?.waitUntil) {
       ctx.waitUntil(
-        processInBackground(supabase, anthropic, userId, noteId, content).catch(err => {
+        processInBackground(supabase, anthropic, userId, noteId, content, hasValidEncryption ? encryptionKey : null).catch(err => {
           console.error('[Background] Error:', err.message);
         })
       );
     } else {
       // Fallback: fire and forget (not ideal but works)
-      processInBackground(supabase, anthropic, userId, noteId, content).catch(err => {
+      processInBackground(supabase, anthropic, userId, noteId, content, hasValidEncryption ? encryptionKey : null).catch(err => {
         console.error('[Background] Error:', err.message);
       });
     }
@@ -330,9 +337,10 @@ function generateTitle(content) {
 // BACKGROUND PROCESSING (User doesn't wait)
 // ============================================
 
-async function processInBackground(supabase, anthropic, userId, noteId, content) {
+async function processInBackground(supabase, anthropic, userId, noteId, content, encryptionKey = null) {
   const startTime = Date.now();
   console.log('[Background] === START ===');
+  console.log('[Background] Encryption:', encryptionKey ? 'enabled' : 'disabled');
 
   if (!userId) {
     console.log('[Background] No userId, skipping memory updates');
@@ -357,11 +365,11 @@ async function processInBackground(supabase, anthropic, userId, noteId, content)
     entities.forEach((e, i) => { e.embedding = embeddings[i]; });
     console.log(`[Background] Embeddings batch: ${Date.now() - t0}ms`);
 
-    // Step 3: Parallel - save entities + update summaries
+    // Step 3: Parallel - save entities + update summaries (with encryption if available)
     t0 = Date.now();
     await Promise.all([
-      saveEntitiesWithBoost(supabase, userId, entities, noteId),
-      updateCategorySummariesSafe(supabase, anthropic, userId, entities)
+      saveEntitiesWithBoost(supabase, userId, entities, noteId, encryptionKey),
+      updateCategorySummariesSafe(supabase, anthropic, userId, entities, encryptionKey)
     ]);
     console.log(`[Background] Save + summaries: ${Date.now() - t0}ms`);
 
@@ -474,13 +482,13 @@ async function generateEmbeddingsBatch(texts) {
 // SAVE ENTITIES WITH BOOST
 // ============================================
 
-async function saveEntitiesWithBoost(supabase, userId, entities, noteId) {
+async function saveEntitiesWithBoost(supabase, userId, entities, noteId, encryptionKey = null) {
   for (const entity of entities) {
     try {
       // Check for existing entity (duplicate detection)
       const { data: existing } = await supabase
         .from('user_entities')
-        .select('id, importance_score, mention_count, summary')
+        .select('id, importance_score, mention_count, summary, encrypted_data')
         .eq('user_id', userId)
         .ilike('name', entity.name)
         .eq('status', 'active')
@@ -491,41 +499,70 @@ async function saveEntitiesWithBoost(supabase, userId, entities, noteId) {
         const currentScore = existing.importance_score || 0.5;
         const newScore = Math.min(1.0, currentScore + (1 - currentScore) * 0.3);
 
+        const newSummary = entity.description
+          ? (existing.summary ? `${existing.summary}. ${entity.description}` : entity.description)
+          : existing.summary;
+
+        const updateData = {
+          importance_score: newScore,
+          mention_count: (existing.mention_count || 1) + 1,
+          last_mentioned_at: new Date().toISOString()
+        };
+
+        // If encryption is enabled, encrypt sensitive fields
+        if (encryptionKey) {
+          const sensitiveData = {
+            name: entity.name,
+            entity_type: entity.entity_type,
+            summary: newSummary
+          };
+          updateData.encrypted_data = await encryptForStorage(sensitiveData, encryptionKey);
+          // Keep plaintext for backwards compatibility during transition
+          updateData.summary = newSummary;
+        } else {
+          updateData.summary = newSummary;
+        }
+
         await supabase
           .from('user_entities')
-          .update({
-            importance_score: newScore,
-            mention_count: (existing.mention_count || 1) + 1,
-            last_mentioned_at: new Date().toISOString(),
-            summary: entity.description
-              ? (existing.summary ? `${existing.summary}. ${entity.description}` : entity.description)
-              : existing.summary
-          })
+          .update(updateData)
           .eq('id', existing.id);
 
-        console.log(`[Background] Boosted entity: ${entity.name} (${currentScore.toFixed(2)} → ${newScore.toFixed(2)})`);
+        console.log(`[Background] Boosted entity: ${entity.name} (${currentScore.toFixed(2)} → ${newScore.toFixed(2)})${encryptionKey ? ' [encrypted]' : ''}`);
       } else {
         // Insert new entity
         const validTypes = ['person', 'place', 'organization', 'project', 'concept'];
         const entityType = validTypes.includes(entity.entity_type) ? entity.entity_type : 'concept';
 
-        await supabase
-          .from('user_entities')
-          .insert({
-            user_id: userId,
+        const insertData = {
+          user_id: userId,
+          name: entity.name,
+          entity_type: entityType,
+          summary: entity.description,
+          embedding: entity.embedding,
+          importance_score: 0.5,
+          importance: 'medium',
+          mention_count: 1,
+          first_mentioned_at: new Date().toISOString(),
+          last_mentioned_at: new Date().toISOString(),
+          status: 'active'
+        };
+
+        // If encryption is enabled, encrypt sensitive fields
+        if (encryptionKey) {
+          const sensitiveData = {
             name: entity.name,
             entity_type: entityType,
-            summary: entity.description,
-            embedding: entity.embedding,
-            importance_score: 0.5,
-            importance: 'medium',
-            mention_count: 1,
-            first_mentioned_at: new Date().toISOString(),
-            last_mentioned_at: new Date().toISOString(),
-            status: 'active'
-          });
+            summary: entity.description
+          };
+          insertData.encrypted_data = await encryptForStorage(sensitiveData, encryptionKey);
+        }
 
-        console.log(`[Background] Created entity: ${entity.name} (${entityType})`);
+        await supabase
+          .from('user_entities')
+          .insert(insertData);
+
+        console.log(`[Background] Created entity: ${entity.name} (${entityType})${encryptionKey ? ' [encrypted]' : ''}`);
       }
     } catch (error) {
       console.error(`[Background] Entity save error for ${entity.name}:`, error.message);
@@ -537,7 +574,7 @@ async function saveEntitiesWithBoost(supabase, userId, entities, noteId) {
 // UPDATE CATEGORY SUMMARIES (Safe)
 // ============================================
 
-async function updateCategorySummariesSafe(supabase, anthropic, userId, entities) {
+async function updateCategorySummariesSafe(supabase, anthropic, userId, entities, encryptionKey = null) {
   // Group entities by category
   const byCategory = {};
   for (const entity of entities) {
@@ -552,7 +589,7 @@ async function updateCategorySummariesSafe(supabase, anthropic, userId, entities
       // Fetch existing summary
       const { data: existing } = await supabase
         .from('category_summaries')
-        .select('summary, entity_count')
+        .select('summary, entity_count, encrypted_data')
         .eq('user_id', userId)
         .eq('category', category)
         .maybeSingle();
@@ -565,20 +602,31 @@ async function updateCategorySummariesSafe(supabase, anthropic, userId, entities
         categoryEntities
       );
 
+      const upsertData = {
+        user_id: userId,
+        category,
+        summary: newSummary,
+        entity_count: (existing?.entity_count || 0) + categoryEntities.length,
+        updated_at: new Date().toISOString()
+      };
+
+      // If encryption is enabled, encrypt sensitive fields
+      if (encryptionKey) {
+        const sensitiveData = {
+          summary: newSummary,
+          themes: categoryEntities.map(e => e.name)
+        };
+        upsertData.encrypted_data = await encryptForStorage(sensitiveData, encryptionKey);
+      }
+
       // Upsert
       await supabase
         .from('category_summaries')
-        .upsert({
-          user_id: userId,
-          category,
-          summary: newSummary,
-          entity_count: (existing?.entity_count || 0) + categoryEntities.length,
-          updated_at: new Date().toISOString()
-        }, {
+        .upsert(upsertData, {
           onConflict: 'user_id,category'
         });
 
-      console.log(`[Background] Updated category: ${category}`);
+      console.log(`[Background] Updated category: ${category}${encryptionKey ? ' [encrypted]' : ''}`);
 
     } catch (error) {
       console.error(`[Background] Category ${category} update failed:`, error.message);

@@ -729,14 +729,24 @@ window.UIProfile = {
     if (!name || !relationship) return;
 
     try {
+      const insertData = {
+        user_id: Sync.user.id,
+        name: name,
+        relationship: relationship,
+        added_via: 'profile'
+      };
+
+      // Encrypt sensitive data if PIN encryption is available
+      if (typeof PIN !== 'undefined' && PIN.encryptionKey) {
+        const sensitiveData = { name, relationship };
+        const encrypted = await PIN.encrypt(JSON.stringify(sensitiveData));
+        insertData.encrypted_data = encrypted;
+        console.log('[UIProfile] Encrypting key person data');
+      }
+
       const { data, error } = await Sync.supabase
         .from('user_key_people')
-        .insert({
-          user_id: Sync.user.id,
-          name: name,
-          relationship: relationship,
-          added_via: 'profile'
-        })
+        .insert(insertData)
         .select()
         .single();
 
@@ -745,7 +755,7 @@ window.UIProfile = {
       // Re-render modal
       this.showPeopleModal();
       this.refreshProfileDisplay();
-      console.log('[UIProfile] Person added:', name);
+      console.log('[UIProfile] Person added:', name, PIN?.encryptionKey ? '[encrypted]' : '');
     } catch (err) {
       console.error('[UIProfile] Failed to add person:', err);
     }

@@ -333,6 +333,22 @@ const Auth = {
     );
 
     return JSON.parse(new TextDecoder().decode(decrypted));
+  },
+
+  /**
+   * Get encryption key as base64 string for API headers
+   * @returns {string|null} Base64-encoded encryption key
+   */
+  async getEncryptionKeyBase64() {
+    if (!this.encryptionKey) return null;
+
+    try {
+      const exported = await crypto.subtle.exportKey('raw', this.encryptionKey);
+      return btoa(String.fromCharCode(...new Uint8Array(exported)));
+    } catch (error) {
+      console.warn('[Auth] Failed to export encryption key:', error);
+      return null;
+    }
   }
 };
 

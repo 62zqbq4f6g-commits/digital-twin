@@ -5,6 +5,7 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@supabase/supabase-js';
+import { encryptForStorage, isValidKey } from './lib/encryption-edge.js';
 
 const anthropic = new Anthropic();
 
@@ -129,7 +130,7 @@ Write ONLY the new summary, no preamble:`;
 /**
  * Update category summaries for a user based on recent entities
  */
-async function updateCategorySummaries(supabase, userId, entities) {
+async function updateCategorySummaries(supabase, userId, entities, encryptionKey = null) {
   const results = { updated: [], created: [], errors: [] };
 
   // Group entities by category
@@ -171,16 +172,31 @@ async function updateCategorySummaries(supabase, userId, entities) {
         added_at: new Date().toISOString()
       }));
 
+      // Prepare encrypted data if encryption is enabled
+      let encryptedData = null;
+      if (encryptionKey) {
+        const sensitiveData = {
+          summary: newSummary,
+          themes: categoryEntities.map(e => e.name)
+        };
+        encryptedData = await encryptForStorage(sensitiveData, encryptionKey);
+      }
+
       if (existing) {
         // Update existing summary
+        const updateData = {
+          summary: newSummary,
+          entity_count: (existing.entity_count || 0) + categoryEntities.length,
+          last_entities: lastEntities,
+          updated_at: new Date().toISOString()
+        };
+        if (encryptedData) {
+          updateData.encrypted_data = encryptedData;
+        }
+
         const { error } = await supabase
           .from('category_summaries')
-          .update({
-            summary: newSummary,
-            entity_count: (existing.entity_count || 0) + categoryEntities.length,
-            last_entities: lastEntities,
-            updated_at: new Date().toISOString()
-          })
+          .update(updateData)
           .eq('id', existing.id);
 
         if (error) {
@@ -190,15 +206,20 @@ async function updateCategorySummaries(supabase, userId, entities) {
         }
       } else {
         // Create new summary
+        const insertData = {
+          user_id: userId,
+          category,
+          summary: newSummary,
+          entity_count: categoryEntities.length,
+          last_entities: lastEntities
+        };
+        if (encryptedData) {
+          insertData.encrypted_data = encryptedData;
+        }
+
         const { error } = await supabase
           .from('category_summaries')
-          .insert({
-            user_id: userId,
-            category,
-            summary: newSummary,
-            entity_count: categoryEntities.length,
-            last_entities: lastEntities
-          });
+          .insert(insertData);
 
         if (error) {
           results.errors.push({ category, error: error.message });
@@ -238,11 +259,14 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { userId, entities, action } = req.body;
+  const { userId, entities, action, encryptionKey } = req.body;
 
   if (!userId) {
     return res.status(400).json({ error: 'userId required' });
   }
+
+  // Validate encryption key if provided
+  const hasValidEncryption = encryptionKey && isValidKey(encryptionKey);
 
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -260,8 +284,8 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'entities array required for update' });
     }
 
-    // Update summaries with new entities
-    const results = await updateCategorySummaries(supabase, userId, entities);
+    // Update summaries with new entities (with encryption if available)
+    const results = await updateCategorySummaries(supabase, userId, entities, hasValidEncryption ? encryptionKey : null);
 
     console.log('[evolve-summary] Updated summaries:', {
       updated: results.updated.length,

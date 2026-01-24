@@ -70,6 +70,72 @@ class Mirror {
   }
 
   /**
+   * Fetch user context from client side (decrypted)
+   * @returns {Object} Full user context for API
+   */
+  async getClientContext() {
+    const userId = Sync?.user?.id;
+    if (!userId || !Sync?.supabase) return {};
+
+    try {
+      // Fetch decrypted memory data
+      const memory = typeof MemoryDecrypt !== 'undefined'
+        ? await MemoryDecrypt.getDecryptedMemory(userId)
+        : { entities: [], patterns: [], summaries: [], keyPeople: [] };
+
+      // Fetch profile data (not encrypted)
+      const [profileRes, onboardingRes] = await Promise.all([
+        Sync.supabase
+          .from('user_profiles')
+          .select('name, role_type, role_types, goals, tone, life_context, boundaries')
+          .eq('user_id', userId)
+          .maybeSingle(),
+        Sync.supabase
+          .from('onboarding_data')
+          .select('name, life_seasons, mental_focus, depth_question, depth_answer, seeded_people')
+          .eq('user_id', userId)
+          .maybeSingle()
+      ]);
+
+      const profile = {
+        name: onboardingRes.data?.name || profileRes.data?.name || 'there',
+        role_types: profileRes.data?.role_types || [],
+        goals: profileRes.data?.goals || [],
+        tone: profileRes.data?.tone || null,
+        life_context: profileRes.data?.life_context || null,
+        boundaries: profileRes.data?.boundaries || [],
+        life_seasons: onboardingRes.data?.life_seasons || [],
+        mental_focus: onboardingRes.data?.mental_focus || [],
+        depth_question: onboardingRes.data?.depth_question || null,
+        depth_answer: onboardingRes.data?.depth_answer || null,
+        seeded_people: onboardingRes.data?.seeded_people || []
+      };
+
+      // Build context block
+      const contextBlock = typeof MemoryDecrypt !== 'undefined'
+        ? MemoryDecrypt.buildContextBlock(memory, profile)
+        : '';
+
+      console.log('[Mirror] Client context built:', {
+        entitiesCount: memory.entities?.length || 0,
+        patternsCount: memory.patterns?.length || 0,
+        summariesCount: memory.summaries?.length || 0,
+        keyPeopleCount: memory.keyPeople?.length || 0
+      });
+
+      return {
+        memory,
+        profile,
+        contextBlock
+      };
+
+    } catch (error) {
+      console.warn('[Mirror] Failed to get client context:', error);
+      return {};
+    }
+  },
+
+  /**
    * Open MIRROR tab - initialize or resume conversation
    */
   async open() {
@@ -82,10 +148,16 @@ class Mirror {
     this.render();
 
     try {
+      // Get client-side decrypted context
+      const clientContext = await this.getClientContext();
+
       const response = await fetch('/api/mirror?action=open', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: Sync.user.id })
+        body: JSON.stringify({
+          user_id: Sync.user.id,
+          clientContext // Send decrypted context from client
+        })
       });
 
       if (!response.ok) {
@@ -149,6 +221,9 @@ class Mirror {
     this.scrollToBottom();
 
     try {
+      // Get client-side decrypted context
+      const clientContext = await this.getClientContext();
+
       const response = await fetch('/api/mirror?action=message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -157,6 +232,7 @@ class Mirror {
           conversation_id: this.conversationId,
           message: content.trim(),
           context,
+          clientContext, // Send decrypted context from client
           // Include recent session notes for immediate context
           recentSessionNotes: this.sessionNotes
         })

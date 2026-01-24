@@ -66,6 +66,12 @@ module.exports = async function handler(req, res) {
  * Open/resume MIRROR conversation
  */
 async function handleOpen(req, res, user_id) {
+  // Extract client-provided context (decrypted on client side)
+  const clientContext = req.body?.clientContext;
+  const hasClientContext = !!(clientContext?.contextBlock || clientContext?.memory?.entities?.length > 0);
+
+  console.log('[mirror] handleOpen - hasClientContext:', hasClientContext);
+
   // Check note count for experience level
   const { count: noteCount } = await supabase
     .from('notes')
@@ -87,21 +93,22 @@ async function handleOpen(req, res, user_id) {
     // Resume existing conversation
     const messages = existingConvo.mirror_messages || [];
     const opening = await generateContinuityOpening(user_id, existingConvo);
-    const userContext = await getUserContext(user_id);
+
+    // Use client context if provided, otherwise fetch from server
+    const hasContext = hasClientContext || (await getUserContext(user_id)).hasContext;
 
     return res.status(200).json({
       conversationId: existingConvo.id,
       isNewConversation: false,
       noteCount,
       opening,
-      hasContext: userContext.hasContext,
+      hasContext,
       previousMessages: messages.map(formatMessage)
     });
   }
 
-  // Get user context to determine hasContext
-  const userContext = await getUserContext(user_id);
-  const hasContext = userContext.hasContext;
+  // Get user context to determine hasContext - prefer client context
+  const hasContext = hasClientContext || (await getUserContext(user_id)).hasContext;
 
   // Create new conversation
   const opening = await generateOpening(user_id, noteCount, hasContext);
@@ -147,10 +154,18 @@ async function handleOpen(req, res, user_id) {
  * Handle user message and generate response
  */
 async function handleMessage(req, res, user_id) {
-  const { conversation_id, message, context, recentSessionNotes } = req.body;
+  const { conversation_id, message, context, clientContext, recentSessionNotes } = req.body;
 
   if (!conversation_id || !message) {
     return res.status(400).json({ error: 'conversation_id and message required' });
+  }
+
+  // Log client context if present (for debugging)
+  const hasClientContext = !!(clientContext?.contextBlock || clientContext?.memory?.entities?.length > 0);
+  console.log('[mirror] handleMessage - hasClientContext:', hasClientContext);
+  if (hasClientContext) {
+    console.log('[mirror] Client context entities:', clientContext?.memory?.entities?.length || 0);
+    console.log('[mirror] Client context patterns:', clientContext?.memory?.patterns?.length || 0);
   }
 
   // Log session notes if present (for debugging)
@@ -190,8 +205,17 @@ async function handleMessage(req, res, user_id) {
     .eq('conversation_id', conversation_id)
     .order('created_at', { ascending: true });
 
-  // Get user context (recent notes, entities)
-  const userContext = await getUserContext(user_id);
+  // Build user context - prefer client-provided decrypted context
+  let userContext;
+  if (hasClientContext) {
+    // Use client-decrypted context
+    userContext = buildContextFromClient(clientContext);
+    console.log('[mirror] Using client-provided decrypted context');
+  } else {
+    // Fallback to server-side fetch (for backwards compatibility)
+    userContext = await getUserContext(user_id);
+    console.log('[mirror] Using server-fetched context');
+  }
 
   // Add session notes to context (client-side notes not yet in server DB)
   userContext.recentSessionNotes = recentSessionNotes || [];
@@ -729,6 +753,89 @@ async function buildMirrorContext(user_id, query = '') {
     console.error('[mirror] buildMirrorContext error:', error);
     return { context: '', memories: [], stats: { total: 0 } };
   }
+}
+
+/**
+ * Build context from client-provided decrypted data
+ * This replaces server-side fetching when client sends decrypted context
+ */
+function buildContextFromClient(clientContext) {
+  const memory = clientContext?.memory || {};
+  const profile = clientContext?.profile || {};
+
+  // Build entities list from client data
+  let allPeople = [];
+
+  // Add Key People first (highest priority)
+  if (memory.keyPeople?.length > 0) {
+    for (const person of memory.keyPeople) {
+      allPeople.push({
+        name: person.name,
+        entity_type: 'person',
+        relationship: person.relationship || 'key person',
+        context_notes: null,
+        is_key_person: true
+      });
+    }
+  }
+
+  // Add seeded people from profile
+  if (profile.seeded_people?.length > 0) {
+    for (const person of profile.seeded_people) {
+      const exists = allPeople.some(e =>
+        e.name?.toLowerCase() === person.name?.toLowerCase()
+      );
+      if (!exists && person.name) {
+        allPeople.push({
+          name: person.name,
+          entity_type: 'person',
+          relationship: person.context || person.relationship || 'known person',
+          is_seeded_person: true
+        });
+      }
+    }
+  }
+
+  // Add entities
+  for (const entity of (memory.entities || [])) {
+    const exists = allPeople.some(e =>
+      e.name?.toLowerCase() === entity.name?.toLowerCase()
+    );
+    if (!exists) {
+      allPeople.push(entity);
+    }
+  }
+
+  return {
+    noteCount: 0, // We don't have this from client context
+    entities: allPeople,
+    patterns: memory.patterns || [],
+    userName: profile.name || 'there',
+    hasContext: true,
+
+    onboarding: {
+      name: profile.name,
+      lifeSeasons: profile.life_seasons || [],
+      focus: profile.mental_focus || [],
+      people: profile.seeded_people || []
+    },
+
+    profile: {
+      roleTypes: profile.role_types || [],
+      goals: profile.goals || [],
+      tone: profile.tone || null,
+      lifeContext: profile.life_context || null,
+      boundaries: profile.boundaries || []
+    },
+
+    depthQuestion: profile.depth_question || null,
+    depthAnswer: profile.depth_answer || null,
+
+    summaries: memory.summaries || [],
+
+    // Include raw context block from client
+    clientContextBlock: clientContext?.contextBlock || ''
+  };
 }
 
 /**
