@@ -166,12 +166,12 @@ export default async function handler(req, ctx) {
 
 async function getMemoryContextFast(supabase, userId) {
   if (!userId) {
-    return { memoryContext: '', onboardingData: null };
+    return { memoryContext: '', onboardingData: null, keyPeople: [] };
   }
 
   try {
-    // Parallel fetch: onboarding + category summaries
-    const [onboardingResult, summariesResult] = await Promise.all([
+    // Parallel fetch: onboarding + category summaries + key people + top entities
+    const [onboardingResult, summariesResult, keyPeopleResult, entitiesResult] = await Promise.all([
       supabase
         .from('onboarding_data')
         .select('name, life_seasons, mental_focus, seeded_people, depth_answer')
@@ -180,11 +180,25 @@ async function getMemoryContextFast(supabase, userId) {
       supabase
         .from('category_summaries')
         .select('category, summary')
+        .eq('user_id', userId),
+      // Key people explicitly added by user (e.g., "Seri - my dog")
+      supabase
+        .from('user_key_people')
+        .select('name, relationship')
+        .eq('user_id', userId),
+      // Top entities from previous notes (people, pets, projects)
+      supabase
+        .from('user_entities')
+        .select('name, entity_type, summary')
         .eq('user_id', userId)
+        .order('mention_count', { ascending: false })
+        .limit(15)
     ]);
 
     const onboardingData = onboardingResult.data;
     const summaries = summariesResult.data || [];
+    const keyPeople = keyPeopleResult.data || [];
+    const entities = entitiesResult.data || [];
 
     // Build context string
     let contextParts = [];
@@ -204,7 +218,35 @@ async function getMemoryContextFast(supabase, userId) {
         const people = onboardingData.seeded_people
           .map(p => `${p.name}${p.context ? ` (${p.context})` : ''}`)
           .join(', ');
-        contextParts.push(`Key people: ${people}`);
+        contextParts.push(`People from onboarding: ${people}`);
+      }
+    }
+
+    // Add KEY PEOPLE (explicitly added - highest priority)
+    if (keyPeople.length > 0) {
+      contextParts.push('\n⭐ KEY PEOPLE (User explicitly told you about these - ALWAYS recognize them):');
+      for (const person of keyPeople) {
+        contextParts.push(`- ${person.name}: ${person.relationship}`);
+      }
+    }
+
+    // Add top entities from previous notes
+    if (entities.length > 0) {
+      const personEntities = entities.filter(e => e.entity_type === 'person');
+      const otherEntities = entities.filter(e => e.entity_type !== 'person');
+
+      if (personEntities.length > 0) {
+        contextParts.push('\nPeople mentioned in previous notes:');
+        for (const e of personEntities.slice(0, 8)) {
+          contextParts.push(`- ${e.name}${e.summary ? `: ${e.summary}` : ''}`);
+        }
+      }
+
+      if (otherEntities.length > 0) {
+        contextParts.push('\nOther important topics/projects:');
+        for (const e of otherEntities.slice(0, 5)) {
+          contextParts.push(`- ${e.name} (${e.entity_type})${e.summary ? `: ${e.summary}` : ''}`);
+        }
       }
     }
 
@@ -218,12 +260,13 @@ async function getMemoryContextFast(supabase, userId) {
 
     return {
       memoryContext: contextParts.join('\n'),
-      onboardingData
+      onboardingData,
+      keyPeople
     };
 
   } catch (error) {
     console.error('[Analyze-Edge] Memory context error:', error.message);
-    return { memoryContext: '', onboardingData: null };
+    return { memoryContext: '', onboardingData: null, keyPeople: [] };
   }
 }
 
@@ -248,6 +291,13 @@ CRITICAL RULES:
 5. If they mention a date or timeline (like "June 2026"), include it
 6. Sound like a thoughtful friend, not a therapist or AI assistant
 
+KEY PEOPLE RULE (CRITICAL):
+- Look at the "KEY PEOPLE" section above - these are people the user EXPLICITLY told you about
+- If the note mentions ANY name from KEY PEOPLE, you ALREADY KNOW who they are
+- Example: If "Seri" is listed as "my dog", and user writes "walked Seri today", your reflection should naturally acknowledge Seri as their dog
+- NEVER ask "who is [name]?" if that name appears in KEY PEOPLE
+- Acknowledge the relationship naturally: "You took Seri out for a walk — how's she doing?"
+
 Respond in this exact JSON format:
 {
   "what_i_heard": "A clear, specific summary that proves you understood their note - use their actual words, names, and details",
@@ -264,7 +314,10 @@ BAD what_i_noticed: "Something is stirring here that deserves attention."
 GOOD what_i_noticed: "This is a significant responsibility - you're being trusted to design an experience that could meaningfully impact your team's wellbeing."
 
 BAD question: "What are you feeling about this?"
-GOOD question: "What wellness activities do you think would resonate most with your team?"`;
+GOOD question: "What wellness activities do you think would resonate most with your team?"
+
+BAD (ignoring key person): "You mentioned walking someone named Seri."
+GOOD (recognizing key person): "You took Seri out for a walk — sounds like quality time with your dog."`;
 
   try {
     const message = await anthropic.messages.create({
