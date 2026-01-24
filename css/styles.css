@@ -1440,6 +1440,36 @@ body {
   margin-bottom: var(--space-xl);
 }
 
+/* Encryption Trust Signal */
+.encryption-status {
+  text-align: center;
+  padding: 48px 24px;
+  border-top: 1px solid #e5e5e5;
+  border-bottom: 1px solid #e5e5e5;
+  margin: 32px 0;
+}
+
+.encryption-statement {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-style: italic;
+  font-size: 20px;
+  color: #1a1a1a;
+  margin: 0 0 8px 0;
+}
+
+.encryption-subtext {
+  font-size: 14px;
+  color: #666;
+  margin: 0 0 16px 0;
+}
+
+.encryption-spec {
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  color: #999;
+}
+
 .settings-heading {
   margin: 0 0 var(--space-md) 0;
   font-size: var(--text-micro);
