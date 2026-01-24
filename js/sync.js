@@ -57,6 +57,8 @@ const Sync = {
   lastSyncKey: 'dt_last_sync',
   isSyncing: false,
   onSyncComplete: null,  // Callback for when sync completes
+  realtimeChannel: null, // Supabase Realtime channel for instant sync
+  realtimeDebounce: null, // Debounce timer for rapid changes
 
   /**
    * Initialize sync module
@@ -328,26 +330,155 @@ const Sync = {
   // ==================
 
   /**
-   * Start periodic sync
+   * Start periodic sync + Realtime subscription
    */
   startSync() {
     // Initial sync
     this.syncNow();
 
-    // Sync every 30 seconds
+    // Sync every 30 seconds (fallback for reliability)
     this.syncInterval = setInterval(() => this.syncNow(), 30000);
 
     // Sync when coming back online
     window.addEventListener('online', () => this.syncNow());
+
+    // Setup Supabase Realtime for instant cross-device sync
+    this.setupRealtimeSubscription();
   },
 
   /**
-   * Stop periodic sync
+   * Setup Supabase Realtime subscription for instant cross-device sync
+   * Listens for INSERT/UPDATE/DELETE on notes table for current user
+   */
+  setupRealtimeSubscription() {
+    if (!this.supabase || !this.user) {
+      console.log('[Sync] Cannot setup Realtime: no supabase or user');
+      return;
+    }
+
+    // Clean up existing subscription if any
+    if (this.realtimeChannel) {
+      this.supabase.removeChannel(this.realtimeChannel);
+    }
+
+    console.log('[Sync] Setting up Realtime subscription for user:', this.user.id);
+
+    this.realtimeChannel = this.supabase
+      .channel('notes-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'notes',
+          filter: `user_id=eq.${this.user.id}`
+        },
+        (payload) => {
+          console.log('[Sync] Realtime event:', payload.eventType, payload.new?.id || payload.old?.id);
+
+          // Debounce rapid changes (e.g., multiple quick saves)
+          if (this.realtimeDebounce) {
+            clearTimeout(this.realtimeDebounce);
+          }
+
+          this.realtimeDebounce = setTimeout(() => {
+            this.handleRealtimeChange(payload);
+          }, 500);
+        }
+      )
+      .subscribe((status) => {
+        console.log('[Sync] Realtime subscription status:', status);
+        if (status === 'SUBSCRIBED') {
+          console.log('[Sync] Realtime connected - instant cross-device sync enabled');
+        }
+      });
+  },
+
+  /**
+   * Handle a Realtime change event
+   * @param {Object} payload - Supabase Realtime payload
+   */
+  async handleRealtimeChange(payload) {
+    const { eventType, new: newRecord, old: oldRecord } = payload;
+
+    try {
+      if (eventType === 'INSERT' || eventType === 'UPDATE') {
+        // Check if this is our own change (already in IndexedDB)
+        const existingNote = await DB.getNoteById(newRecord.id);
+        const localUpdated = existingNote?.timestamps?.updated_at;
+        const remoteUpdated = newRecord.updated_at;
+
+        // Skip if local is newer or same (we made this change)
+        if (localUpdated && new Date(localUpdated) >= new Date(remoteUpdated)) {
+          console.log('[Sync] Realtime: skipping own change for', newRecord.id);
+          return;
+        }
+
+        // Decrypt and save the new/updated note
+        if (newRecord.encrypted_data) {
+          const decrypted = await Auth.decrypt(newRecord.encrypted_data);
+          decrypted._syncStatus = 'synced';
+          decrypted._localChanges = false;
+          await DB.saveNote(decrypted, { fromSync: true });
+          console.log('[Sync] Realtime: saved note from other device:', newRecord.id);
+
+          // Update NotesCache
+          if (typeof NotesCache !== 'undefined') {
+            if (eventType === 'INSERT') {
+              NotesCache.addNote(decrypted);
+            } else {
+              // For updates, refresh the cache
+              const allNotes = await DB.getAllNotes();
+              NotesCache.set(allNotes);
+            }
+          }
+
+          // Trigger UI refresh
+          window.dispatchEvent(new CustomEvent('sync-complete', {
+            detail: { timestamp: new Date().toISOString(), source: 'realtime' }
+          }));
+        }
+      } else if (eventType === 'DELETE') {
+        // Handle deletion from other device
+        const noteId = oldRecord?.id;
+        if (noteId) {
+          await DB.deleteNote(noteId);
+          if (typeof NotesCache !== 'undefined') {
+            NotesCache.removeNote(noteId);
+          }
+          console.log('[Sync] Realtime: deleted note from other device:', noteId);
+
+          window.dispatchEvent(new CustomEvent('sync-complete', {
+            detail: { timestamp: new Date().toISOString(), source: 'realtime' }
+          }));
+        }
+      }
+    } catch (error) {
+      console.error('[Sync] Realtime handler error:', error);
+      // Fall back to full sync on error
+      this.syncNow();
+    }
+  },
+
+  /**
+   * Stop periodic sync and Realtime subscription
    */
   stopSync() {
     if (this.syncInterval) {
       clearInterval(this.syncInterval);
       this.syncInterval = null;
+    }
+
+    // Clean up Realtime subscription
+    if (this.realtimeChannel && this.supabase) {
+      this.supabase.removeChannel(this.realtimeChannel);
+      this.realtimeChannel = null;
+      console.log('[Sync] Realtime subscription removed');
+    }
+
+    if (this.realtimeDebounce) {
+      clearTimeout(this.realtimeDebounce);
+      this.realtimeDebounce = null;
     }
   },
 
