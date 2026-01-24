@@ -402,12 +402,20 @@ const UI = {
       }
     } else if (screenName === 'you') {
       // Phase 15.1: YOU tab (3-tab restructure)
+      // Refresh TwinUI first to populate all sections
+      if (typeof TwinUI !== 'undefined') {
+        TwinUI.refresh();
+      }
+      // Then notify YouUI for sub-tab specific content
       if (typeof YouUI !== 'undefined') {
         YouUI.onTabVisible();
       }
-      // Also init TwinUI stats if not already
-      if (typeof TwinUI !== 'undefined') {
-        TwinUI.refresh();
+      // Also refresh WorkUI for STREAM sub-tab content
+      if (typeof WorkUI !== 'undefined') {
+        WorkUI.refresh();
+      }
+      if (typeof ActionsUI !== 'undefined') {
+        ActionsUI.refresh();
       }
     }
   },

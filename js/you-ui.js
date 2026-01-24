@@ -101,8 +101,13 @@ const YouUI = {
     }
 
     // Load actions
-    if (typeof ActionsUI !== 'undefined' && ActionsUI.loadActions) {
-      await ActionsUI.loadActions();
+    if (typeof ActionsUI !== 'undefined' && ActionsUI.refresh) {
+      await ActionsUI.refresh();
+    }
+
+    // Load meetings
+    if (typeof WorkUI !== 'undefined' && WorkUI.loadMeetings) {
+      await WorkUI.loadMeetings();
     }
   },
 
@@ -168,24 +173,40 @@ const YouUI = {
     console.log('[YouUI] Loading stats...');
 
     try {
-      // Load TwinUI stats
+      // Load TwinUI stats (this populates the stat numbers)
       if (typeof TwinUI !== 'undefined') {
         await TwinUI.loadStatsImmediately();
       }
 
-      // Render About You section
+      // Render About You section (onboarding data + edit)
       if (typeof UIProfile !== 'undefined') {
-        const aboutSection = document.getElementById('you-about-section');
+        const aboutSection = document.getElementById('about-me-section');
         if (aboutSection) {
-          UIProfile.renderAboutYouSection(aboutSection);
+          aboutSection.innerHTML = UIProfile.renderAboutYouSection();
         }
       }
 
-      // Render Your World section (entities)
+      // Render Preferences section
+      if (typeof UIProfile !== 'undefined') {
+        const prefsSection = document.getElementById('preferences-section');
+        if (prefsSection && UIProfile.renderPreferencesSection) {
+          prefsSection.innerHTML = UIProfile.renderPreferencesSection();
+        }
+      }
+
+      // Render Your World section (entities/people noted by app)
       if (typeof Entities !== 'undefined') {
-        const worldSection = document.getElementById('you-world-section');
+        const worldSection = document.getElementById('your-world-section');
         if (worldSection) {
-          await Entities.renderYourWorldSection(worldSection);
+          worldSection.innerHTML = Entities.renderYourWorldSection();
+        }
+      }
+
+      // Render Learning section
+      if (typeof TwinUI !== 'undefined' && TwinUI.renderLearningSection) {
+        const learningSection = document.getElementById('learning-section');
+        if (learningSection) {
+          learningSection.innerHTML = TwinUI.renderLearningSection();
         }
       }
     } catch (error) {

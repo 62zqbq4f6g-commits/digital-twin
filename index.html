@@ -350,14 +350,24 @@
 
         <!-- STATS Sub-tab -->
         <div id="you-stats" class="you-content hidden">
-          <!-- About You Section -->
-          <div id="you-about-section" class="you-section">
+          <!-- About You Section (onboarding data + edit) -->
+          <div id="about-me-section" class="you-section">
             <!-- Populated by UIProfile.renderAboutYouSection() -->
           </div>
 
-          <!-- Your World Section (entities) -->
-          <div id="you-world-section" class="you-section">
+          <!-- Your Preferences Section (unlocks after 5 notes) -->
+          <div id="preferences-section" class="you-section">
+            <!-- Populated by UIProfile.renderPreferencesSection() -->
+          </div>
+
+          <!-- Your World Section (entities/people noted by app) -->
+          <div id="your-world-section" class="you-section">
             <!-- Populated by Entities.renderYourWorldSection() -->
+          </div>
+
+          <!-- What I've Learned Section -->
+          <div class="learning-section-container you-section" id="learning-section">
+            <!-- Populated by TwinUI.renderLearningSection() -->
           </div>
 
           <!-- Stats Grid -->

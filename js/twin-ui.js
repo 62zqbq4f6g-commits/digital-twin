@@ -61,20 +61,20 @@ const TwinUI = {
       Sync.onSyncComplete = () => {
         console.log('[TwinUI] Sync complete, refreshing data...');
         this._hasLoadedFreshStats = false; // Force reload on next tab open
-        // Only refresh if currently viewing TWIN tab
-        if (typeof UI !== 'undefined' && UI.currentScreen === 'twin') {
+        // Only refresh if currently viewing YOU tab (was TWIN)
+        if (typeof UI !== 'undefined' && (UI.currentScreen === 'you' || UI.currentScreen === 'twin')) {
           this.refresh();
         }
       };
     }
 
-    // A4: Listen for note-saved events to refresh TWIN tab data
+    // A4: Listen for note-saved events to refresh YOU tab data
     window.addEventListener('note-saved', () => {
       console.log('[TwinUI] Note saved, marking data stale...');
       this._hasLoadedFreshStats = false;
       this.clearDecryptedMemoryCache(); // Clear cached decrypted memory
-      // Only refresh if currently viewing TWIN tab
-      if (typeof UI !== 'undefined' && UI.currentScreen === 'twin') {
+      // Only refresh if currently viewing YOU tab (was TWIN)
+      if (typeof UI !== 'undefined' && (UI.currentScreen === 'you' || UI.currentScreen === 'twin')) {
         this.refresh();
       }
     });
