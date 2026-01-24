@@ -73,7 +73,22 @@ const UI = {
     this.setupNoteDetail();
     this.setupSettings();
     this.setupGlobalKeyboardListeners(); // A11y: Global keyboard handlers
+    this.setupSyncListener(); // Refresh notes when cloud sync completes
     this.showScreen('notes'); // Phase 4C: Default to notes
+  },
+
+  /**
+   * Set up listener for cloud sync completion
+   * Refreshes notes list when new data arrives from cloud
+   */
+  setupSyncListener() {
+    window.addEventListener('sync-complete', () => {
+      console.log('[UI] Sync complete, refreshing notes...');
+      // Only refresh if we're on the notes screen to avoid unnecessary work
+      if (this.currentScreen === 'notes') {
+        this.loadNotes();
+      }
+    });
   },
 
   /**

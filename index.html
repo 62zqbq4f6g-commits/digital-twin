@@ -787,65 +787,72 @@
       }
 
       // STEP 3: Setup Auth authenticated handler
+      // OPTIMIZED: Show UI immediately, sync in background
       Auth.onAuthenticated = async function() {
+        const initStart = performance.now();
         console.log('[Init] onAuthenticated called, initializing App...');
 
-        // Initialize database FIRST
+        // PHASE 1: Initialize database (fast - just opens IndexedDB)
         try {
           const initPromise = App.init();
           const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('App.init timeout')), 5000)
+            setTimeout(() => reject(new Error('App.init timeout')), 3000)
           );
           await Promise.race([initPromise, timeoutPromise]);
-          console.log('[Init] App.init complete, DB.notes count:', DB.notes?.length || 0);
+          console.log('[Init] App.init complete in', Math.round(performance.now() - initStart), 'ms');
         } catch (e) {
           console.warn('[Init] App.init issue:', e.message);
         }
 
-        // CRITICAL: Pull notes from cloud BEFORE checking onboarding
-        // This ensures existing users see their notes on new devices
-        if (typeof Sync !== 'undefined' && Sync.isAuthenticated()) {
-          console.log('[Init] Pulling notes from cloud...');
-          try {
-            // Force full sync by clearing last sync time
-            localStorage.removeItem('dt_last_sync');
-            await Sync.syncNow();
-            console.log('[Init] Cloud sync complete, DB.notes count:', DB.notes?.length || 0);
-          } catch (e) {
-            console.warn('[Init] Cloud sync failed:', e.message);
-          }
-        }
-
-        // Check for onboarding (new users with no notes)
-        // NOW we have cloud data in local DB
+        // PHASE 2: Check onboarding (lightweight Supabase queries)
+        // This is MUCH faster than full sync - just checks flags & counts
         console.log('[Init] Checking onboarding, Sync.user:', Sync.user?.email || 'none');
         if (typeof Onboarding !== 'undefined') {
           const shouldShow = await Onboarding.shouldShow();
-          console.log('[Init] Onboarding.shouldShow():', shouldShow);
+          console.log('[Init] Onboarding check complete in', Math.round(performance.now() - initStart), 'ms');
           if (shouldShow) {
             console.log('[App] New user detected, starting onboarding');
             Onboarding.start();
             return;
-          } else {
-            UI.init();
           }
-        } else {
-          console.log('[Init] Onboarding module not found');
-          UI.init();
         }
 
-        Voice.init();
-        Camera.init();
-        if (typeof UserProfile !== 'undefined') {
-          await UserProfile.init();
-        }
-        await TwinEngine.init();
+        // PHASE 3: Initialize UI IMMEDIATELY (shows cached/local data)
+        UI.init();
+        console.log('[Init] UI shown in', Math.round(performance.now() - initStart), 'ms');
+
+        // PHASE 4: Parallel initialization of independent modules
+        // These don't depend on each other, so run them all at once
+        await Promise.all([
+          (async () => { Voice.init(); })(),
+          (async () => { Camera.init(); })(),
+          (async () => { if (typeof UserProfile !== 'undefined') await UserProfile.init(); })(),
+          (async () => { if (typeof TwinEngine !== 'undefined') await TwinEngine.init(); })(),
+        ]);
+
+        // These need profile loaded first
         TwinUI.init();
         Feedback.init();
         ActionsUI.init();
         if (typeof WorkUI !== 'undefined') {
           WorkUI.init();
         }
+        console.log('[Init] All modules initialized in', Math.round(performance.now() - initStart), 'ms');
+
+        // PHASE 5: Background sync (NON-BLOCKING)
+        // User can interact immediately - UI will refresh when sync completes
+        if (typeof Sync !== 'undefined' && Sync.isAuthenticated()) {
+          console.log('[Init] Starting background sync...');
+          // Don't await - let it run in background
+          Sync.syncNow().then(() => {
+            console.log('[Init] Background sync complete in', Math.round(performance.now() - initStart), 'ms');
+            // TwinUI already registered Sync.onSyncComplete callback to refresh
+          }).catch(e => {
+            console.warn('[Init] Background sync failed:', e.message);
+          });
+        }
+
+        // PHASE 6: Deferred non-critical operations
         setTimeout(async () => {
           if (typeof FollowUp !== 'undefined') {
             await FollowUp.checkPendingFollowUps();

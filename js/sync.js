@@ -383,6 +383,11 @@ const Sync = {
           console.warn('[Sync] onSyncComplete callback error:', e);
         }
       }
+
+      // Emit custom event for multiple listeners (UI, TwinUI, etc.)
+      window.dispatchEvent(new CustomEvent('sync-complete', {
+        detail: { timestamp: new Date().toISOString() }
+      }));
     } catch (error) {
       console.error('Sync error:', error);
       this.updateSyncStatus('error');
@@ -434,40 +439,51 @@ const Sync = {
 
   /**
    * Push local changes to cloud
+   * OPTIMIZED: Process notes in parallel batches for faster sync
    */
   async pushChanges() {
     // Get all local notes
     const localNotes = await DB.getAllNotes();
 
-    for (const note of localNotes) {
-      // Check if needs sync (not yet synced or has local changes)
-      if (note._syncStatus === 'synced' && !note._localChanges) continue;
+    // Filter to only notes that need sync
+    const notesToSync = localNotes.filter(note =>
+      note._syncStatus !== 'synced' || note._localChanges
+    );
 
-      console.log('[Sync] Pushing note:', note.id, 'questionAnswer:', !!note.questionAnswer, 'feedback.rating:', note.feedback?.rating, 'feedback.comment:', !!note.feedback?.comment);
+    if (notesToSync.length === 0) return;
 
-      try {
-        // Encrypt note before upload
-        const encrypted = await Auth.encrypt(note);
+    console.log('[Sync] Pushing', notesToSync.length, 'notes...');
 
-        // Upsert to Supabase
-        const { error } = await this.supabase
-          .from('notes')
-          .upsert({
-            id: note.id,
-            user_id: this.user.id,
-            encrypted_data: encrypted,
-            updated_at: new Date().toISOString()
-          }, { onConflict: 'id' });
+    // Process in parallel batches of 5 for faster sync
+    const BATCH_SIZE = 5;
+    for (let i = 0; i < notesToSync.length; i += BATCH_SIZE) {
+      const batch = notesToSync.slice(i, i + BATCH_SIZE);
 
-        if (!error) {
-          // Mark as synced locally
-          note._syncStatus = 'synced';
-          note._localChanges = false;
-          await DB.saveNote(note, { fromSync: true });
+      await Promise.allSettled(batch.map(async (note) => {
+        try {
+          // Encrypt note before upload
+          const encrypted = await Auth.encrypt(note);
+
+          // Upsert to Supabase
+          const { error } = await this.supabase
+            .from('notes')
+            .upsert({
+              id: note.id,
+              user_id: this.user.id,
+              encrypted_data: encrypted,
+              updated_at: new Date().toISOString()
+            }, { onConflict: 'id' });
+
+          if (!error) {
+            // Mark as synced locally
+            note._syncStatus = 'synced';
+            note._localChanges = false;
+            await DB.saveNote(note, { fromSync: true });
+          }
+        } catch (error) {
+          console.error('Push error for note:', note.id, error);
         }
-      } catch (error) {
-        console.error('Push error for note:', note.id, error);
-      }
+      }));
     }
   },
 
@@ -498,52 +514,60 @@ const Sync = {
     // Get tombstoned note IDs
     const deletedIds = getDeletedNoteIds();
 
-    for (const remoteNote of remoteNotes || []) {
-      // Phase 5F: Skip notes that were deleted locally (tombstoned)
-      if (deletedIds.includes(remoteNote.id)) {
-        console.log('[Sync] Skipping tombstoned note:', remoteNote.id);
-        // Also try to delete from cloud (cleanup orphaned cloud notes)
+    // Filter out tombstoned notes first
+    const notesToProcess = (remoteNotes || []).filter(note => !deletedIds.includes(note.id));
+    const tombstonedNotes = (remoteNotes || []).filter(note => deletedIds.includes(note.id));
+
+    // Clean up tombstoned notes in background (non-blocking)
+    if (tombstonedNotes.length > 0) {
+      Promise.allSettled(tombstonedNotes.map(async (remoteNote) => {
         try {
           await this.supabase
             .from('notes')
             .update({ deleted_at: new Date().toISOString() })
             .eq('id', remoteNote.id);
-          // Clear tombstone after successful cloud cleanup
           clearDeletedMarker(remoteNote.id);
         } catch (err) {
-          console.warn('[Sync] Failed to cleanup cloud note:', remoteNote.id, err);
+          console.warn('[Sync] Failed to cleanup cloud note:', remoteNote.id);
         }
-        continue;
-      }
+      }));
+    }
 
-      try {
-        // Decrypt
-        console.log('[Sync] Attempting to decrypt note:', remoteNote.id);
-        const decrypted = await Auth.decrypt(remoteNote.encrypted_data);
-        console.log('[Sync] Decrypted note:', decrypted.id, 'title:', decrypted.extracted?.title?.substring(0, 30));
-        decrypted._syncStatus = 'synced';
-        decrypted._localChanges = false;
+    if (notesToProcess.length === 0) return;
 
-        // Check if local version exists
-        const localNote = await DB.getNoteById(decrypted.id);
+    console.log('[Sync] Pulling', notesToProcess.length, 'notes...');
 
-        if (!localNote) {
-          // New note from cloud
-          await DB.saveNote(decrypted, { fromSync: true });
-          console.log('[Sync] Saved new note from cloud:', decrypted.id);
-        } else {
-          // Check if remote is newer
-          const localUpdated = localNote.timestamps?.updated_at || localNote.timestamps?.created_at;
-          if (new Date(remoteNote.updated_at) > new Date(localUpdated)) {
+    // Process in parallel batches of 5 for faster sync
+    const BATCH_SIZE = 5;
+    for (let i = 0; i < notesToProcess.length; i += BATCH_SIZE) {
+      const batch = notesToProcess.slice(i, i + BATCH_SIZE);
+
+      await Promise.allSettled(batch.map(async (remoteNote) => {
+        try {
+          // Decrypt
+          const decrypted = await Auth.decrypt(remoteNote.encrypted_data);
+          decrypted._syncStatus = 'synced';
+          decrypted._localChanges = false;
+
+          // Check if local version exists
+          const localNote = await DB.getNoteById(decrypted.id);
+
+          if (!localNote) {
+            // New note from cloud
             await DB.saveNote(decrypted, { fromSync: true });
-            console.log('[Sync] Updated note from cloud:', decrypted.id);
+            console.log('[Sync] Saved new note from cloud:', decrypted.id);
+          } else {
+            // Check if remote is newer
+            const localUpdated = localNote.timestamps?.updated_at || localNote.timestamps?.created_at;
+            if (new Date(remoteNote.updated_at) > new Date(localUpdated)) {
+              await DB.saveNote(decrypted, { fromSync: true });
+              console.log('[Sync] Updated note from cloud:', decrypted.id);
+            }
           }
+        } catch (error) {
+          console.error('[Sync] DECRYPT FAILED for note:', remoteNote.id, error.message);
         }
-      } catch (error) {
-        console.error('[Sync] DECRYPT FAILED for note:', remoteNote.id, error.message);
-        // Note: Decryption will fail for notes encrypted with old PIN-based key
-        // These notes cannot be recovered without the original PIN
-      }
+      }));
     }
   },
 

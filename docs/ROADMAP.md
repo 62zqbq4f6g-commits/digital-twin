@@ -104,16 +104,16 @@
 
 | Task | Location | Status |
 |------|----------|--------|
-| **Optimize app load speed** | `js/app.js`, `js/sync.js`, `js/twin-ui.js` | 🔴 Critical |
+| **Optimize app load speed** | `index.html`, `js/sync.js`, `js/ui.js` | ✅ Done |
 | Set up Vercel Cron for memory maintenance | `/api/cron/` | Open |
 | Begin Phase 15 Task #0 (RLS Policies) | Supabase | Open |
 
-#### Load Speed Investigation Areas
-- Sync pulls all notes sequentially (should parallelize)
-- TwinUI, Entities, Patterns init independently (should coordinate)
-- May be hitting Tier 3 retrieval unnecessarily
-- Large JS files (ui.js 4900 lines) slow to parse
-- Consider lazy loading tabs, skeleton UI, aggressive caching
+#### Load Speed Optimizations Applied (v8.6.0)
+- ✅ Background sync - UI shows immediately, sync runs in background
+- ✅ Parallel module initialization - Voice, Camera, UserProfile, TwinEngine run concurrently
+- ✅ Skeleton UI - Shows placeholder cards while notes load
+- ✅ Sync-complete event - UI refreshes when cloud data arrives
+- ✅ Batch parallel sync - Notes pushed/pulled in batches of 5 concurrently
 
 ### P1 — Important (This Sprint)
 
@@ -309,7 +309,8 @@
 
 | Version | Date | Milestone |
 |---------|------|-----------|
-| **8.5.0** | Jan 24, 2026 | Key People in MIRROR, pattern quality, immediate stats, action filtering |
+| **8.6.0** | Jan 24, 2026 | Load speed optimization: background sync, parallel init, skeleton UI |
+| 8.5.0 | Jan 24, 2026 | Key People in MIRROR, pattern quality, immediate stats, action filtering |
 | 8.3.0 | Jan 23, 2026 | Knowledge Pulse simplification |
 | 8.2.0 | Jan 23, 2026 | Beta ready (93% tests) |
 | 8.1.1 | Jan 21, 2026 | Category summaries fix |

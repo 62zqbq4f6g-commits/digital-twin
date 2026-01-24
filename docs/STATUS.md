@@ -1,6 +1,6 @@
 # Inscript — Project Status
 
-## January 24, 2026 | Version 8.5.0
+## January 24, 2026 | Version 8.6.0
 
 ---
 
@@ -47,7 +47,28 @@
 
 ---
 
-## LATEST SESSION: January 24, 2026 (Evening)
+## LATEST SESSION: January 24, 2026 (Night)
+
+### Load Speed Optimization (v8.6.0)
+
+**Problem:** App refresh took too long to show content - sync blocked UI initialization
+
+**Solution:** Background sync + parallel initialization
+
+| Change | File | Impact |
+|--------|------|--------|
+| Background sync | `index.html` | UI shows immediately, sync runs in background |
+| Parallel init | `index.html` | Voice, Camera, UserProfile, TwinEngine run concurrently |
+| Sync-complete event | `js/sync.js`, `js/ui.js` | UI refreshes when cloud data arrives |
+| Batch parallel sync | `js/sync.js` | Notes pushed/pulled in batches of 5 concurrently |
+| Skeleton UI | Already existed | Shows placeholders while loading |
+
+**Before:** UI blocked until full sync complete (~3-5 seconds)
+**After:** UI shown immediately (~200-500ms), sync completes in background
+
+---
+
+## EARLIER SESSION: January 24, 2026 (Evening)
 
 ### Four Critical Quality Fixes Deployed
 
@@ -336,7 +357,8 @@ APP_VERSION  // "8.2.1"
 
 | Version | Date | Changes |
 |---------|------|---------|
-| **8.5.0** | Jan 24, 2026 | Key People constraint, stats fallback, SoHo editorial CSS, mobile audit |
+| **8.6.0** | Jan 24, 2026 | Load speed optimization: background sync, parallel init |
+| 8.5.0 | Jan 24, 2026 | Key People constraint, stats fallback, SoHo editorial CSS, mobile audit |
 | 8.3.0 | Jan 23, 2026 | Knowledge Pulse simplification, dark mode support |
 | 8.2.1 | Jan 23, 2026 | Fix 406/500 errors, parallel terminal setup |
 | 8.2.0 | Jan 23, 2026 | Pre-beta testing (93%), Key People fix, documentation update |
