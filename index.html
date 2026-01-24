@@ -24,7 +24,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400&family=Playfair+Display:wght@400;500;600&display=swap" rel="stylesheet">
 
   <!-- Styles -->
-  <link rel="stylesheet" href="css/styles.css?v=821">
+  <link rel="stylesheet" href="css/styles.css?v=900">
   <link rel="stylesheet" href="css/design-system.css?v=804">
   <link rel="stylesheet" href="css/mirror.css?v=800">
   <link rel="stylesheet" href="css/patterns.css?v=800">
@@ -268,119 +268,7 @@
         </div>
       </section>
 
-      <!-- Twin Screen -->
-      <section id="screen-twin" class="screen hidden">
-        <header class="brand-header" style="margin-bottom: var(--space-6); margin-top: var(--space-4);">
-          <h2 class="brand-title">Your mirror in code</h2>
-        </header>
-
-        <!-- Phase 9: About You Section (populated by UIProfile) -->
-        <div id="about-me-section">
-          <!-- Populated by UIProfile.renderAboutYouSection() -->
-        </div>
-
-        <!-- Phase 9: Your Preferences Section (unlocks after 5 notes) -->
-        <div id="preferences-section">
-          <!-- Populated by UIProfile.renderPreferencesSection() -->
-        </div>
-
-        <!-- Phase 9: Your World Section (entities) -->
-        <div id="your-world-section">
-          <!-- Populated by Entities.renderYourWorldSection() -->
-        </div>
-
-        <!-- Phase 8: What I've Learned Section -->
-        <div class="learning-section-container" id="learning-section">
-          <!-- Populated by TwinUI.renderLearningSection() -->
-        </div>
-
-        <!-- 1. Thinking Through (Open Loops) -->
-        <div class="twin-open-decisions" id="twin-thinking-through-section">
-          <div class="twin-section-header">Thinking Through</div>
-          <div id="twin-thinking-through-list">
-            <p class="twin-empty">No open loops</p>
-          </div>
-        </div>
-
-        <!-- 2. Phase 13: Patterns I've Noticed -->
-        <div class="twin-section">
-          <h3 class="twin-section-title">Patterns I've Noticed</h3>
-          <div class="twin-section-content" id="twin-patterns-container">
-            <p class="twin-empty">No patterns detected yet</p>
-          </div>
-        </div>
-
-        <!-- 3. This Week (moved DOWN) -->
-        <div class="twin-section" id="twin-this-week-section">
-          <h3 class="twin-section-title">This Week</h3>
-          <div class="twin-section-content" id="twin-this-week-list">
-            <p class="twin-empty">No activity yet</p>
-          </div>
-        </div>
-
-        <!-- Confidence Meter -->
-        <div class="twin-confidence">
-          <div class="twin-confidence-header">
-            <span class="twin-confidence-label">How well I know you</span>
-            <span class="twin-confidence-value" id="twin-confidence-value">0%</span>
-          </div>
-          <div class="twin-confidence-bar">
-            <div class="twin-confidence-fill" id="twin-confidence-fill" style="width: 0%"></div>
-          </div>
-          <p class="twin-confidence-hint" id="twin-confidence-hint">Your digital twin is beginning to mirror your nuances.</p>
-        </div>
-
-        <!-- Stats Grid -->
-        <div class="twin-stats">
-          <div class="twin-stat">
-            <span class="twin-stat-value" id="twin-stat-notes">0</span>
-            <span class="twin-stat-label">Notes</span>
-          </div>
-          <div class="twin-stat">
-            <span class="twin-stat-value" id="twin-stat-decisions">0</span>
-            <span class="twin-stat-label">Decisions</span>
-          </div>
-          <div class="twin-stat">
-            <span class="twin-stat-value" id="twin-stat-patterns">0</span>
-            <span class="twin-stat-label">Patterns</span>
-          </div>
-          <div class="twin-stat">
-            <span class="twin-stat-value" id="twin-stat-feedback">0%</span>
-            <span class="twin-stat-label">Positive</span>
-          </div>
-        </div>
-
-        <!-- Quality Learning Stats -->
-        <div class="quality-section" id="quality-stats-section">
-          <div class="quality-card">
-            <div class="quality-header">
-              <span class="quality-title">Output Quality</span>
-              <span class="quality-trend" id="quality-trend">—</span>
-            </div>
-            <div class="quality-bar-container">
-              <div class="quality-bar" id="quality-bar" style="width: 0%"></div>
-            </div>
-            <div class="quality-stats-row">
-              <span id="quality-liked">0 liked</span>
-              <span id="quality-disliked">0 disliked</span>
-            </div>
-          </div>
-          <div class="quality-preferences" id="quality-preferences">
-            <!-- Filled by JS -->
-          </div>
-        </div>
-
-        <!-- Actions -->
-        <div class="twin-actions">
-          <button id="twin-rebuild-btn" class="twin-action-btn">
-            <span>Rebuild Profile</span>
-            <span class="twin-action-desc">Re-analyze all notes</span>
-          </button>
-        </div>
-
-        <!-- Editorial Footer (SuperDesign) -->
-        <p class="twin-footer">Listening to your silence between the lines.</p>
-      </section>
+      <!-- Twin Screen - REMOVED in Phase 15.1 (merged into YOU tab) -->
 
       <!-- MIRROR Screen - Phase 13B -->
       <section id="screen-mirror" class="screen hidden">
@@ -389,42 +277,152 @@
         </div>
       </section>
 
-      <!-- WORK Screen (Phase 14 - Work Utility) -->
-      <section id="screen-work" class="screen hidden">
+      <!-- YOU Screen (Phase 15.1 - 3-Tab Restructure) -->
+      <section id="screen-you" class="screen hidden">
         <!-- Sub-tab Navigation -->
-        <div class="work-tabs">
-          <button class="work-tab active" data-work-tab="pulse">PULSE</button>
-          <button class="work-tab" data-work-tab="actions">ACTIONS</button>
-          <button class="work-tab" data-work-tab="meetings">MEETINGS</button>
+        <div class="you-tabs">
+          <button class="you-tab active" data-you-tab="stream">STREAM</button>
+          <button class="you-tab" data-you-tab="patterns">PATTERNS</button>
+          <button class="you-tab" data-you-tab="report">REPORT</button>
+          <button class="you-tab" data-you-tab="stats">STATS</button>
         </div>
 
-        <!-- PULSE Sub-tab (Morning Briefing) -->
-        <div id="work-pulse" class="work-content">
-          <div class="pulse-container">
-            <p class="pulse-loading">Loading your morning pulse...</p>
+        <!-- STREAM Sub-tab (Whispers + Pulse + Actions) -->
+        <div id="you-stream" class="you-content">
+          <!-- Whisper History Section -->
+          <div class="you-section">
+            <h3 class="you-section-title">Whispers</h3>
+            <div id="you-whisper-list" class="you-whisper-list">
+              <p class="you-empty">No whispers yet. Use the Whisper button in NOTES to capture quick thoughts.</p>
+            </div>
+          </div>
+
+          <!-- Pulse Section (from old WORK tab) -->
+          <div class="you-section">
+            <h3 class="you-section-title">Pulse</h3>
+            <div class="pulse-container">
+              <p class="pulse-loading">Loading your pulse...</p>
+            </div>
+          </div>
+
+          <!-- Actions Section (from old WORK tab) -->
+          <div class="you-section">
+            <h3 class="you-section-title">Actions</h3>
+            <div class="actions-list" id="actions-list">
+              <!-- Populated by JS -->
+            </div>
+            <div class="actions-empty hidden" id="actions-empty">
+              <p class="you-empty">No actions captured yet.</p>
+            </div>
+          </div>
+
+          <!-- Meetings Section (from old WORK tab) -->
+          <div class="you-section">
+            <h3 class="you-section-title">Meetings</h3>
+            <div class="meetings-list" id="meetings-list">
+              <p class="meetings-empty">No meetings recorded yet.</p>
+            </div>
+            <button class="meetings-add-btn" id="new-meeting-btn">
+              <span>+ New Meeting</span>
+            </button>
           </div>
         </div>
 
-        <!-- ACTIONS Sub-tab (existing actions functionality) -->
-        <div id="work-actions" class="work-content hidden">
-          <div class="actions-list" id="actions-list">
-            <!-- Populated by JS -->
-          </div>
-          <div class="actions-empty hidden" id="actions-empty">
-            <!-- Populated by JS -->
+        <!-- PATTERNS Sub-tab -->
+        <div id="you-patterns" class="you-content hidden">
+          <div class="you-section">
+            <h3 class="you-section-title">Patterns I've Noticed</h3>
+            <div id="you-patterns-container">
+              <p class="you-empty">No patterns detected yet. Keep writing to reveal your rhythms.</p>
+            </div>
           </div>
         </div>
 
-        <!-- MEETINGS Sub-tab -->
-        <div id="work-meetings" class="work-content hidden">
-          <div class="meetings-list" id="meetings-list">
-            <p class="meetings-empty">No meetings recorded yet.</p>
+        <!-- REPORT Sub-tab (State of You) -->
+        <div id="you-report" class="you-content hidden">
+          <div class="you-section">
+            <h3 class="you-section-title">State of You</h3>
+            <div id="you-report-container">
+              <p class="you-empty">Your monthly reflection will appear here at the start of each month.</p>
+            </div>
           </div>
-          <button class="meetings-add-btn" id="new-meeting-btn">
-            <span>+ New Meeting</span>
-          </button>
         </div>
 
+        <!-- STATS Sub-tab -->
+        <div id="you-stats" class="you-content hidden">
+          <!-- About You Section -->
+          <div id="you-about-section" class="you-section">
+            <!-- Populated by UIProfile.renderAboutYouSection() -->
+          </div>
+
+          <!-- Your World Section (entities) -->
+          <div id="you-world-section" class="you-section">
+            <!-- Populated by Entities.renderYourWorldSection() -->
+          </div>
+
+          <!-- Stats Grid -->
+          <div class="twin-stats">
+            <div class="twin-stat">
+              <span class="twin-stat-value" id="twin-stat-notes">0</span>
+              <span class="twin-stat-label">Notes</span>
+            </div>
+            <div class="twin-stat">
+              <span class="twin-stat-value" id="twin-stat-decisions">0</span>
+              <span class="twin-stat-label">Decisions</span>
+            </div>
+            <div class="twin-stat">
+              <span class="twin-stat-value" id="twin-stat-patterns">0</span>
+              <span class="twin-stat-label">Patterns</span>
+            </div>
+            <div class="twin-stat">
+              <span class="twin-stat-value" id="twin-stat-feedback">0%</span>
+              <span class="twin-stat-label">Positive</span>
+            </div>
+          </div>
+
+          <!-- Confidence Meter -->
+          <div class="twin-confidence">
+            <div class="twin-confidence-header">
+              <span class="twin-confidence-label">How well I know you</span>
+              <span class="twin-confidence-value" id="twin-confidence-value">0%</span>
+            </div>
+            <div class="twin-confidence-bar">
+              <div class="twin-confidence-fill" id="twin-confidence-fill" style="width: 0%"></div>
+            </div>
+            <p class="twin-confidence-hint" id="twin-confidence-hint">Your digital twin is beginning to mirror your nuances.</p>
+          </div>
+
+          <!-- Quality Learning Stats -->
+          <div class="quality-section" id="quality-stats-section">
+            <div class="quality-card">
+              <div class="quality-header">
+                <span class="quality-title">Output Quality</span>
+                <span class="quality-trend" id="quality-trend">—</span>
+              </div>
+              <div class="quality-bar-container">
+                <div class="quality-bar" id="quality-bar" style="width: 0%"></div>
+              </div>
+              <div class="quality-stats-row">
+                <span id="quality-liked">0 liked</span>
+                <span id="quality-disliked">0 disliked</span>
+              </div>
+            </div>
+            <div class="quality-preferences" id="quality-preferences">
+              <!-- Filled by JS -->
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="twin-actions">
+            <button id="twin-rebuild-btn" class="twin-action-btn">
+              <span>Rebuild Profile</span>
+              <span class="twin-action-desc">Re-analyze all notes</span>
+            </button>
+          </div>
+
+          <!-- Editorial Footer -->
+          <p class="twin-footer">Listening to your silence between the lines.</p>
+        </div>
       </section>
 
       <!-- Settings Screen -->
@@ -484,7 +482,7 @@
         </div>
 
         <div class="settings-section settings-version">
-          <p class="settings-version-text">Inscript v<span id="app-version">8.8.0</span></p>
+          <p class="settings-version-text">Inscript v<span id="app-version">9.1.0</span></p>
         </div>
       </section>
 
@@ -680,19 +678,16 @@
       </div>
     </div>
 
-    <!-- Bottom Navigation - Phase 14: 4 tabs with WORK, MIRROR before TWIN -->
-    <nav class="nav nav-four-tabs">
+    <!-- Bottom Navigation - Phase 15.1: 3 tabs (NOTES, YOU, MIRROR) -->
+    <nav class="nav nav-three-tabs">
       <button class="nav-tab active" data-screen="notes">
         <span class="nav-label">NOTES</span>
       </button>
-      <button class="nav-tab" data-screen="work">
-        <span class="nav-label">WORK</span>
+      <button class="nav-tab" data-screen="you">
+        <span class="nav-label">YOU</span>
       </button>
       <button class="nav-tab" data-screen="mirror">
         <span class="nav-label">MIRROR</span>
-      </button>
-      <button class="nav-tab" data-screen="twin">
-        <span class="nav-label">TWIN</span>
       </button>
     </nav>
   </div>
@@ -739,6 +734,7 @@
   <script src="js/decision-tracker.js?v=700"></script>
   <script src="js/actions-ui.js?v=700"></script>
   <script src="js/work-ui.js?v=822"></script>
+  <script src="js/you-ui.js?v=900"></script>
   <script src="js/follow-up.js?v=700"></script>
   <script src="js/nudge-tracker.js?v=700"></script>
   <script src="js/onboarding.js?v=792"></script>
@@ -783,7 +779,7 @@
       });
     }
 
-    console.log('[App] Version: 8.7.0 - Phase 14.3 Load Optimization');
+    console.log('[App] Version: 9.1.0 - Phase 15.1 Three-Tab Restructure');
 
     // Main initialization - runs immediately
     (async function init() {
@@ -852,6 +848,7 @@
           Feedback.init();
           ActionsUI.init();
           if (typeof WorkUI !== 'undefined') WorkUI.init();
+          if (typeof YouUI !== 'undefined') YouUI.init();  // Phase 15.1: YOU tab
           console.log('[Init] All modules ready in', Math.round(performance.now() - initStart), 'ms');
         });
 

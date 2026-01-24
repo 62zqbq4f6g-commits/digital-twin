@@ -51,13 +51,18 @@ const StateOfYouUI = {
 
   /**
    * Load and display the State of You section
-   * Called when TWIN tab is opened
+   * Called when TWIN tab or YOU > REPORT tab is opened
+   * @param {HTMLElement} targetContainer - Optional container to render into
    */
-  async load() {
+  async load(targetContainer) {
     console.log('[StateOfYouUI] Loading State of You section...');
 
-    // Render container if not exists
-    this.ensureContainer();
+    // Use provided container or ensure one exists
+    if (targetContainer) {
+      this.container = targetContainer;
+    } else {
+      this.ensureContainer();
+    }
 
     // Load the current month's report
     await this.loadReport(this.currentMonth);
@@ -67,28 +72,21 @@ const StateOfYouUI = {
    * Ensure the container exists in the DOM
    */
   ensureContainer() {
-    let container = document.getElementById('state-of-you-container');
-    if (!container) {
-      // Find the TWIN content area
-      const twinContent = document.querySelector('#twin-screen .scroll-content');
-      if (!twinContent) {
-        console.warn('[StateOfYouUI] TWIN content area not found');
-        return;
-      }
-
-      // Create and insert container at the top
-      container = document.createElement('div');
-      container.id = 'state-of-you-container';
-      container.className = 'state-of-you';
-
-      // Insert before the first existing section
-      const firstSection = twinContent.querySelector('.twin-section, .twin-open-decisions');
-      if (firstSection) {
-        twinContent.insertBefore(container, firstSection);
-      } else {
-        twinContent.appendChild(container);
-      }
+    // Phase 15.1: First check for YOU tab container
+    let container = document.getElementById('you-report-container');
+    if (container) {
+      this.container = container;
+      return container;
     }
+
+    // Fallback to state-of-you-container
+    container = document.getElementById('state-of-you-container');
+    if (!container) {
+      // Phase 15.1: YOU tab container is the primary target
+      console.warn('[StateOfYouUI] No container found - call load() with a container');
+      return null;
+    }
+    this.container = container;
     return container;
   },
 

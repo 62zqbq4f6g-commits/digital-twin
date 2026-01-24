@@ -4,9 +4,10 @@
  */
 
 // App version - displayed in console on load
-const APP_VERSION = '8.8.0';
+const APP_VERSION = '9.1.0';
 window.APP_VERSION = APP_VERSION; // Export for settings.js
 console.log('[App] Inscript v' + APP_VERSION);
+// Phase 15.1: 3-tab restructure (NOTES, YOU, MIRROR)
 // Phase 14.4: UI refinement - emoji removal for brand compliance, grammar fixes
 // Phase 14.3: Load speed optimization - parallel init, background sync, lazy TWIN tab
 // Phase 11: Inscript rebrand, 7-screen onboarding, privacy settings, design system update

@@ -1,12 +1,12 @@
 # Inscript — Project Status
 
-## January 24, 2026 | Version 9.0.0
+## January 25, 2026 | Version 9.1.0
 
 ---
 
 ## CURRENT STATE
 
-**Status:** Phase 15 — Experience Transformation (Code Complete, Pending DB Migration)
+**Status:** Phase 15.1 — 3-Tab Restructure (NOTES, YOU, MIRROR)
 **Production URL:** https://digital-twin-ecru.vercel.app
 **Brand:** Inscript — "Your mirror in code"
 **Category:** Personal AI Memory
@@ -82,7 +82,66 @@ Run the migration in Supabase SQL Editor:
 
 ---
 
-## LATEST SESSION: January 24, 2026 (Late Night)
+## PHASE 15.1: 3-TAB RESTRUCTURE ✅ COMPLETE
+
+### Navigation Change
+
+**Before:** 4 tabs (NOTES, WORK, MIRROR, TWIN)
+**After:** 3 tabs (NOTES, YOU, MIRROR)
+
+### Tab Structure
+
+| Tab | Purpose | Sub-tabs |
+|-----|---------|----------|
+| **NOTES** | Capture | Write, Whisper button, Meeting, Decision |
+| **YOU** | Understand | STREAM, PATTERNS, REPORT, STATS |
+| **MIRROR** | Dialogue | Conversational AI, Memory Moments |
+
+### YOU Tab Sub-tabs
+
+| Sub-tab | Content (merged from) |
+|---------|----------------------|
+| STREAM | Whisper history + Pulse + Actions + Meetings |
+| PATTERNS | LLM-detected behavioral patterns (from TWIN) |
+| REPORT | State of You monthly report |
+| STATS | Note count, entities, confidence meter (from TWIN) |
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `index.html` | 3-tab nav, new YOU screen, removed WORK/TWIN screens |
+| `css/styles.css` | Added `.you-tabs`, `.you-tab`, `.you-content` styles |
+| `js/you-ui.js` | **NEW** - YOU tab controller with sub-tab switching |
+| `js/state-of-you-ui.js` | Updated to accept container parameter |
+| `js/ui.js` | Added 'you' screen handling in showScreen() |
+| `js/app.js` | Version bump to 9.1.0 |
+
+### Design Decisions (via 3 Personas)
+
+**Jony Ive (Apple):** NOTES-YOU-MIRROR follows the emotional journey
+**Julie Zhuo (Meta):** Optimized for thumb reach on mobile
+**Dieter Rams (Braun):** "YOU" is most understandable middle ground
+
+---
+
+## LATEST SESSION: January 25, 2026
+
+### Phase 15.1: 3-Tab Restructure
+
+**Problem:** 4-tab navigation was cluttered; WORK tab name felt wrong; Whisper history had no home
+
+**Solution:** Consolidated to 3 tabs following user journey (Capture → Understand → Dialogue)
+
+**Key Changes:**
+- Renamed WORK → YOU (with sub-tabs)
+- Merged TWIN content into YOU
+- Added Whisper history to YOU > STREAM
+- Removed one bottom nav button for cleaner mobile UX
+
+---
+
+## EARLIER SESSION: January 24, 2026 (Late Night)
 
 ### Phase 15 Build Complete
 
@@ -353,7 +412,8 @@ APP_VERSION  // "9.0.0"
 
 | Version | Date | Changes |
 |---------|------|---------|
-| **9.0.0** | Jan 24, 2026 | Phase 15: State of You, Whispers, Memory Moments |
+| **9.1.0** | Jan 25, 2026 | Phase 15.1: 3-tab restructure (NOTES, YOU, MIRROR) |
+| 9.0.0 | Jan 24, 2026 | Phase 15: State of You, Whispers, Memory Moments |
 | 8.6.0 | Jan 24, 2026 | Load speed optimization: background sync, parallel init |
 | 8.5.0 | Jan 24, 2026 | Key People constraint, stats fallback, SoHo editorial CSS, mobile audit |
 | 8.3.0 | Jan 23, 2026 | Knowledge Pulse simplification, dark mode support |
@@ -387,6 +447,6 @@ This is the "holy shit, it knows" moment working in production.
 
 ---
 
-*Last Updated: January 24, 2026*
-*Version: 9.0.0 — Inscript*
+*Last Updated: January 25, 2026*
+*Version: 9.1.0 — Inscript*
 *Production: https://digital-twin-ecru.vercel.app*

@@ -6876,6 +6876,110 @@ body {
   display: none;
 }
 
+/* ============================================
+   YOU Tab (Phase 15.1: 3-Tab Restructure)
+   ============================================ */
+
+/* YOU Tab Sub-navigation */
+.you-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--silver-200);
+  padding: 0 var(--space-4);
+  background: var(--paper);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.you-tab {
+  flex: 1;
+  padding: var(--space-3) var(--space-2);
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--silver-400);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color 0.2s ease, border-color 0.2s ease;
+}
+
+.you-tab:hover {
+  color: var(--ink-soft);
+}
+
+.you-tab.active {
+  color: var(--ink);
+  font-weight: 600;
+  border-bottom-color: var(--ink);
+}
+
+/* YOU Content Areas */
+.you-content {
+  padding: var(--space-5) var(--space-4);
+  min-height: calc(100vh - 200px);
+  background: var(--paper-cream);
+}
+
+.you-content.hidden {
+  display: none;
+}
+
+/* YOU Sections */
+.you-section {
+  margin-bottom: var(--space-6);
+}
+
+.you-section-title {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--silver-500);
+  margin-bottom: var(--space-3);
+}
+
+.you-empty {
+  font-family: var(--font-editorial);
+  font-size: 14px;
+  font-style: italic;
+  color: var(--silver-400);
+  text-align: center;
+  padding: var(--space-6) var(--space-4);
+}
+
+/* Whisper History in YOU tab */
+.you-whisper-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.you-whisper-item {
+  background: var(--paper);
+  border: 1px solid var(--silver-100);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+}
+
+.you-whisper-content {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--ink-soft);
+  margin-bottom: var(--space-2);
+}
+
+.you-whisper-time {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--silver-400);
+  letter-spacing: 0.05em;
+}
+
 /* Quick Mode Buttons */
 .notes-quick-modes {
   display: flex;

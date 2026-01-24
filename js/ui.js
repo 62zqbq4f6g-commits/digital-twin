@@ -400,6 +400,15 @@ const UI = {
       if (typeof Mirror !== 'undefined' && window.Mirror) {
         window.Mirror.open();
       }
+    } else if (screenName === 'you') {
+      // Phase 15.1: YOU tab (3-tab restructure)
+      if (typeof YouUI !== 'undefined') {
+        YouUI.onTabVisible();
+      }
+      // Also init TwinUI stats if not already
+      if (typeof TwinUI !== 'undefined') {
+        TwinUI.refresh();
+      }
     }
   },
 
@@ -1883,9 +1892,9 @@ const UI = {
     document.getElementById('screen-note-detail').classList.add('hidden');
     this.currentNote = null;
 
-    // Return to previous screen (work or notes)
-    if (this.previousScreen === 'work') {
-      this.showScreen('work');
+    // Return to previous screen (you or notes)
+    if (this.previousScreen === 'you' || this.previousScreen === 'work') {
+      this.showScreen('you');
       this.previousScreen = 'notes'; // Reset
     }
   },
