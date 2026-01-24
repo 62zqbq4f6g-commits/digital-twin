@@ -7039,6 +7039,61 @@ body {
   opacity: 0.9;
 }
 
+/* Phase 14: Simplified PULSE - synthesized summary */
+.pulse-content {
+  max-width: 400px;
+  margin: 0 auto;
+  padding: 48px 24px;
+  text-align: center;
+}
+
+.pulse-greeting-large {
+  font-family: var(--font-editorial);
+  font-size: 32px;
+  font-weight: 400;
+  color: var(--ink-rich);
+  margin: 0 0 16px;
+}
+
+.pulse-focus {
+  font-family: var(--font-body);
+  color: var(--silver-600);
+  font-size: 16px;
+  line-height: 1.5;
+  margin: 0 0 8px;
+}
+
+.pulse-focus strong {
+  color: var(--ink-soft);
+  font-weight: 500;
+}
+
+.pulse-stats {
+  font-family: var(--font-mono);
+  color: var(--silver-400);
+  font-size: 14px;
+  letter-spacing: 0.02em;
+  margin: 0 0 32px;
+}
+
+.pulse-cta-primary {
+  display: inline-block;
+  padding: 14px 32px;
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--paper);
+  background: var(--ink);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.pulse-cta-primary:hover {
+  opacity: 0.9;
+}
+
 /* ─────────────────────────────────────────
    MEETINGS Tab
    ───────────────────────────────────────── */

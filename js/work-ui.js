@@ -250,65 +250,61 @@ const WorkUI = {
   },
 
   /**
-   * Generate pulse data locally (fallback)
+   * Generate pulse data locally - simplified for valuable summary
+   * Phase 14.5: Synthesized insight instead of entity dump
    */
   async generateLocalPulse() {
     const notes = await DB.getAllNotes();
     const now = new Date();
     const weekAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
 
-    // Get recent notes
-    const recentNotes = notes.filter(n => new Date(n.created_at) > weekAgo);
-
-    // Extract open actions
-    const openActions = [];
-    notes.forEach(note => {
-      const actions = note.analysis?.actions || [];
-      const completed = note.analysis?.actionsCompleted || [];
-      actions.forEach((action, idx) => {
-        if (!completed.includes(idx)) {
-          openActions.push({
-            text: typeof action === 'string' ? action : action.action || action.text,
-            effort: action?.effort || 'medium',
-            noteId: note.id,
-            noteDate: note.created_at
-          });
-        }
-      });
+    // Get this week's notes
+    const weekNotes = notes.filter(n => {
+      const created = new Date(n.timestamps?.created_at || n.created_at);
+      return created > weekAgo;
     });
 
-    // Extract commitments
-    const commitments = [];
-    notes.forEach(note => {
-      const actions = note.analysis?.actions || [];
-      actions.forEach(action => {
-        if (action?.commitment) {
-          const completed = note.analysis?.actionsCompleted || [];
-          const idx = actions.indexOf(action);
-          if (!completed.includes(idx)) {
-            commitments.push({
-              text: action.commitment,
-              noteDate: note.created_at,
-              noteId: note.id
-            });
-          }
-        }
-      });
+    // Count unique people mentioned this week
+    const peopleSet = new Set();
+    weekNotes.forEach(note => {
+      const people = note.analysis?.entities?.people || note.extracted?.people || [];
+      people.forEach(p => peopleSet.add(p.toLowerCase()));
     });
 
-    // Get frequently mentioned themes (simple word frequency)
-    const themes = this.extractThemes(recentNotes);
-
-    // Get recent people
-    const people = await this.getRecentPeople();
+    // Get top 2 focuses from entities (people or projects with most mentions)
+    const topFocuses = await this.getTopFocuses();
 
     return {
       greeting: this.getGreeting(),
-      themes: themes.slice(0, 3),
-      openActions: openActions.slice(0, 5),
-      commitments: commitments.slice(0, 3),
-      people: people.slice(0, 3)
+      noteCount: weekNotes.length,
+      peopleCount: peopleSet.size,
+      topFocuses: topFocuses.slice(0, 2)
     };
+  },
+
+  /**
+   * Get top focuses (entities mentioned most this week)
+   */
+  async getTopFocuses() {
+    try {
+      if (typeof Entities !== 'undefined' && Entities.getAll) {
+        const entities = await Entities.getAll();
+        const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+        // Filter to recently mentioned, sort by mention count
+        return entities
+          .filter(e => {
+            const lastMentioned = new Date(e.last_mentioned_at || e.updated_at);
+            return lastMentioned > weekAgo;
+          })
+          .sort((a, b) => (b.mention_count || 0) - (a.mention_count || 0))
+          .slice(0, 2)
+          .map(e => e.name);
+      }
+    } catch (e) {
+      console.warn('[WorkUI] Could not load top focuses:', e);
+    }
+    return [];
   },
 
   /**
@@ -372,90 +368,53 @@ const WorkUI = {
   },
 
   /**
-   * Render the pulse UI
+   * Render the pulse UI - Phase 14.5: Synthesized summary
+   * Simple, valuable, not a data dump
    */
   renderPulse(data) {
     const container = document.querySelector('.pulse-container');
     if (!container) return;
 
-    const { greeting, themes, openActions, commitments, people } = data;
+    const { greeting, noteCount, peopleCount, topFocuses } = data;
 
-    let html = `
-      <div class="pulse-greeting">${greeting}</div>
-    `;
-
-    // On your mind section
-    if (themes && themes.length > 0) {
-      html += `
-        <div class="pulse-section">
-          <h3 class="pulse-section-title">On Your Mind</h3>
-          <p class="pulse-section-subtitle">Based on recent notes:</p>
-          <ul class="pulse-themes">
-            ${themes.map(t => `<li>${t.word} (${t.count}x this week)</li>`).join('')}
-          </ul>
-        </div>
-      `;
+    // Build focus text
+    let focusText = '';
+    if (topFocuses && topFocuses.length > 0) {
+      if (topFocuses.length === 1) {
+        focusText = `This week you've been focused on <strong>${this.escapeHtml(topFocuses[0])}</strong>.`;
+      } else {
+        focusText = `This week you've been focused on <strong>${this.escapeHtml(topFocuses[0])}</strong> and <strong>${this.escapeHtml(topFocuses[1])}</strong>.`;
+      }
     }
 
-    // Open actions section
-    if (openActions && openActions.length > 0) {
-      html += `
-        <div class="pulse-section">
-          <h3 class="pulse-section-title">Open Actions</h3>
-          <ul class="pulse-actions">
-            ${openActions.map(a => `
-              <li class="pulse-action">
-                <span class="pulse-action-effort">${this.getEffortIcon(a.effort)}</span>
-                <span class="pulse-action-text">${a.text}</span>
-              </li>
-            `).join('')}
-          </ul>
-        </div>
-      `;
+    // Build stats text
+    let statsText = `${noteCount || 0} notes`;
+    if (peopleCount > 0) {
+      statsText += ` · ${peopleCount} people mentioned`;
     }
 
-    // Commitments section
-    if (commitments && commitments.length > 0) {
-      html += `
-        <div class="pulse-section">
-          <h3 class="pulse-section-title">Commitments</h3>
-          <ul class="pulse-commitments">
-            ${commitments.map(c => `
-              <li class="pulse-commitment">
-                <span class="pulse-commitment-text">"${c.text}"</span>
-                <span class="pulse-commitment-date">${this.formatRelativeDate(c.noteDate)}</span>
-              </li>
-            `).join('')}
-          </ul>
-        </div>
-      `;
-    }
-
-    // People section
-    if (people && people.length > 0) {
-      html += `
-        <div class="pulse-section">
-          <h3 class="pulse-section-title">People in Your Orbit</h3>
-          <ul class="pulse-people">
-            ${people.map(p => `
-              <li class="pulse-person">
-                <span class="pulse-person-name">${p.name}</span>
-                ${p.context ? `<span class="pulse-person-context">${p.context}</span>` : ''}
-              </li>
-            `).join('')}
-          </ul>
-        </div>
-      `;
-    }
-
-    // Start writing CTA
-    html += `
-      <button class="pulse-cta" onclick="document.querySelector('[data-screen=notes]').click()">
-        Start writing
-      </button>
+    const html = `
+      <div class="pulse-content">
+        <h1 class="pulse-greeting-large">${greeting}</h1>
+        ${focusText ? `<p class="pulse-focus">${focusText}</p>` : ''}
+        <p class="pulse-stats">${statsText}</p>
+        <button class="pulse-cta-primary" onclick="document.querySelector('[data-screen=notes]').click()">
+          Start writing
+        </button>
+      </div>
     `;
 
     container.innerHTML = html;
+  },
+
+  /**
+   * Escape HTML to prevent XSS
+   */
+  escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/[&<>"']/g, char => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[char]));
   },
 
   getEffortIcon(effort) {
