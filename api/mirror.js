@@ -9,6 +9,7 @@
 
 const { createClient } = require('@supabase/supabase-js');
 const Anthropic = require('@anthropic-ai/sdk');
+const { getUserFullContext, buildContextBlock, formatTone } = require('./user-context.js');
 
 const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = createClient(
@@ -734,163 +735,104 @@ async function buildMirrorContext(user_id, query = '') {
  * Get user context for response generation
  */
 async function getUserContext(user_id) {
-  console.log('[mirror] Fetching context for user:', user_id);
+  console.log('[mirror] Fetching FULL context for user via unified utility:', user_id);
 
-  // Get note count - notes are E2E encrypted so we can only get metadata
-  // The actual content is in encrypted_data which we can't read server-side
-  const { count: noteCount, error: notesError } = await supabase
-    .from('notes')
-    .select('id', { count: 'exact', head: true })
-    .eq('user_id', user_id)
-    .is('deleted_at', null);
+  // Use the unified context fetcher that gets ALL user data
+  const fullContext = await getUserFullContext(supabase, user_id);
 
-  if (notesError) {
-    console.error('[mirror] Error counting notes:', notesError);
-  } else {
-    console.log('[mirror] User note count:', noteCount || 0);
-  }
-
-  // Get entities with Mem0 enhancements
-  const { data: entities, error: entitiesError } = await supabase
-    .from('user_entities')
-    .select('name, entity_type, memory_type, relationship, context_notes, mention_count, sentiment_average, is_historical, importance')
-    .eq('user_id', user_id)
-    .eq('status', 'active')
-    .order('importance_score', { ascending: false })
-    .limit(15);
-
-  if (entitiesError) {
-    console.error('[mirror] Error fetching entities:', entitiesError);
-  } else {
-    console.log('[mirror] Fetched entities count:', entities?.length || 0);
-  }
-
-  // Get user patterns
-  const { data: patterns, error: patternsError } = await supabase
-    .from('user_patterns')
-    .select('pattern_type, short_description, confidence, status')
-    .eq('user_id', user_id)
-    .gte('confidence', 0.6)
-    .order('confidence', { ascending: false })
-    .limit(5);
-
-  if (patternsError) {
-    console.error('[mirror] Error fetching patterns:', patternsError);
-  }
-
-  // Get user profile
-  const { data: profile } = await supabase
-    .from('user_profiles')
-    .select('name')
-    .eq('user_id', user_id)
-    .maybeSingle();
-
-  // Get Key People (user explicitly added these - highest priority)
-  const { data: keyPeople, error: keyPeopleError } = await supabase
-    .from('user_key_people')
-    .select('name, relationship')
-    .eq('user_id', user_id);
-
-  if (keyPeopleError) {
-    console.error('[mirror] Error fetching key people:', keyPeopleError);
-  } else {
-    console.log('[mirror] Fetched key people:', JSON.stringify(keyPeople || []));
-    console.log('[mirror] Fetched key people count:', keyPeople?.length || 0);
-  }
-
-  // Get onboarding data (graceful fallback if missing)
-  const onboarding = await getOnboardingContext(user_id);
-
-  // Build people list with priority: Key People > Onboarding > Entities
+  // Build merged entities list with priority: Key People > Seeded > Extracted
   let allPeople = [];
 
   // Add Key People first (highest priority - user explicitly added these)
-  if (keyPeople && keyPeople.length > 0) {
-    for (const person of keyPeople) {
+  if (fullContext.keyPeople?.length > 0) {
+    for (const person of fullContext.keyPeople) {
       allPeople.push({
         name: person.name,
         entity_type: 'person',
         relationship: person.relationship || 'key person',
-        context_notes: null,  // user_key_people table doesn't have notes column
-        is_key_person: true  // Flag to identify in prompt
+        context_notes: null,
+        is_key_person: true
       });
     }
   }
 
   // Add onboarding seeded people
-  if (onboarding?.people && Array.isArray(onboarding.people)) {
-    for (const person of onboarding.people) {
+  if (fullContext.seededPeople?.length > 0) {
+    for (const person of fullContext.seededPeople) {
       const exists = allPeople.some(e =>
-        e.name.toLowerCase() === person.name?.toLowerCase()
+        e.name?.toLowerCase() === person.name?.toLowerCase()
       );
       if (!exists && person.name) {
         allPeople.push({
           name: person.name,
           entity_type: 'person',
           relationship: person.context || person.relationship || 'known person',
-          compressed_context: null
+          is_seeded_person: true
         });
       }
     }
   }
 
   // Add entities that aren't already in the list
-  for (const entity of (entities || [])) {
+  for (const entity of (fullContext.entities || [])) {
     const exists = allPeople.some(e =>
-      e.name.toLowerCase() === entity.name?.toLowerCase()
+      e.name?.toLowerCase() === entity.name?.toLowerCase()
     );
     if (!exists) {
       allPeople.push(entity);
     }
   }
 
+  // Return context in format expected by existing code, plus new fields
   const contextResult = {
-    noteCount: noteCount || 0, // Notes are E2E encrypted, we only have count
+    noteCount: fullContext.noteCount,
     entities: allPeople,
-    patterns: patterns || [],
-    userName: onboarding?.name || profile?.name || 'there',
-    onboarding: onboarding,
-    hasContext: !!((noteCount > 0) || (allPeople && allPeople.length > 0) || onboarding)
+    patterns: fullContext.patterns,
+    userName: fullContext.userName,
+    hasContext: fullContext.hasContext,
+
+    // NEW: Full context from unified fetcher
+    fullContext: fullContext,
+
+    // Legacy onboarding format for backward compatibility
+    onboarding: {
+      name: fullContext.userName,
+      lifeSeasons: fullContext.lifeSeasons,
+      focus: fullContext.mentalFocus,
+      people: fullContext.seededPeople
+    },
+
+    // NEW: Profile preferences (was completely missing before!)
+    profile: {
+      roleTypes: fullContext.roleTypes,
+      goals: fullContext.goals,
+      tone: fullContext.tone,
+      lifeContext: fullContext.lifeContext,
+      boundaries: fullContext.boundaries
+    },
+
+    // NEW: Depth question/answer from onboarding
+    depthQuestion: fullContext.depthQuestion,
+    depthAnswer: fullContext.depthAnswer,
+
+    // NEW: Category summaries
+    summaries: fullContext.summaries
   };
 
-  console.log('[mirror] Context summary:', {
+  console.log('[mirror] Full context loaded:', {
     noteCount: contextResult.noteCount,
     entitiesCount: contextResult.entities.length,
     patternsCount: contextResult.patterns.length,
     userName: contextResult.userName,
-    hasContext: contextResult.hasContext
+    hasLifeContext: !!contextResult.profile.lifeContext,
+    hasGoals: contextResult.profile.goals?.length > 0,
+    hasTone: !!contextResult.profile.tone,
+    hasBoundaries: contextResult.profile.boundaries?.length > 0,
+    hasDepthAnswer: !!contextResult.depthAnswer,
+    summariesCount: contextResult.summaries?.length || 0
   });
 
   return contextResult;
-}
-
-/**
- * Get onboarding context with graceful fallback
- * Never fails - returns null if no onboarding data exists
- */
-async function getOnboardingContext(user_id) {
-  try {
-    const { data, error } = await supabase
-      .from('onboarding_data')
-      .select('name, life_seasons, mental_focus, seeded_people')
-      .eq('user_id', user_id)
-      .maybeSingle(); // Use maybeSingle to avoid error when no rows
-
-    if (error || !data) {
-      console.log('[mirror] No onboarding data for user, using fallback');
-      return null;
-    }
-
-    return {
-      name: data.name,
-      lifeSeasons: data.life_seasons || [],
-      focus: data.mental_focus || [],
-      people: data.seeded_people || []
-    };
-  } catch (err) {
-    console.error('[mirror] Error fetching onboarding data:', err);
-    return null;
-  }
 }
 
 /**
@@ -1043,7 +985,7 @@ function findReferencedEntities(content, entities) {
  * Session notes are passed from client-side for immediate context
  */
 function buildSystemPrompt(context, insightType = 'reflection_prompt') {
-  const { noteCount, entities, patterns, userName, onboarding, recentSessionNotes } = context;
+  const { noteCount, entities, patterns, userName, onboarding, recentSessionNotes, profile, depthQuestion, depthAnswer, summaries } = context;
 
   // Note: Notes are E2E encrypted - we can't read content server-side
   // Instead, we use extracted entities which capture key people/topics from notes
@@ -1060,11 +1002,17 @@ function buildSystemPrompt(context, insightType = 'reflection_prompt') {
   const keyPeople = entities.filter(e => e.is_key_person);
   const otherEntities = entities.filter(e => !e.is_key_person);
 
-  // DIAGNOSTIC: Log what we're getting
+  // DIAGNOSTIC: Log what we're getting including NEW profile data
   console.log('[mirror] buildSystemPrompt DIAGNOSTIC:');
   console.log('[mirror]   - Total entities:', entities?.length || 0);
   console.log('[mirror]   - Key People found:', keyPeople.length);
   console.log('[mirror]   - Key People names:', keyPeople.map(p => p.name).join(', ') || 'NONE');
+  console.log('[mirror]   - Profile roleTypes:', profile?.roleTypes || 'NONE');
+  console.log('[mirror]   - Profile goals:', profile?.goals || 'NONE');
+  console.log('[mirror]   - Profile tone:', profile?.tone || 'NONE');
+  console.log('[mirror]   - Profile lifeContext:', profile?.lifeContext || 'NONE');
+  console.log('[mirror]   - Profile boundaries:', profile?.boundaries || 'NONE');
+  console.log('[mirror]   - Depth Q/A:', depthQuestion ? 'YES' : 'NO');
 
   // Build Key People context (highest priority)
   const keyPeopleContext = keyPeople.length > 0
@@ -1094,10 +1042,53 @@ function buildSystemPrompt(context, insightType = 'reflection_prompt') {
     ? patterns.map(p => `- ${p.short_description || 'Pattern detected'} (${Math.round(p.confidence * 100)}% confidence)`).join('\n')
     : null;
 
-  // Build onboarding context
+  // Build onboarding context (life seasons and focus)
   const onboardingContext = onboarding
     ? `Life season: ${onboarding.lifeSeasons?.join(', ') || 'unknown'}
 Currently focused on: ${onboarding.focus?.join(', ') || 'various things'}`
+    : null;
+
+  // NEW: Build profile preferences context (from TWIN tab settings)
+  const profileLabels = {
+    roleTypes: {
+      'BUILDING': 'building something new',
+      'LEADING': 'leading others',
+      'MAKING': 'deep in the work',
+      'LEARNING': 'learning and exploring',
+      'JUGGLING': 'juggling multiple things',
+      'TRANSITIONING': 'between chapters'
+    },
+    goals: {
+      'DECISIONS': 'think through decisions',
+      'PROCESS': 'process what happened',
+      'ORGANIZE': 'stay on top of things',
+      'SELF_UNDERSTANDING': 'understand themselves better',
+      'REMEMBER': 'remember what matters',
+      'EXPLORING': 'explore'
+    },
+    tone: {
+      'DIRECT': 'direct and efficient',
+      'WARM': 'warm and supportive',
+      'CHALLENGING': 'challenge them with hard questions',
+      'ADAPTIVE': 'adaptive to their energy'
+    }
+  };
+
+  const roleTypesStr = profile?.roleTypes?.length > 0
+    ? profile.roleTypes.map(r => profileLabels.roleTypes[r] || r.toLowerCase()).join(', ')
+    : null;
+
+  const goalsStr = profile?.goals?.length > 0
+    ? profile.goals.map(g => profileLabels.goals[g] || g.toLowerCase()).join(', ')
+    : null;
+
+  const toneStr = profile?.tone
+    ? profileLabels.tone[profile.tone] || profile.tone.toLowerCase()
+    : null;
+
+  // Build category summaries context
+  const summariesContext = summaries && summaries.length > 0
+    ? summaries.map(s => `- ${s.category.replace('_', ' ')}: ${s.summary}`).join('\n')
     : null;
 
   // Insight type specific instructions
@@ -1113,14 +1104,25 @@ Currently focused on: ${onboarding.focus?.join(', ') || 'various things'}`
     : '';
 
   // Build the full context block - KEY PEOPLE AT TOP for visibility
+  // NEW: Now includes profile preferences, depth Q&A, and category summaries
   let userContextBlock = `<user_context>
 User's name: ${userName}
-${keyPeopleContext ? `
-⭐ KEY PEOPLE (CRITICAL - User explicitly told you about these):
+${roleTypesStr ? `How they describe their days: ${roleTypesStr}` : ''}
+${goalsStr ? `They're here to: ${goalsStr}` : ''}
+${toneStr ? `Preferred communication style: ${toneStr}` : ''}
+${profile?.lifeContext ? `What's on their plate right now: "${profile.lifeContext}"` : ''}
+${profile?.boundaries?.length > 0 ? `⚠️ Topics to AVOID (user set these boundaries): ${profile.boundaries.join(', ')}` : ''}
+
+${keyPeopleContext ? `⭐ KEY PEOPLE (CRITICAL - User explicitly told you about these):
 ${keyPeopleContext}
 You ALREADY KNOW these people. If user mentions ANY of them by name, acknowledge the relationship.${keyPeopleMatchList}
 ` : ''}
 ${onboardingContext ? onboardingContext + '\n' : ''}
+${depthQuestion && depthAnswer ? `Important context from onboarding - when asked "${depthQuestion}", they said: "${depthAnswer}"
+` : ''}
+${summariesContext ? `What you've learned about them:
+${summariesContext}
+` : ''}
 Note activity: ${notesContext}
 ${sessionNotesContext ? `\nRECENT NOTES FROM THIS SESSION (highest priority - just written):\n${sessionNotesContext}\n` : ''}
 People and topics from their notes:
@@ -1129,10 +1131,30 @@ ${patternsContext ? `\nObserved patterns:\n${patternsContext}` : ''}
 </user_context>
 ${mem0Context ? `\n<enhanced_memory_context>\n${mem0Context}</enhanced_memory_context>` : ''}`;
 
+  // Determine voice style based on user's tone preference
+  const voiceStyle = profile?.tone === 'DIRECT'
+    ? `- Direct and efficient - get to the point, no fluff
+- Still warm, but prioritize clarity over comfort
+- If they ask a question, answer it directly first, then expand if needed`
+    : profile?.tone === 'CHALLENGING'
+    ? `- Push back gently - ask hard questions
+- Don't just validate - help them see blind spots
+- Be respectful but don't coddle
+- "Have you considered..." and "What if..." are your tools`
+    : profile?.tone === 'WARM'
+    ? `- Warm and supportive - like a caring friend
+- Lead with empathy before analysis
+- Validate feelings before offering perspective
+- Use softer language: "I wonder if...", "It sounds like..."`
+    : `- Adaptive - match their energy
+- Quick message = brief response
+- Emotional message = lead with empathy
+- Analytical message = be more direct`;
+
   return `You are Inscript — a thoughtful companion who knows ${userName}'s world and helps them understand themselves.
 
 YOUR VOICE:
-- Warm and direct, like a close friend who remembers everything
+${voiceStyle}
 - Never clinical or robotic. Never say "Based on my data..." or "I've been tracking..."
 - Use phrases like "From what you've shared...", "I noticed...", "There's something there..."
 - Keep responses to 2-3 sentences max, then invite a response

@@ -6,6 +6,7 @@
 
 const Anthropic = require('@anthropic-ai/sdk');
 const { createClient } = require('@supabase/supabase-js');
+const { getUserFullContext, buildContextBlock } = require('./user-context.js');
 
 // Initialize Supabase client
 const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -18,62 +19,27 @@ if (supabaseUrl && supabaseServiceKey) {
 
 /**
  * Get memory context for personalized chat
+ * Now uses unified context fetcher for complete user data
  */
 async function getMemoryContextForChat(userId) {
   if (!supabase || !userId) return '';
 
   try {
-    // Get category summaries
-    const { data: summaries } = await supabase
-      .from('category_summaries')
-      .select('category, summary')
-      .eq('user_id', userId)
-      .order('updated_at', { ascending: false })
-      .limit(3);
+    // Use the unified context fetcher that gets ALL user data
+    const fullContext = await getUserFullContext(supabase, userId);
 
-    // Get Key People (user explicitly added - highest priority)
-    const { data: keyPeople } = await supabase
-      .from('user_key_people')
-      .select('name, relationship')
-      .eq('user_id', userId);
+    // Build formatted context string using the shared utility
+    const contextStr = buildContextBlock(fullContext);
 
-    // Get top entities
-    const { data: entities } = await supabase
-      .from('user_entities')
-      .select('name, entity_type, relationship, context_notes')
-      .eq('user_id', userId)
-      .eq('status', 'active')
-      .order('importance_score', { ascending: false })
-      .limit(8);
+    console.log('[Chat] Full context loaded:', {
+      userName: fullContext.userName,
+      keyPeopleCount: fullContext.keyPeople?.length || 0,
+      entitiesCount: fullContext.entities?.length || 0,
+      hasLifeContext: !!fullContext.lifeContext,
+      hasGoals: fullContext.goals?.length > 0
+    });
 
-    const parts = [];
-
-    if (summaries?.length > 0) {
-      parts.push('What you know about them:');
-      summaries.forEach(s => {
-        parts.push(`- ${s.category.replace('_', ' ')}: ${s.summary}`);
-      });
-    }
-
-    // Key People first (highest priority)
-    if (keyPeople?.length > 0) {
-      parts.push('\nKEY PEOPLE (user explicitly told you about these):');
-      keyPeople.forEach(p => {
-        parts.push(`- ${p.name}: ${p.relationship}`);
-      });
-    }
-
-    if (entities?.length > 0) {
-      parts.push('\nOther people/things from their notes:');
-      entities.forEach(e => {
-        // Skip if already in key people
-        if (keyPeople?.some(kp => kp.name.toLowerCase() === e.name.toLowerCase())) return;
-        const rel = e.relationship ? ` (${e.relationship})` : '';
-        parts.push(`- ${e.name}${rel}`);
-      });
-    }
-
-    return parts.length > 0 ? parts.join('\n') : '';
+    return contextStr;
   } catch (err) {
     console.warn('[Chat] Memory context error:', err.message);
     return '';
