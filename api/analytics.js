@@ -101,20 +101,24 @@ module.exports = async function handler(req, res) {
       properties: Object.keys(safeProperties)
     });
 
-    // Store in analytics table (create if not exists)
-    // For now, we'll use memory_jobs as a general log
-    // In production, you'd use a dedicated analytics table or service
-    const { error: insertError } = await supabase
-      .from('memory_jobs')
-      .insert({
-        job_type: 'analytics_event',
-        status: 'completed',
-        result: analyticsData
-      });
+    // Log analytics event (skip storage if no user_id to avoid constraint errors)
+    // In production, use a dedicated analytics service (Amplitude, Mixpanel, etc.)
+    if (user_id) {
+      const { error: insertError } = await supabase
+        .from('memory_jobs')
+        .insert({
+          user_id,
+          job_type: 'analytics_event',
+          status: 'completed',
+          result: analyticsData
+        });
 
-    if (insertError) {
-      // Don't fail the request if analytics storage fails
-      console.warn('[analytics] Storage error:', insertError.message);
+      if (insertError) {
+        // Don't fail the request if analytics storage fails
+        console.warn('[analytics] Storage error:', insertError.message);
+      }
+    } else {
+      console.log('[analytics] Skipping storage (no user_id)');
     }
 
     // In production, you might also send to:
