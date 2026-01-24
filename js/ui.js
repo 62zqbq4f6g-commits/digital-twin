@@ -2989,10 +2989,13 @@ const UI = {
 
     console.log('[UI] reflectAndUpgrade - originalTier:', originalTier, 'input:', inputContent.substring(0, 50));
 
-    // Get encryption key for secure context transmission
-    const encryptionKeyB64 = typeof Auth !== 'undefined' && Auth.getEncryptionKeyBase64
-      ? await Auth.getEncryptionKeyBase64()
-      : null;
+    // Get encryption key for secure context transmission (check PIN first, then Auth)
+    let encryptionKeyB64 = null;
+    if (typeof PIN !== 'undefined' && PIN.encryptionKey && PIN.getEncryptionKeyBase64) {
+      encryptionKeyB64 = await PIN.getEncryptionKeyBase64();
+    } else if (typeof Auth !== 'undefined' && Auth.getEncryptionKeyBase64) {
+      encryptionKeyB64 = await Auth.getEncryptionKeyBase64();
+    }
 
     const headers = { 'Content-Type': 'application/json' };
     if (encryptionKeyB64) {
@@ -3118,10 +3121,13 @@ const UI = {
   async refineWithAnswer(note, answer) {
     const inputContent = note.input?.raw_text || note.analysis?.cleanedInput || '';
 
-    // Get encryption key for secure context transmission
-    const encryptionKeyB64 = typeof Auth !== 'undefined' && Auth.getEncryptionKeyBase64
-      ? await Auth.getEncryptionKeyBase64()
-      : null;
+    // Get encryption key for secure context transmission (check PIN first, then Auth)
+    let encryptionKeyB64 = null;
+    if (typeof PIN !== 'undefined' && PIN.encryptionKey && PIN.getEncryptionKeyBase64) {
+      encryptionKeyB64 = await PIN.getEncryptionKeyBase64();
+    } else if (typeof Auth !== 'undefined' && Auth.getEncryptionKeyBase64) {
+      encryptionKeyB64 = await Auth.getEncryptionKeyBase64();
+    }
 
     const headers = { 'Content-Type': 'application/json' };
     if (encryptionKeyB64) {

@@ -1619,6 +1619,21 @@ const PIN = {
     );
 
     return JSON.parse(new TextDecoder().decode(decrypted));
+  },
+
+  /**
+   * Export the encryption key as Base64 for use in API requests
+   * @returns {Promise<string|null>} Base64-encoded 256-bit key, or null if not unlocked
+   */
+  async getEncryptionKeyBase64() {
+    if (!this.encryptionKey) return null;
+    try {
+      const exported = await crypto.subtle.exportKey('raw', this.encryptionKey);
+      return btoa(String.fromCharCode(...new Uint8Array(exported)));
+    } catch (e) {
+      console.error('[PIN] Failed to export encryption key:', e);
+      return null;
+    }
   }
 };
 

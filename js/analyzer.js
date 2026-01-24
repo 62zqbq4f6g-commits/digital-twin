@@ -232,10 +232,13 @@ const Analyzer = {
       const currentUserId = Sync.user?.id || null;
       console.log('[Analyzer] Phase 11 - Sending userId:', currentUserId);
 
-      // Get encryption key for secure context transmission
-      const encryptionKeyB64 = typeof Auth !== 'undefined' && Auth.getEncryptionKeyBase64
-        ? await Auth.getEncryptionKeyBase64()
-        : null;
+      // Get encryption key for secure context transmission (check PIN first, then Auth)
+      let encryptionKeyB64 = null;
+      if (typeof PIN !== 'undefined' && PIN.encryptionKey && PIN.getEncryptionKeyBase64) {
+        encryptionKeyB64 = await PIN.getEncryptionKeyBase64();
+      } else if (typeof Auth !== 'undefined' && Auth.getEncryptionKeyBase64) {
+        encryptionKeyB64 = await Auth.getEncryptionKeyBase64();
+      }
 
       const headers = { 'Content-Type': 'application/json' };
       if (encryptionKeyB64) {
