@@ -372,60 +372,56 @@ window.Entities = {
       `;
     }
 
-    let html = '<div class="your-world"><h3 class="section-header">Your World</h3>';
+    let html = '<div class="your-world">';
 
-    // People section
-    if (people.length > 0) {
+    // Filter job titles from people (UX fix)
+    const JOB_TITLE_KEYWORDS = ['manager', 'engineer', 'director', 'analyst', 'consultant', 'developer', 'designer', 'lead', 'senior', 'junior', 'head of', 'vp', 'ceo', 'cto', 'cfo'];
+    const filteredPeople = people.filter(p => {
+      const nameLower = (p.name || '').toLowerCase();
+      return !JOB_TITLE_KEYWORDS.some(title => nameLower.includes(title));
+    });
+
+    // KEY PEOPLE section (limit to 5, use person cards)
+    if (filteredPeople.length > 0) {
+      const displayPeople = filteredPeople.slice(0, 5);
+      const hasMore = filteredPeople.length > 5;
+
       html += `
         <div class="entity-group">
           <div class="entity-group__header">
-            <span class="label-new">PEOPLE</span>
-            <button class="btn-text-new" onclick="UIProfile.openEditModal('people')">+</button>
+            <span class="twin-section-title">Key People</span>
+            ${hasMore ? `<a class="section-see-all" onclick="UIProfile.openEditModal('people')">See all ${filteredPeople.length}</a>` : ''}
           </div>
-          <div class="entity-list">
-            ${people.map(p => this.renderEntityItem(p)).join('')}
+          <div class="person-cards">
+            ${displayPeople.map(p => this.renderPersonCard(p)).join('')}
           </div>
         </div>
       `;
     }
 
-    // Projects section
-    if (projects.length > 0) {
-      html += `
-        <div class="entity-group">
-          <div class="entity-group__header">
-            <span class="label-new">PROJECTS</span>
-          </div>
-          <div class="entity-list">
-            ${projects.map(p => this.renderEntityItem(p, false)).join('')}
-          </div>
-        </div>
-      `;
-    }
+    // YOUR WORLD section (entities as pills - projects, places, pets combined)
+    const allEntities = [
+      ...projects.slice(0, 3).map(p => ({ ...p, type: 'project' })),
+      ...places.slice(0, 3).map(p => ({ ...p, type: 'place' })),
+      ...pets.slice(0, 3).map(p => ({ ...p, type: 'pet' }))
+    ];
 
-    // Places section
-    if (places.length > 0) {
-      html += `
-        <div class="entity-group">
-          <div class="entity-group__header">
-            <span class="label-new">PLACES</span>
-          </div>
-          <div class="entity-list">
-            ${places.map(p => this.renderEntityItem(p, false)).join('')}
-          </div>
-        </div>
-      `;
-    }
+    if (allEntities.length > 0) {
+      const hasMoreProjects = projects.length > 3;
+      const hasMorePlaces = places.length > 3;
+      const hasMorePets = pets.length > 3;
+      const totalMore = (hasMoreProjects ? projects.length - 3 : 0) +
+                       (hasMorePlaces ? places.length - 3 : 0) +
+                       (hasMorePets ? pets.length - 3 : 0);
 
-    // Pets section
-    if (pets.length > 0) {
       html += `
-        <div class="entity-group">
+        <div class="entity-group" style="margin-top: 32px;">
           <div class="entity-group__header">
-            <span class="label-new">PETS</span>
+            <span class="twin-section-title">Your World</span>
+            ${totalMore > 0 ? `<a class="section-see-all">+${totalMore} more</a>` : ''}
           </div>
-          <div class="entity-list">
-            ${pets.map(p => this.renderEntityItem(p, false)).join('')}
+          <div class="entity-pills-container">
+            ${allEntities.map(e => this.renderEntityPill(e)).join('')}
           </div>
         </div>
       `;
@@ -460,6 +456,41 @@ window.Entities = {
         <div class="entity-item__name">${this.escapeHtml(entity.name)}</div>
         <div class="entity-item__meta">${metaHtml}</div>
       </div>
+    `;
+  },
+
+  /**
+   * SuperDesign: Render person card with avatar
+   */
+  renderPersonCard(person) {
+    const initial = (person.name || '?').charAt(0).toUpperCase();
+    const role = person.relationship || '';
+    const name = this.escapeHtml(person.name || 'Unknown');
+
+    return `
+      <div class="person-card" onclick="Entities.openEntityEdit('${person.id}')">
+        <div class="person-avatar">${initial}</div>
+        <div class="person-info">
+          <span class="person-name">${name}</span>
+          ${role ? `<span class="person-role">${this.escapeHtml(role)}</span>` : ''}
+        </div>
+        <span class="person-chevron">›</span>
+      </div>
+    `;
+  },
+
+  /**
+   * SuperDesign: Render entity pill (for projects, places, pets)
+   */
+  renderEntityPill(entity) {
+    const name = this.escapeHtml(entity.name || 'Unknown');
+    const type = entity.type || entity.entity_type || 'item';
+
+    return `
+      <span class="entity-pill" onclick="Entities.openEntityEdit('${entity.id}')">
+        <span class="entity-name">${name}</span>
+        <span class="entity-type">${type}</span>
+      </span>
     `;
   },
 

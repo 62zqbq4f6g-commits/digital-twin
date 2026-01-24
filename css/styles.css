@@ -3323,7 +3323,7 @@ body {
 .twin-sections {
   display: flex;
   flex-direction: column;
-  gap: 48px; /* Increased spacing per SuperDesign refinement */
+  gap: 64px; /* SuperDesign: generous whitespace */
 }
 
 .twin-section {
