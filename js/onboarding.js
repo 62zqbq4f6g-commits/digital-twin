@@ -64,6 +64,26 @@ window.Onboarding = {
     { domain: 'growth', label: 'Personal Growth' }
   ],
 
+  // Role options for "Describe Your Days" edit modal
+  ROLE_OPTIONS: [
+    { value: 'BUILDING', title: 'Building something', subtitle: 'Creating a product, company, or project' },
+    { value: 'LEADING', title: 'Leading others', subtitle: 'Managing teams or guiding people' },
+    { value: 'MAKING', title: 'Deep in the work', subtitle: 'Focused on craft and execution' },
+    { value: 'LEARNING', title: 'Learning & exploring', subtitle: 'Growing skills and knowledge' },
+    { value: 'JUGGLING', title: 'Juggling multiple things', subtitle: 'Balancing many responsibilities' },
+    { value: 'TRANSITIONING', title: 'Between chapters', subtitle: 'Moving from one phase to another' }
+  ],
+
+  // Goal options for "You're Here To" edit modal
+  GOAL_OPTIONS: [
+    { value: 'DECISIONS', label: 'Think through decisions' },
+    { value: 'PROCESS', label: 'Process what happened' },
+    { value: 'ORGANIZE', label: 'Stay on top of things' },
+    { value: 'SELF_UNDERSTANDING', label: 'Understand myself better' },
+    { value: 'REMEMBER', label: 'Remember what matters' },
+    { value: 'EXPLORING', label: 'Just exploring' }
+  ],
+
   /**
    * Check if onboarding should be shown
    */
