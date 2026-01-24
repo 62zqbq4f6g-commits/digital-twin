@@ -1,12 +1,12 @@
 # Inscript — Project Status
 
-## January 24, 2026 | Version 8.6.0
+## January 24, 2026 | Version 9.0.0
 
 ---
 
 ## CURRENT STATE
 
-**Status:** Phase 15 — Experience Transformation (Quality Fixes Complete)
+**Status:** Phase 15 — Experience Transformation (Code Complete, Pending DB Migration)
 **Production URL:** https://digital-twin-ecru.vercel.app
 **Brand:** Inscript — "Your mirror in code"
 **Category:** Personal AI Memory
@@ -15,39 +15,101 @@
 
 ---
 
-## PHASE 15: EXPERIENCE TRANSFORMATION
+## PHASE 15: EXPERIENCE TRANSFORMATION ✅ CODE COMPLETE
 
 ### The 3 High-Impact Features
 
-| # | Feature | Impact | Description |
-|---|---------|--------|-------------|
-| 1 | **State of You** | 10X | Monthly auto-generated report (themes, people, sentiment, reflection question) |
-| 2 | **Whispers** | 5X | Quick capture mode without full reflection |
-| 3 | **Memory Moments** | 10X | Proactive surfacing (anniversaries, dormant entities, progress highlights) |
-
-### Terminal Ownership
-
-| Terminal | Ownership | Status |
-|----------|-----------|--------|
-| Terminal 1 | Backend (api/, database, cron) | Ready |
-| Terminal 2 | Frontend (js/, css/, UI) | Ready |
+| # | Feature | Impact | Status |
+|---|---------|--------|--------|
+| 1 | **State of You** | 10X | ✅ Code Complete |
+| 2 | **Whispers** | 5X | ✅ Code Complete |
+| 3 | **Memory Moments** | 10X | ✅ Code Complete |
 
 ### Build Progress
 
 | Epic | Tasks | Completed | Status |
 |------|-------|-----------|--------|
-| 1. Documentation | 4 | 0 | 🔲 Pending |
-| 2. Database Setup | 4 | 0 | 🔲 Pending |
-| 3. State of You | 6 | 0 | 🔲 Pending |
-| 4. Whispers | 6 | 0 | 🔲 Pending |
-| 5. Memory Moments | 9 | 0 | 🔲 Pending |
-| 6. Integration Testing | 4 | 0 | 🔲 Pending |
+| 1. Database Setup | 5 | 5 | ✅ Complete |
+| 2. State of You | 6 | 6 | ✅ Complete |
+| 3. Whispers | 4 | 4 | ✅ Complete |
+| 4. Memory Moments | 6 | 6 | ✅ Complete |
+| 5. Frontend CSS | 3 | 3 | ✅ Complete |
+| 6. Frontend JS | 3 | 3 | ✅ Complete |
+| 7. Analytics | 1 | 1 | ✅ Complete |
 
-**Full Build Spec:** `/PHASE-15-BUILD.md`
+### Files Created
+
+**Backend (Terminal 1):**
+| File | Purpose |
+|------|---------|
+| `api/state-of-you.js` | Monthly report generation API |
+| `api/whisper.js` | Quick capture API (E2E encrypted) |
+| `api/memory-moments.js` | Proactive surfacing API |
+| `api/analytics.js` | Event tracking API |
+| `api/cron/monthly-report.js` | Monthly report cron job |
+| `api/cron/memory-moments.js` | Memory moments cron job |
+
+**Frontend (Terminal 2):**
+| File | Purpose |
+|------|---------|
+| `js/state-of-you-ui.js` | Monthly report UI in TWIN tab |
+| `js/whisper-ui.js` | Quick capture UI (text-only) |
+| `js/memory-moments-ui.js` | Overlay/drawer UI |
+| `css/state-of-you.css` | Report styling |
+| `css/whisper.css` | Whisper mode styling |
+| `css/memory-moments.css` | Moment card styling |
+
+### Git Commits (Phase 15)
+
+```
+ad62aca T2: Memory Moments - Create proactive surfacing UI module
+ec28b02 T2: Whispers - Create quick capture UI module
+8c26910 T1: Create analytics API for product analytics
+7f5d05d T1: Memory Moments - Create cron job with all triggers
+c7ed54c T2: State of You - Create UI module and integrate with TWIN tab
+ac407c2 T1: Create Whispers, Memory Moments APIs and monthly report cron
+19199ac T1: State of You - Create complete report generation API
+3faa26c T2: Phase 15 - Create CSS files
+b65ef5f T1: Database - Create Phase 15 tables with RLS policies
+```
+
+### Pending: Database Migration
+
+Run the migration in Supabase SQL Editor:
+```
+/migrations/phase15-tables.sql
+```
 
 ---
 
-## LATEST SESSION: January 24, 2026 (Night)
+## LATEST SESSION: January 24, 2026 (Late Night)
+
+### Phase 15 Build Complete
+
+**Problem:** Need 3 high-impact features to make accumulated value visible
+
+**Solution:** Parallel terminal build with T1 (Backend) + T2 (Frontend)
+
+| Terminal | Tasks Completed | Files Created |
+|----------|-----------------|---------------|
+| T1 (Backend) | 18 | 6 API files |
+| T2 (Frontend) | 10 | 6 JS/CSS files |
+
+**Build Duration:** ~30 minutes with parallel execution
+
+**Critical Fixes Applied:**
+- FIX 1: RLS Policies before tables
+- FIX 2: Whispers E2E encrypted (content_encrypted + iv)
+- FIX 3: Whispers text-only (no voice in V1)
+- FIX 4: State of You split into 5 subtasks
+- FIX 5: Empty states for all features
+- FIX 6: Timezone column in preferences
+- FIX 7: Analytics API
+- FIX 8: Memory Moments as overlay/drawer
+
+---
+
+## EARLIER SESSION: January 24, 2026 (Night)
 
 ### Load Speed Optimization (v8.6.0)
 
@@ -81,85 +143,6 @@
 | 3 | **TWIN stats not loading** | Added `loadStatsImmediately()` with Supabase fallback | `js/twin-ui.js` |
 | 4 | **Action extraction (too permissive)** | Applied `isActionable()` to AI actions, expanded blocklist | `api/analyze.js` |
 
-### Verification Tests
-
-| Test | Expected Result |
-|------|-----------------|
-| MIRROR: "I miss seri" | Responds knowing Seri is your dog |
-| TWIN: Patterns | No "Sunday notes" — only relational/emotional |
-| TWIN: Stats | Load within milliseconds |
-| Action: "I'm tired but need to finish deck" | Extracts "finish deck", NOT "stay awake" |
-
----
-
-## EARLIER SESSION: January 24, 2026 (Morning)
-
-### Quality Fixes Deployed
-
-| Fix | Description | Commit |
-|-----|-------------|--------|
-| Key People constraint | Added unique constraint migration for `user_key_people` table | `078ee6f` |
-| Stats Supabase fallback | If IndexedDB empty, fetch note count from Supabase | `078ee6f` |
-| SoHo Editorial CSS | Refined NOTES + WORK tabs per design system | Previous |
-| Mobile Audit | All 4 tabs verified responsive at 375px | Verified |
-
-### Issues Investigated
-
-| Issue | Finding |
-|-------|---------|
-| Key People not in MIRROR | Code exists, unique constraint was missing (now fixed) |
-| Patterns "wrong category" | Patterns don't have category field - only `pattern_type` |
-| Stats showing zero | Race condition - stats load before sync; added fallback |
-| Actions tab empty | **By Design**: Personal notes don't generate actions |
-
----
-
-## EARLIER SESSION: January 23, 2026 (Evening)
-
-### Bug Fixes Deployed
-
-| Fix | Description | Commit |
-|-----|-------------|--------|
-| 406 onboarding error | Changed `.single()` → `.maybeSingle()` in onboarding.js | `693f18c` |
-| 500 Pulse API error | Rewrote pulse.js to use action_signals + user_entities | `693f18c` |
-| Invalid Date in MEETINGS | Added date validation in `formatRelativeDate()` | `2347990` |
-| Meeting double-save | Disabled save button during save operation | `2347990` |
-
-### Parallel Terminal Setup
-
-Created task prompts for parallel development:
-- `terminal-1-backend.md` — API and backend tasks
-- `terminal-2-frontend.md` — UI and frontend tasks
-
----
-
-## EARLIER SESSION: January 23, 2026 (PM)
-
-### Phase 14: WORK Tab Improvements
-
-| Fix | Description | Status |
-|-----|-------------|--------|
-| Meeting click-through | Fixed `UI.showNoteDetail` → `UI.openNoteDetail` | ✅ Fixed |
-| Attendee parsing | Now parses comma-separated names from input field | ✅ Fixed |
-| Double-save prevention | Added `isSavingMeeting` flag | ✅ Fixed |
-| Double-init prevention | Added `initialized` flag to prevent duplicate listeners | ✅ Fixed |
-| Corrupted data cleanup | Added `fixCorruptedMeetings()` function | ✅ Added |
-| Duplicate cleanup | Added `cleanupDuplicates()` function | ✅ Added |
-
-### Pre-Beta Holistic Test Results
-
-| Category | Pass Rate | Details |
-|----------|-----------|---------|
-| Authentication | 3/3 | App loads, user authenticated, minimal console errors |
-| Notes & Reflections | 5/5 | HEARD/NOTICED/QUESTION structure verified |
-| WORK Tab | 5/5 | All meeting fixes deployed |
-| TWIN Tab | 5/5 | Stats load immediately, LLM patterns work |
-| MIRROR Tab | 4/4 | Key People recognized (including pets like Seri) |
-| UI/UX | 2/3 | Mobile responsive, dark mode works |
-| Performance | 3/3 | LCP < 2.5s, no memory leaks |
-
-**Overall Score: 93% (26/28 tests passed)**
-
 ---
 
 ## BETA READINESS
@@ -173,6 +156,9 @@ Created task prompts for parallel development:
 - MIRROR conversation is context-aware
 - Performance is good
 - Console errors fixed (406, 500)
+- **NEW:** State of You monthly reports
+- **NEW:** Whispers quick capture
+- **NEW:** Memory Moments proactive surfacing
 
 ### Acceptable Issues
 - Attendees sometimes show as "team" — investigating
@@ -188,44 +174,29 @@ Created task prompts for parallel development:
 | `api/analyze.js` | 3,600+ | Maintainability | P1 |
 | `css/styles.css` | 8,400+ | Maintainability | P2 |
 
-### Split Plans
-
-**ui.js → 5 modules:**
-- `ui-core.js` — Core utilities, initialization
-- `ui-notes.js` — Note rendering, input handling
-- `ui-twin.js` — TWIN tab specific code
-- `ui-modals.js` — Modal management
-- `ui-onboarding.js` — Onboarding flow
-
-**analyze.js → Extract prompts:**
-- `api/prompts/reflection-prompts.js`
-- `api/prompts/entity-prompts.js`
-- `api/prompts/classification-prompts.js`
-
 ---
 
 ## NEXT SESSION PRIORITIES
 
 ### P0 — Must Do
 
-1. **Set Up Vercel Cron for Memory Maintenance**
-   - Create `/api/cron/memory-maintenance.js`
-   - Implement: time decay, duplicate detection, old memory compression
+1. **Run Phase 15 Database Migration**
+   - File: `/migrations/phase15-tables.sql`
+   - Run in Supabase SQL Editor
 
-2. **Split ui.js** (Terminal 2)
-   - Break 4,800+ line file into modules
+2. **Test Phase 15 Features**
+   - State of You: Generate report in TWIN tab
+   - Whispers: Quick capture in NOTES tab
+   - Memory Moments: Check overlay trigger
 
 ### P1 — Should Do
 
-1. **Debug attendee capture in meetings**
-   - Location: `js/work-ui.js` - `saveMeeting()` function
+1. **Set Up Vercel Cron for Phase 15**
+   - Configure `api/cron/monthly-report.js`
+   - Configure `api/cron/memory-moments.js`
 
-2. **Improve Entity Classification**
-   - Filter job titles from People extraction
-   - Location: `api/extract-entities.js`
-
-3. **Fix 500 errors on TwinProfile sync**
-   - Location: `api/twin-profile.js`
+2. **Split ui.js** (Terminal 2)
+   - Break 4,800+ line file into modules
 
 ### P2 — Nice to Have
 
@@ -236,7 +207,7 @@ Created task prompts for parallel development:
 
 ---
 
-## SCHEMA VERIFICATION (January 23, 2026)
+## SCHEMA VERIFICATION
 
 All critical tables verified:
 
@@ -251,6 +222,11 @@ All critical tables verified:
 | `decisions` table | ✅ Working |
 | `action_signals` table | ✅ Working |
 | pgvector extension | ✅ Enabled |
+| **`user_reports` table** | ⏳ Pending Migration |
+| **`whispers` table** | ⏳ Pending Migration |
+| **`memory_moments` table** | ⏳ Pending Migration |
+| **`user_notification_preferences` table** | ⏳ Pending Migration |
+| **`analytics_events` table** | ⏳ Pending Migration |
 
 ---
 
@@ -262,11 +238,30 @@ await WorkUI.fixCorruptedMeetings()
 
 // Remove duplicate meeting entries
 await WorkUI.cleanupDuplicates()
+
+// Test State of You (after migration)
+await fetch('/api/state-of-you?user_id=YOUR_USER_ID').then(r => r.json())
+
+// Test Whispers (after migration)
+await WhisperUI.show()
 ```
 
 ---
 
 ## PHASE HISTORY
+
+### Phase 15: Experience Transformation (January 24, 2026 Late Night) ✅
+- State of You monthly reports
+- Whispers quick capture (text-only, E2E encrypted)
+- Memory Moments proactive surfacing (overlay/drawer)
+- Analytics API
+- Cron jobs for reports and moments
+- Empty states for all features
+
+### Phase 14.2: Load Speed Optimization (January 24, 2026 Night)
+- Background sync
+- Parallel module initialization
+- Skeleton UI
 
 ### Phase 14.1: Bug Fixes (January 23, 2026 Evening)
 - Fixed 406 onboarding error
@@ -314,23 +309,24 @@ await WorkUI.cleanupDuplicates()
                     │   User Note     │
                     └────────┬────────┘
                              │
-                             ▼
-                    ┌─────────────────┐
-                    │  api/analyze.js │
-                    └────────┬────────┘
-                             │
          ┌───────────────────┼───────────────────┐
-         ▼                   │                   ▼
-┌─────────────────┐          │          ┌─────────────────┐
-│ getMemoryContext│          │          │ Entity Extraction│
-│  (Tiered)       │          │          │ (ADD/UPDATE/DEL) │
-└────────┬────────┘          │          └────────┬────────┘
-         │                   │                   │
          ▼                   ▼                   ▼
 ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
-│ Category        │  │ AI Reflection   │  │ Category        │
-│ Summaries       │  │ with Context    │  │ Summary Update  │
-└─────────────────┘  └─────────────────┘  └─────────────────┘
+│  Full Note      │  │  Whisper        │  │  Memory Moment  │
+│  (Reflection)   │  │  (Quick)        │  │  (Proactive)    │
+└────────┬────────┘  └────────┬────────┘  └────────┬────────┘
+         │                    │                    │
+         ▼                    ▼                    ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    Memory System                             │
+│  tiered-retrieval | hybrid-retrieval | assemble-context     │
+└────────────────────────────────┬────────────────────────────┘
+                                 │
+                                 ▼
+┌─────────────────────────────────────────────────────────────┐
+│                   Monthly State of You                       │
+│  themes | people | sentiment | patterns | reflection        │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -348,7 +344,7 @@ git add -A && git commit -m "message" && git push origin main
 vercel dev --listen 3001
 
 # Version (console)
-APP_VERSION  // "8.2.1"
+APP_VERSION  // "9.0.0"
 ```
 
 ---
@@ -357,7 +353,8 @@ APP_VERSION  // "8.2.1"
 
 | Version | Date | Changes |
 |---------|------|---------|
-| **8.6.0** | Jan 24, 2026 | Load speed optimization: background sync, parallel init |
+| **9.0.0** | Jan 24, 2026 | Phase 15: State of You, Whispers, Memory Moments |
+| 8.6.0 | Jan 24, 2026 | Load speed optimization: background sync, parallel init |
 | 8.5.0 | Jan 24, 2026 | Key People constraint, stats fallback, SoHo editorial CSS, mobile audit |
 | 8.3.0 | Jan 23, 2026 | Knowledge Pulse simplification, dark mode support |
 | 8.2.1 | Jan 23, 2026 | Fix 406/500 errors, parallel terminal setup |
@@ -391,5 +388,5 @@ This is the "holy shit, it knows" moment working in production.
 ---
 
 *Last Updated: January 24, 2026*
-*Version: 8.5.0 — Inscript*
+*Version: 9.0.0 — Inscript*
 *Production: https://digital-twin-ecru.vercel.app*
