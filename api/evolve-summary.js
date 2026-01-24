@@ -259,7 +259,10 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { userId, entities, action, encryptionKey } = req.body;
+  const { userId, entities, action } = req.body;
+
+  // Get encryption key from body or header
+  const encryptionKey = req.body.encryptionKey || req.headers['x-encryption-key'];
 
   if (!userId) {
     return res.status(400).json({ error: 'userId required' });

@@ -40,7 +40,10 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { user_id, encryptionKey } = req.body;
+  const { user_id } = req.body;
+
+  // Get encryption key from body or header
+  const encryptionKey = req.body.encryptionKey || req.headers['x-encryption-key'];
 
   if (!user_id) {
     return res.status(400).json({ error: 'user_id required' });

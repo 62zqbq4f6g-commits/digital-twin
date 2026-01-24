@@ -42,8 +42,11 @@ export default async function handler(req, ctx) {
 
   try {
     const body = await req.json();
-    const { input, userId, noteId, context = {}, encryptionKey } = body;
+    const { input, userId, noteId, context = {} } = body;
     const content = input?.content || '';
+
+    // Get encryption key from body or header (client sends via X-Encryption-Key header)
+    const encryptionKey = body.encryptionKey || req.headers.get('X-Encryption-Key');
 
     // Validate encryption key if provided
     const hasValidEncryption = encryptionKey && isValidKey(encryptionKey);
