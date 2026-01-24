@@ -25,6 +25,7 @@ window.UIProfile = {
 
   /**
    * Load profile from Supabase
+   * Loads from BOTH user_profiles AND onboarding_data to get complete data
    */
   async loadProfile() {
     if (!Sync.supabase || !Sync.user) {
@@ -33,31 +34,49 @@ window.UIProfile = {
     }
 
     try {
-      // Get profile
-      const { data: profile, error } = await Sync.supabase
-        .from('user_profiles')
-        .select('*')
-        .eq('user_id', Sync.user.id)
-        .single();
+      // Load from BOTH tables in parallel
+      const [profileResult, onboardingResult, notesResult] = await Promise.all([
+        // Get user_profiles (for preferences like tone, life_context, boundaries)
+        Sync.supabase
+          .from('user_profiles')
+          .select('*')
+          .eq('user_id', Sync.user.id)
+          .maybeSingle(),
+        // Get onboarding_data (for life_seasons, mental_focus, seeded_people)
+        Sync.supabase
+          .from('onboarding_data')
+          .select('*')
+          .eq('user_id', Sync.user.id)
+          .maybeSingle(),
+        // Get note count for preferences unlock
+        Sync.supabase
+          .from('notes')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', Sync.user.id)
+          .is('deleted_at', null)
+      ]);
 
-      if (error && error.code !== 'PGRST116') {
-        console.warn('[UIProfile] Error loading profile:', error.message);
-        return null;
-      }
+      const profile = profileResult.data || {};
+      const onboarding = onboardingResult.data || {};
 
-      this.profile = profile;
+      // Merge: onboarding data takes priority for onboarding fields
+      this.profile = {
+        ...profile,
+        // Use onboarding data for these fields (source of truth)
+        name: onboarding.name || profile.name,
+        life_seasons: onboarding.life_seasons || [],
+        mental_focus: onboarding.mental_focus || [],
+        seeded_people: onboarding.seeded_people || [],
+        depth_answer: onboarding.depth_answer || null
+      };
 
-      // Get note count for preferences unlock
-      const { count } = await Sync.supabase
-        .from('notes')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', Sync.user.id)
-        .is('deleted_at', null);
+      // Store onboarding data separately for edit modals
+      this.onboardingData = onboarding;
 
-      this.noteCount = count || 0;
+      this.noteCount = notesResult.count || 0;
 
       // Check if preferences should be unlocked
-      if (this.noteCount >= 5 && this.profile && !this.profile.preferences_unlocked_at) {
+      if (this.noteCount >= 5 && profile && !profile.preferences_unlocked_at) {
         await Sync.supabase
           .from('user_profiles')
           .update({ preferences_unlocked_at: new Date().toISOString() })
@@ -65,7 +84,7 @@ window.UIProfile = {
         this.profile.preferences_unlocked_at = new Date().toISOString();
       }
 
-      console.log('[UIProfile] Profile loaded:', this.profile?.name, 'notes:', this.noteCount);
+      console.log('[UIProfile] Profile loaded:', this.profile?.name, 'life_seasons:', this.profile?.life_seasons, 'notes:', this.noteCount);
       return this.profile;
 
     } catch (err) {
@@ -89,8 +108,10 @@ window.UIProfile = {
       `;
     }
 
-    const roleLabel = this.formatRoleType(this.profile.role_types || this.profile.role_type);
-    const goalsLabel = this.formatGoals(this.profile.goals);
+    // Use life_seasons from onboarding_data (primary source)
+    const lifeSeasonsLabel = this.formatLifeSeasons(this.profile.life_seasons);
+    // Use mental_focus from onboarding_data (primary source)
+    const mentalFocusLabel = this.formatMentalFocus(this.profile.mental_focus);
 
     return `
       <section class="twin-card">
@@ -99,7 +120,7 @@ window.UIProfile = {
           <div class="profile-field">
             <div class="profile-field__label">Your Name</div>
             <div class="profile-field__row">
-              <span class="profile-field__value">${this.escapeHtml(this.profile.name)}</span>
+              <span class="profile-field__value">${this.escapeHtml(this.profile.name || 'Not set')}</span>
               <button class="profile-field__edit" onclick="UIProfile.openEditModal('name')">Edit</button>
             </div>
           </div>
@@ -107,7 +128,7 @@ window.UIProfile = {
           <div class="profile-field">
             <div class="profile-field__label">Describe Your Days</div>
             <div class="profile-field__row">
-              <span class="profile-field__value">${roleLabel}</span>
+              <span class="profile-field__value">${lifeSeasonsLabel}</span>
               <button class="profile-field__edit" onclick="UIProfile.openEditModal('role')">Edit</button>
             </div>
           </div>
@@ -115,7 +136,7 @@ window.UIProfile = {
           <div class="profile-field">
             <div class="profile-field__label">You're Here To</div>
             <div class="profile-field__row">
-              <span class="profile-field__value">${goalsLabel}</span>
+              <span class="profile-field__value">${mentalFocusLabel}</span>
               <button class="profile-field__edit" onclick="UIProfile.openEditModal('goals')">Edit</button>
             </div>
           </div>
@@ -289,10 +310,17 @@ window.UIProfile = {
     if (!value) return;
 
     try {
-      await Sync.supabase
-        .from('user_profiles')
-        .update({ name: value })
-        .eq('user_id', Sync.user.id);
+      // Save to BOTH tables to keep them in sync
+      await Promise.all([
+        Sync.supabase
+          .from('user_profiles')
+          .update({ name: value })
+          .eq('user_id', Sync.user.id),
+        Sync.supabase
+          .from('onboarding_data')
+          .update({ name: value })
+          .eq('user_id', Sync.user.id)
+      ]);
 
       this.profile.name = value;
       this.closeModal();
@@ -304,24 +332,39 @@ window.UIProfile = {
   },
 
   /**
-   * Role edit modal - Multi-select (1-3)
+   * Role edit modal - Uses LIFE_SEASONS from onboarding
+   * Multi-select (1-3)
    */
   showRoleModal() {
-    // Initialize selected roles from profile (prefer role_types array, fallback to legacy role_type)
-    const roleData = this.profile?.role_types || this.profile?.role_type;
-    const currentRoles = Array.isArray(roleData)
-      ? [...roleData]
-      : roleData ? [roleData] : [];
-    this._selectedRoles = currentRoles;
+    // Initialize from life_seasons (from onboarding_data)
+    const currentSeasons = Array.isArray(this.profile?.life_seasons)
+      ? [...this.profile.life_seasons]
+      : [];
+    this._selectedRoles = currentSeasons;
 
-    const options = Onboarding.ROLE_OPTIONS.map(opt => {
-      const isSelected = currentRoles.includes(opt.value);
+    // Use LIFE_SEASONS from Onboarding module
+    const seasonOptions = typeof Onboarding !== 'undefined' && Onboarding.LIFE_SEASONS
+      ? Onboarding.LIFE_SEASONS
+      : [
+          { id: 'building', label: 'Building something new' },
+          { id: 'leading', label: 'Leading others' },
+          { id: 'learning', label: 'Learning / Growing' },
+          { id: 'transition', label: 'In transition' },
+          { id: 'caring', label: 'Caring for others' },
+          { id: 'creating', label: 'Creating' },
+          { id: 'healing', label: 'Healing / Recovering' },
+          { id: 'exploring', label: 'Exploring' },
+          { id: 'settling', label: 'Settling in' },
+          { id: 'fresh', label: 'Starting fresh' }
+        ];
+
+    const options = seasonOptions.map(opt => {
+      const isSelected = currentSeasons.includes(opt.id);
       return `
         <button class="selection-option ${isSelected ? 'selected' : ''}"
-             data-value="${opt.value}"
-             onclick="UIProfile.toggleRoleOption('${opt.value}', this)">
-          <span class="selection-title">${opt.title}</span>
-          <span class="selection-subtitle">${opt.subtitle}</span>
+             data-value="${opt.id}"
+             onclick="UIProfile.toggleRoleOption('${opt.id}', this)">
+          <span class="selection-title">${opt.label}</span>
         </button>
       `;
     }).join('');
@@ -331,7 +374,7 @@ window.UIProfile = {
       <div class="selection-list">${options}</div>
       <p class="modal-error" id="role-modal-error" style="display: none; color: var(--ink-400); margin-top: var(--space-3);">Maximum 3 selections</p>
     `;
-    const footer = `<button class="btn-primary" id="role-save-btn" onclick="UIProfile.saveRole()" ${currentRoles.length > 0 ? '' : 'disabled'}>Save</button>`;
+    const footer = `<button class="btn-primary" id="role-save-btn" onclick="UIProfile.saveRole()" ${currentSeasons.length > 0 ? '' : 'disabled'}>Save</button>`;
 
     this.showModal('What describes your days?', body, footer);
   },
@@ -360,7 +403,7 @@ window.UIProfile = {
 
     if (errorEl) errorEl.style.display = 'none';
     if (saveBtn) saveBtn.disabled = this._selectedRoles.length === 0;
-    console.log('[UIProfile] Roles selected:', this._selectedRoles);
+    console.log('[UIProfile] Life seasons selected:', this._selectedRoles);
   },
 
   async saveRole() {
@@ -371,21 +414,18 @@ window.UIProfile = {
     window.showProcessingOverlay?.('Updating...');
 
     try {
+      // Save to onboarding_data (source of truth)
       await Sync.supabase
-        .from('user_profiles')
-        .update({
-          role_type: this._selectedRoles[0], // Primary role (backwards compat)
-          role_types: this._selectedRoles  // All selected roles
-        })
+        .from('onboarding_data')
+        .update({ life_seasons: this._selectedRoles })
         .eq('user_id', Sync.user.id);
 
-      this.profile.role_types = this._selectedRoles;
-      this.profile.role_type = this._selectedRoles[0];
+      this.profile.life_seasons = this._selectedRoles;
       this.closeModal();
       this.refreshProfileDisplay();
-      console.log('[UIProfile] Roles saved:', this._selectedRoles);
+      console.log('[UIProfile] Life seasons saved:', this._selectedRoles);
     } catch (err) {
-      console.error('[UIProfile] Failed to save roles:', err);
+      console.error('[UIProfile] Failed to save life seasons:', err);
     } finally {
       console.log('[Loading] Hiding');
       window.hideProcessingOverlay?.();
@@ -393,28 +433,47 @@ window.UIProfile = {
   },
 
   /**
-   * Goals edit modal - Allow 1-5 selections
+   * Goals edit modal - Uses MENTAL_FOCUS from onboarding
+   * Allow 1-3 selections
    */
   showGoalsModal() {
-    const pills = Onboarding.GOAL_OPTIONS.map(opt => {
-      const isSelected = this.profile?.goals?.includes(opt.value);
+    // Use MENTAL_FOCUS from Onboarding module
+    const focusOptions = typeof Onboarding !== 'undefined' && Onboarding.MENTAL_FOCUS
+      ? Onboarding.MENTAL_FOCUS
+      : [
+          { id: 'work', label: 'Work' },
+          { id: 'relationships', label: 'Relationships' },
+          { id: 'health', label: 'Health' },
+          { id: 'money', label: 'Money' },
+          { id: 'family', label: 'Family' },
+          { id: 'decision', label: 'A decision' },
+          { id: 'future', label: 'The future' },
+          { id: 'myself', label: 'Myself' },
+          { id: 'project', label: 'A project' },
+          { id: 'loss', label: 'Something I lost' }
+        ];
+
+    const currentFocus = this.profile?.mental_focus || [];
+
+    const pills = focusOptions.map(opt => {
+      const isSelected = currentFocus.includes(opt.id);
       return `
         <div class="goal-pill ${isSelected ? 'goal-pill--selected' : ''}"
-             onclick="UIProfile.toggleGoalOption('${opt.value}', this)">
+             onclick="UIProfile.toggleGoalOption('${opt.id}', this)">
           ${opt.label}
         </div>
       `;
     }).join('');
 
     const body = `
-      <p class="text-caption text-muted" style="margin-bottom: var(--space-4);">Select what resonates</p>
+      <p class="text-caption text-muted" style="margin-bottom: var(--space-4);">Select up to 3 that are on your mind</p>
       <div class="goal-grid">${pills}</div>
       <p class="onboarding-error" id="modal-goals-error" style="display: none;"></p>
     `;
     const footer = `<button class="btn-primary-new" onclick="UIProfile.saveGoals()">SAVE</button>`;
 
-    this.showModal('WHAT BRINGS YOU HERE?', body, footer);
-    this._selectedGoals = [...(this.profile?.goals || [])];
+    this.showModal('WHAT\'S ON YOUR MIND?', body, footer);
+    this._selectedGoals = [...currentFocus];
   },
 
   toggleGoalOption(value, element) {
@@ -425,8 +484,8 @@ window.UIProfile = {
       this._selectedGoals.splice(idx, 1);
       element.classList.remove('goal-pill--selected');
     } else {
-      if (this._selectedGoals.length >= 5) {
-        errorEl.textContent = 'Maximum 5 selections';
+      if (this._selectedGoals.length >= 3) {
+        errorEl.textContent = 'Maximum 3 selections';
         errorEl.style.display = 'block';
         setTimeout(() => { errorEl.style.display = 'none'; }, 2000);
         return;
@@ -445,15 +504,16 @@ window.UIProfile = {
     window.showProcessingOverlay?.('Updating...');
 
     try {
+      // Save to onboarding_data (source of truth)
       await Sync.supabase
-        .from('user_profiles')
-        .update({ goals: this._selectedGoals })
+        .from('onboarding_data')
+        .update({ mental_focus: this._selectedGoals })
         .eq('user_id', Sync.user.id);
 
-      this.profile.goals = this._selectedGoals;
+      this.profile.mental_focus = this._selectedGoals;
       this.closeModal();
       this.refreshProfileDisplay();
-      console.log('[UIProfile] Goals saved:', this._selectedGoals);
+      console.log('[UIProfile] Mental focus saved:', this._selectedGoals);
     } catch (err) {
       console.error('[UIProfile] Failed to save goals:', err);
     } finally {
@@ -822,6 +882,70 @@ window.UIProfile = {
       'EXPLORING': 'Just exploring'
     };
     return goals.map(g => labels[g] || g).join(', ');
+  },
+
+  /**
+   * Format life_seasons array to display labels
+   * Maps onboarding IDs (e.g., 'building') to labels (e.g., 'Building something new')
+   */
+  formatLifeSeasons(seasons) {
+    if (!seasons || seasons.length === 0) return 'Not set';
+
+    // Use Onboarding.LIFE_SEASONS if available, otherwise use local mapping
+    const getLabel = (id) => {
+      if (typeof Onboarding !== 'undefined' && Onboarding.LIFE_SEASONS) {
+        const found = Onboarding.LIFE_SEASONS.find(s => s.id === id);
+        if (found) return found.label;
+      }
+      // Fallback labels
+      const labels = {
+        'building': 'Building something new',
+        'leading': 'Leading others',
+        'learning': 'Learning / Growing',
+        'transition': 'In transition',
+        'caring': 'Caring for others',
+        'creating': 'Creating',
+        'healing': 'Healing / Recovering',
+        'exploring': 'Exploring',
+        'settling': 'Settling in',
+        'fresh': 'Starting fresh'
+      };
+      return labels[id] || id;
+    };
+
+    return seasons.map(getLabel).join(', ');
+  },
+
+  /**
+   * Format mental_focus array to display labels
+   * Maps onboarding IDs (e.g., 'work') to labels (e.g., 'Work')
+   */
+  formatMentalFocus(focuses) {
+    if (!focuses || focuses.length === 0) return 'Not set';
+
+    // Use Onboarding.MENTAL_FOCUS if available, otherwise use local mapping
+    const getLabel = (id) => {
+      if (typeof Onboarding !== 'undefined' && Onboarding.MENTAL_FOCUS) {
+        const found = Onboarding.MENTAL_FOCUS.find(f => f.id === id);
+        if (found) return found.label;
+      }
+      // Fallback labels
+      const labels = {
+        'work': 'Work',
+        'relationships': 'Relationships',
+        'health': 'Health',
+        'money': 'Money',
+        'family': 'Family',
+        'decision': 'A decision',
+        'future': 'The future',
+        'myself': 'Myself',
+        'project': 'A project',
+        'loss': 'Something I lost'
+      };
+      return labels[id] || id;
+    };
+
+    return focuses.map(getLabel).join(', ');
   },
 
   formatTone(tone) {
