@@ -1,0 +1,477 @@
+/**
+ * Whisper Mode — Quick Capture Styling
+ * Phase 15: Experience Transformation
+ * SoHo Editorial Design System
+ *
+ * NOTE: V1 is TEXT-ONLY (FIX 3) — No voice input UI
+ */
+
+/* =============================================================================
+   Whisper Mode Overlay
+   ============================================================================= */
+
+.whisper-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.97);
+  z-index: 9000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+  opacity: 0;
+  visibility: hidden;
+  transition: all var(--duration-normal) var(--ease-out);
+}
+
+.whisper-overlay--visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* =============================================================================
+   Whisper Modal
+   ============================================================================= */
+
+.whisper-modal {
+  width: 100%;
+  max-width: 400px;
+  text-align: center;
+  transform: translateY(20px);
+  transition: transform var(--duration-normal) var(--ease-out);
+}
+
+.whisper-overlay--visible .whisper-modal {
+  transform: translateY(0);
+}
+
+/* =============================================================================
+   Whisper Header
+   ============================================================================= */
+
+.whisper-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-6);
+}
+
+.whisper-title {
+  font: 500 0.6875rem/1.4 var(--font-body);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--silver-400);
+  margin: 0;
+}
+
+.whisper-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: var(--silver-400);
+  cursor: pointer;
+  padding: var(--space-2);
+  line-height: 1;
+  transition: color var(--duration-fast) ease;
+}
+
+.whisper-close:hover {
+  color: var(--ink);
+}
+
+/* =============================================================================
+   Whisper Input
+   ============================================================================= */
+
+.whisper-input-container {
+  margin-bottom: var(--space-6);
+}
+
+.whisper-input {
+  width: 100%;
+  font: 400 1.125rem/1.6 var(--font-body);
+  color: var(--ink);
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--silver-200);
+  padding: var(--space-4) 0;
+  text-align: center;
+  resize: none;
+  min-height: 60px;
+  transition: border-color var(--duration-normal) ease;
+}
+
+.whisper-input:focus {
+  outline: none;
+  border-bottom-color: var(--ink);
+}
+
+.whisper-input::placeholder {
+  color: var(--silver-400);
+  font-style: italic;
+}
+
+/* =============================================================================
+   Whisper Submit
+   ============================================================================= */
+
+.whisper-submit {
+  font: 500 0.875rem/1 var(--font-body);
+  letter-spacing: 0.04em;
+  color: var(--paper);
+  background: var(--ink);
+  border: none;
+  border-radius: 0;
+  padding: var(--space-4) var(--space-8);
+  cursor: pointer;
+  transition: all var(--duration-fast) ease;
+  min-height: 44px;
+}
+
+.whisper-submit:hover:not(:disabled) {
+  background: var(--ink-rich);
+}
+
+.whisper-submit:disabled {
+  background: var(--silver-300);
+  cursor: not-allowed;
+}
+
+/* =============================================================================
+   Whisper Hint
+   ============================================================================= */
+
+.whisper-hint {
+  font: 400 0.9375rem/1.6 var(--font-editorial);
+  font-style: italic;
+  color: var(--silver-500);
+  margin-top: var(--space-6);
+}
+
+/* =============================================================================
+   Whisper Confirmation
+   ============================================================================= */
+
+.whisper-confirmation {
+  position: fixed;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.97);
+  z-index: 9001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  visibility: hidden;
+  transition: all var(--duration-normal) var(--ease-out);
+}
+
+.whisper-confirmation--visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+.whisper-confirmation__content {
+  text-align: center;
+}
+
+.whisper-confirmation__check {
+  font-size: 2rem;
+  color: var(--success);
+  margin-bottom: var(--space-2);
+  animation: whisperCheckIn var(--duration-slow) var(--ease-out);
+}
+
+@keyframes whisperCheckIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.whisper-confirmation__text {
+  font: 500 1rem/1.4 var(--font-body);
+  color: var(--ink);
+  margin: 0;
+}
+
+/* =============================================================================
+   Whisper Trigger Button (in NOTES tab)
+   ============================================================================= */
+
+.whisper-trigger {
+  background: none;
+  border: 1px solid var(--silver-200);
+  padding: var(--space-2) var(--space-3);
+  font: 400 0.8125rem/1 var(--font-body);
+  color: var(--silver-500);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  transition: all var(--duration-fast) ease;
+}
+
+.whisper-trigger:hover {
+  border-color: var(--silver-400);
+  color: var(--ink);
+}
+
+.whisper-trigger__icon {
+  font-size: 0.875rem;
+}
+
+/* =============================================================================
+   Whisper History
+   ============================================================================= */
+
+.whisper-history {
+  padding: var(--space-5);
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.whisper-history__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-6);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--silver-200);
+}
+
+.whisper-history__title {
+  font: 500 0.6875rem/1.4 var(--font-body);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--silver-400);
+  margin: 0;
+}
+
+.whisper-history__reflect-btn {
+  font: 400 0.8125rem/1 var(--font-body);
+  color: var(--silver-500);
+  background: none;
+  border: 1px solid var(--silver-200);
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  transition: all var(--duration-fast) ease;
+}
+
+.whisper-history__reflect-btn:hover:not(:disabled) {
+  border-color: var(--silver-400);
+  color: var(--ink);
+}
+
+.whisper-history__reflect-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* =============================================================================
+   Whisper List
+   ============================================================================= */
+
+.whisper-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.whisper-item {
+  padding: var(--space-4);
+  border: 1px solid var(--silver-100);
+  background: var(--paper);
+  cursor: pointer;
+  transition: border-color var(--duration-fast) ease;
+}
+
+.whisper-item:hover {
+  border-color: var(--silver-300);
+}
+
+.whisper-item--selected {
+  border-color: var(--ink);
+  background: var(--paper-warm);
+}
+
+.whisper-item__checkbox {
+  display: none;
+}
+
+.whisper-item__content {
+  font: 400 0.9375rem/1.6 var(--font-body);
+  color: var(--ink-soft);
+  margin: 0 0 var(--space-2);
+}
+
+.whisper-item__meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.whisper-item__time {
+  font: 400 0.75rem/1 var(--font-mono);
+  color: var(--silver-400);
+}
+
+.whisper-item__entities {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.whisper-item__entity {
+  font: 400 0.6875rem/1 var(--font-body);
+  color: var(--silver-500);
+  background: var(--silver-100);
+  padding: 2px 6px;
+}
+
+/* =============================================================================
+   Whisper Empty State
+   ============================================================================= */
+
+.whisper-empty {
+  text-align: center;
+  padding: var(--space-12) var(--space-6);
+}
+
+.whisper-empty__message {
+  font: 400 1.125rem/1.7 var(--font-editorial);
+  font-style: italic;
+  color: var(--silver-400);
+  margin: 0;
+}
+
+.whisper-empty__hint {
+  font: 400 0.875rem/1.5 var(--font-body);
+  color: var(--silver-400);
+  margin-top: var(--space-4);
+}
+
+/* =============================================================================
+   Whisper Selection Bar (for batch reflect)
+   ============================================================================= */
+
+.whisper-selection-bar {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--ink);
+  color: var(--paper);
+  padding: var(--space-3) var(--space-5);
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  opacity: 0;
+  visibility: hidden;
+  transition: all var(--duration-normal) var(--ease-out);
+  z-index: 100;
+}
+
+.whisper-selection-bar--visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+
+.whisper-selection-bar__count {
+  font: 400 0.875rem/1 var(--font-body);
+}
+
+.whisper-selection-bar__btn {
+  font: 500 0.8125rem/1 var(--font-body);
+  color: var(--paper);
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: var(--space-2) var(--space-4);
+  cursor: pointer;
+  transition: all var(--duration-fast) ease;
+}
+
+.whisper-selection-bar__btn:hover {
+  border-color: var(--paper);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.whisper-selection-bar__btn--clear {
+  border: none;
+  padding: var(--space-2);
+  opacity: 0.7;
+}
+
+.whisper-selection-bar__btn--clear:hover {
+  opacity: 1;
+  background: transparent;
+}
+
+/* =============================================================================
+   Loading State
+   ============================================================================= */
+
+.whisper-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+}
+
+.whisper-loading__spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--silver-200);
+  border-top-color: var(--ink);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.whisper-loading__text {
+  font: 400 0.875rem/1 var(--font-body);
+  color: var(--silver-500);
+}
+
+/* =============================================================================
+   Responsive Design
+   ============================================================================= */
+
+@media (max-width: 480px) {
+  .whisper-modal {
+    padding: 0 var(--space-2);
+  }
+
+  .whisper-input {
+    font-size: 1rem;
+  }
+
+  .whisper-history {
+    padding: var(--space-4);
+  }
+
+  .whisper-item {
+    padding: var(--space-3);
+  }
+
+  .whisper-item__content {
+    font-size: 0.875rem;
+  }
+
+  .whisper-selection-bar {
+    left: var(--space-4);
+    right: var(--space-4);
+    transform: translateX(0) translateY(20px);
+  }
+
+  .whisper-selection-bar--visible {
+    transform: translateX(0) translateY(0);
+  }
+}

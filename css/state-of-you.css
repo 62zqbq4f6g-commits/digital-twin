@@ -1,0 +1,496 @@
+/**
+ * State of You — Monthly Report Styling
+ * Phase 15: Experience Transformation
+ * SoHo Editorial Design System
+ */
+
+/* =============================================================================
+   Report Container
+   ============================================================================= */
+
+.state-of-you {
+  padding: var(--space-5);
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.state-of-you__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-8);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--silver-200);
+}
+
+.state-of-you__month {
+  font: 500 1.5rem/1.2 var(--font-display);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink);
+  margin: 0;
+}
+
+.state-of-you__nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.state-of-you__nav-btn {
+  background: none;
+  border: none;
+  font: 400 0.875rem/1 var(--font-body);
+  color: var(--silver-500);
+  cursor: pointer;
+  padding: var(--space-2);
+  transition: color var(--duration-fast) ease;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.state-of-you__nav-btn:hover:not(:disabled) {
+  color: var(--ink);
+}
+
+.state-of-you__nav-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.state-of-you__nav-btn--prev::before {
+  content: '\2190';
+}
+
+.state-of-you__nav-btn--next::after {
+  content: '\2192';
+}
+
+/* =============================================================================
+   Section Base
+   ============================================================================= */
+
+.state-of-you__section {
+  margin-bottom: var(--space-8);
+  animation: fadeInUp var(--duration-slow) var(--ease-out) forwards;
+}
+
+.state-of-you__section-title {
+  font: 500 0.6875rem/1.4 var(--font-body);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--silver-400);
+  margin: 0 0 var(--space-4);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--silver-100);
+}
+
+/* =============================================================================
+   Themes Section
+   ============================================================================= */
+
+.state-of-you__themes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.theme-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.theme-row__name {
+  font: 400 0.9375rem/1.4 var(--font-body);
+  color: var(--ink-soft);
+  min-width: 120px;
+  flex-shrink: 0;
+}
+
+.theme-row__bar-container {
+  flex: 1;
+  height: 8px;
+  background: var(--silver-100);
+  position: relative;
+  overflow: hidden;
+}
+
+.theme-row__bar {
+  height: 100%;
+  background: var(--ink);
+  transition: width var(--duration-slow) var(--ease-out);
+}
+
+.theme-row__count {
+  font: 400 0.75rem/1 var(--font-mono);
+  color: var(--silver-500);
+  min-width: 24px;
+  text-align: right;
+}
+
+.theme-row__trend {
+  font-size: 0.75rem;
+  color: var(--silver-400);
+}
+
+.theme-row__trend--up {
+  color: var(--success);
+}
+
+.theme-row__trend--down {
+  color: var(--silver-400);
+}
+
+/* =============================================================================
+   People Section
+   ============================================================================= */
+
+.state-of-you__people {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.person-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--silver-100);
+}
+
+.person-row:last-child {
+  border-bottom: none;
+}
+
+.person-row__marker {
+  width: 6px;
+  height: 6px;
+  background: var(--ink);
+  flex-shrink: 0;
+}
+
+.person-row__name {
+  font: 500 0.9375rem/1.4 var(--font-body);
+  color: var(--ink);
+  flex: 1;
+}
+
+.person-row__mentions {
+  font: 400 0.8125rem/1 var(--font-body);
+  color: var(--silver-500);
+}
+
+.person-row__change {
+  font: 400 0.75rem/1 var(--font-mono);
+  min-width: 40px;
+  text-align: right;
+}
+
+.person-row__change--positive {
+  color: var(--success);
+}
+
+.person-row__change--positive::before {
+  content: '+';
+}
+
+.person-row__change--negative {
+  color: var(--silver-400);
+}
+
+.person-row__sentiment {
+  font-size: 0.75rem;
+  color: var(--silver-400);
+}
+
+/* =============================================================================
+   Sentiment Trajectory
+   ============================================================================= */
+
+.state-of-you__sentiment {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.sentiment-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.sentiment-row__category {
+  font: 400 0.875rem/1.4 var(--font-body);
+  color: var(--ink-soft);
+  min-width: 80px;
+  text-transform: capitalize;
+}
+
+.sentiment-row__track {
+  flex: 1;
+  height: 4px;
+  background: var(--silver-100);
+  position: relative;
+}
+
+.sentiment-row__indicator {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 10px;
+  height: 10px;
+  background: var(--ink);
+  border-radius: 50%;
+  transition: left var(--duration-slow) var(--ease-out);
+}
+
+.sentiment-row__label {
+  font: 400 0.75rem/1 var(--font-mono);
+  color: var(--silver-500);
+  min-width: 60px;
+  text-align: right;
+}
+
+.sentiment-row__label--improving {
+  color: var(--success);
+}
+
+/* =============================================================================
+   Reflection Section
+   ============================================================================= */
+
+.state-of-you__reflection {
+  padding: var(--space-6);
+  background: var(--paper-warm);
+  border-left: 2px solid var(--ink);
+}
+
+.reflection-quote {
+  font: 400 1.125rem/1.7 var(--font-editorial);
+  font-style: italic;
+  color: var(--ink-soft);
+  margin: 0;
+}
+
+.reflection-quote::before {
+  content: '\201C';
+}
+
+.reflection-quote::after {
+  content: '\201D';
+}
+
+/* =============================================================================
+   Stats Footer
+   ============================================================================= */
+
+.state-of-you__stats {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-6);
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--silver-200);
+  margin-top: var(--space-8);
+}
+
+.stat-item {
+  text-align: center;
+}
+
+.stat-item__value {
+  font: 500 1.25rem/1.2 var(--font-display);
+  color: var(--ink);
+  margin-bottom: var(--space-1);
+}
+
+.stat-item__label {
+  font: 400 0.75rem/1.4 var(--font-body);
+  color: var(--silver-500);
+}
+
+/* =============================================================================
+   Patterns Detected
+   ============================================================================= */
+
+.state-of-you__patterns {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.pattern-item {
+  font: 400 0.9375rem/1.6 var(--font-body);
+  color: var(--ink-soft);
+  padding-left: var(--space-4);
+  position: relative;
+}
+
+.pattern-item::before {
+  content: '\2022';
+  position: absolute;
+  left: 0;
+  color: var(--silver-400);
+}
+
+/* =============================================================================
+   Empty State
+   ============================================================================= */
+
+.state-of-you__empty {
+  text-align: center;
+  padding: var(--space-12) var(--space-6);
+}
+
+.state-of-you__empty-message {
+  font: 400 1.125rem/1.7 var(--font-editorial);
+  font-style: italic;
+  color: var(--silver-400);
+  margin: 0;
+}
+
+.state-of-you__empty-hint {
+  font: 400 0.875rem/1.5 var(--font-body);
+  color: var(--silver-400);
+  margin-top: var(--space-4);
+}
+
+/* =============================================================================
+   Loading State
+   ============================================================================= */
+
+.state-of-you__loading {
+  text-align: center;
+  padding: var(--space-12) var(--space-6);
+}
+
+.state-of-you__loading-message {
+  font: 400 1rem/1.4 var(--font-editorial);
+  font-style: italic;
+  color: var(--silver-500);
+  letter-spacing: 0.02em;
+}
+
+/* =============================================================================
+   Report History Navigation
+   ============================================================================= */
+
+.state-of-you__history {
+  margin-top: var(--space-8);
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--silver-200);
+}
+
+.state-of-you__history-title {
+  font: 500 0.6875rem/1.4 var(--font-body);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--silver-400);
+  margin: 0 0 var(--space-4);
+}
+
+.state-of-you__history-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.state-of-you__history-item {
+  font: 400 0.8125rem/1 var(--font-body);
+  color: var(--silver-500);
+  background: none;
+  border: 1px solid var(--silver-200);
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  transition: all var(--duration-fast) ease;
+}
+
+.state-of-you__history-item:hover {
+  border-color: var(--silver-400);
+  color: var(--ink);
+}
+
+.state-of-you__history-item--active {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper);
+}
+
+/* =============================================================================
+   Stagger Animation for Sections
+   ============================================================================= */
+
+.state-of-you__section:nth-child(1) { animation-delay: 0ms; }
+.state-of-you__section:nth-child(2) { animation-delay: 100ms; }
+.state-of-you__section:nth-child(3) { animation-delay: 200ms; }
+.state-of-you__section:nth-child(4) { animation-delay: 300ms; }
+.state-of-you__section:nth-child(5) { animation-delay: 400ms; }
+
+/* =============================================================================
+   Responsive Design
+   ============================================================================= */
+
+@media (max-width: 480px) {
+  .state-of-you {
+    padding: var(--space-4);
+  }
+
+  .state-of-you__month {
+    font-size: 1.25rem;
+  }
+
+  .theme-row__name {
+    min-width: 90px;
+    font-size: 0.875rem;
+  }
+
+  .state-of-you__stats {
+    flex-wrap: wrap;
+    gap: var(--space-4);
+  }
+
+  .stat-item {
+    flex: 1;
+    min-width: 80px;
+  }
+
+  .person-row {
+    flex-wrap: wrap;
+  }
+
+  .person-row__mentions,
+  .person-row__change {
+    font-size: 0.75rem;
+  }
+
+  .sentiment-row {
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .sentiment-row__category {
+    min-width: 60px;
+    font-size: 0.8125rem;
+  }
+}
+
+/* =============================================================================
+   Print Styles (for exporting/sharing)
+   ============================================================================= */
+
+@media print {
+  .state-of-you__nav {
+    display: none;
+  }
+
+  .state-of-you__history {
+    display: none;
+  }
+
+  .state-of-you {
+    max-width: none;
+    padding: 0;
+  }
+}
