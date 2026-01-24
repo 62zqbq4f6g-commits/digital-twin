@@ -6089,22 +6089,30 @@ body {
   margin: 0;
 }
 
+/* Global section title - Design System v2 */
+.section-title {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #666;
+  margin-bottom: 16px;
+}
+
 /* Actions sections */
 .actions-section {
-  margin-bottom: var(--space-xl);
-  padding-bottom: var(--space-lg);
-  border-bottom: 1px solid var(--color-gray-100);
+  margin-bottom: 48px;
 }
 
 .actions-section:last-of-type {
-  border-bottom: none;
+  margin-bottom: 0;
 }
 
 .actions-section-header {
   display: flex;
   align-items: baseline;
-  gap: var(--space-sm);
-  margin-bottom: var(--space-sm);
+  gap: 8px;
+  margin-bottom: 16px;
 }
 
 .actions-section-header.clickable {
@@ -6112,26 +6120,23 @@ body {
 }
 
 .actions-section-title {
-  font-family: var(--font-sans);
-  font-size: 0.6875rem;
+  font-size: 11px;
   font-weight: 500;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--color-gray-500);
+  color: #666;
 }
 
 .actions-section-count {
-  font-family: var(--font-sans);
-  font-size: 0.6875rem;
-  color: var(--color-gray-400);
+  font-size: 11px;
+  color: #999;
 }
 
 /* Context reason for suggestions */
 .actions-context {
-  font-family: var(--font-sans);
-  font-size: 0.8125rem;
-  color: var(--color-gray-500);
-  margin: 0 0 var(--space-md);
+  font-size: 13px;
+  color: #666;
+  margin: 0 0 16px;
   font-style: italic;
 }
 
@@ -6832,8 +6837,9 @@ body {
 
 /* Work Content Areas */
 .work-content {
-  padding: var(--space-4);
+  padding: 24px 20px;
   min-height: calc(100vh - 200px);
+  background: #f8f8f8;
 }
 
 .work-content.hidden {
@@ -7109,50 +7115,49 @@ body {
   padding: var(--space-8) 0;
 }
 
+/* Meeting cards - Design System v2 */
 .meeting-card {
-  padding: 16px 20px;
-  background: #FAFAFA;
-  border: 1px solid rgba(0, 0, 0, 0.06);
+  background: white;
   border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
   cursor: pointer;
-  transition: border-color 0.2s ease;
-  margin-bottom: 12px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .meeting-card:hover {
-  border-color: rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
 }
 
 .meeting-card-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: var(--space-3);
-  margin-bottom: var(--space-2);
+  gap: 12px;
+  margin-bottom: 8px;
 }
 
 .meeting-card-title {
-  font-family: var(--font-body);
-  font-size: 15px;
-  font-weight: 500;
-  color: #1A1A1A;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a1a1a;
   flex: 1;
+  line-height: 1.3;
 }
 
 .meeting-card-date {
-  font-family: var(--font-body);
   font-size: 13px;
-  font-weight: 600;
-  color: #1A1A1A;
+  color: #999;
   white-space: nowrap;
 }
 
 .meeting-card-preview {
-  font-family: var(--font-body);
   font-size: 14px;
-  color: #6B6B6B;
+  color: #666;
   line-height: 1.5;
-  margin-bottom: var(--space-3);
+  margin-bottom: 12px;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -7162,43 +7167,41 @@ body {
 .meeting-card-action-preview {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  font-family: var(--font-body);
-  font-size: 0.75rem;
-  color: var(--ink-soft);
-  background: var(--silver-50);
-  padding: var(--space-2) var(--space-3);
-  border-radius: 4px;
+  gap: 8px;
+  font-size: 13px;
+  color: #333;
+  background: #f8f8f8;
+  padding: 8px 12px;
+  border-radius: 6px;
 }
 
 .meeting-card-action-preview .action-bullet {
-  color: var(--silver-400);
+  color: #999;
   font-weight: 600;
 }
 
 .meeting-card-action-preview .more-actions {
-  color: var(--silver-500);
-  font-size: 0.6875rem;
+  color: #999;
+  font-size: 11px;
   margin-left: auto;
 }
 
 .meeting-card-meta {
   display: flex;
-  gap: var(--space-2);
+  gap: 8px;
   font-family: var(--font-mono);
-  font-size: 0.6875rem;
-  color: var(--silver-500);
-  margin-bottom: var(--space-2);
+  font-size: 11px;
+  color: #999;
+  margin-bottom: 8px;
 }
 
 .meeting-card-attendees {
-  color: var(--silver-600);
+  color: #666;
 }
 
 .meeting-card-actions {
-  font-family: var(--font-body);
-  font-size: 0.75rem;
-  color: var(--silver-500);
+  font-size: 12px;
+  color: #999;
 }
 
 /* Skeleton loading for meeting cards */
@@ -7233,73 +7236,77 @@ body {
    COMMITMENTS Tab
    ───────────────────────────────────────── */
 
+/* Commitments - Design System v2 */
 .commitments-header {
-  margin-bottom: var(--space-4);
+  margin-bottom: 16px;
 }
 
 .commitments-intro {
-  font-family: var(--font-body);
-  font-size: 0.875rem;
-  color: var(--silver-600);
+  font-size: 14px;
+  color: #666;
   margin: 0;
 }
 
 .commitments-list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: 16px;
 }
 
 .commitments-empty {
   text-align: center;
-  color: var(--silver-500);
-  font-family: var(--font-body);
-  font-size: 0.875rem;
-  padding: var(--space-8) 0;
+  color: #999;
+  font-size: 14px;
+  padding: 48px 0;
 }
 
 .commitment-card {
-  padding: var(--space-4);
-  background: var(--paper);
-  border: 1px solid var(--silver-200);
-  border-radius: 8px;
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.commitment-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
 }
 
 .commitment-text {
-  font-family: var(--font-editorial);
-  font-size: 0.9375rem;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 15px;
   font-style: italic;
-  color: var(--ink-soft);
-  margin-bottom: var(--space-2);
+  color: #333;
+  margin-bottom: 8px;
   line-height: 1.5;
 }
 
 .commitment-meta {
   font-family: var(--font-mono);
-  font-size: 0.6875rem;
-  color: var(--silver-400);
-  margin-bottom: var(--space-3);
+  font-size: 11px;
+  color: #999;
+  margin-bottom: 12px;
 }
 
 .commitment-actions {
   display: flex;
-  gap: var(--space-2);
+  gap: 8px;
 }
 
 .commitment-btn {
   flex: 1;
-  padding: var(--space-2) var(--space-3);
-  font-family: var(--font-body);
-  font-size: 0.75rem;
+  padding: 10px 16px;
+  font-size: 13px;
   font-weight: 500;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .commitment-btn-done {
-  color: var(--paper);
-  background: var(--ink);
+  color: white;
+  background: #1a1a1a;
   border: none;
 }
 
@@ -7308,24 +7315,24 @@ body {
 }
 
 .commitment-btn-working {
-  color: var(--ink-soft);
+  color: #333;
   background: none;
-  border: 1px solid var(--silver-300);
+  border: 1px solid #e5e5e5;
 }
 
 .commitment-btn-working:hover {
-  border-color: var(--silver-500);
+  border-color: #999;
 }
 
 .commitment-btn-wont {
-  color: var(--silver-500);
+  color: #999;
   background: none;
-  border: 1px solid var(--silver-200);
+  border: 1px solid #e5e5e5;
 }
 
 .commitment-btn-wont:hover {
-  border-color: var(--silver-400);
-  color: var(--silver-600);
+  border-color: #999;
+  color: #666;
 }
 
 /* ─────────────────────────────────────────
