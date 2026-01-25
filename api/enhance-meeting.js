@@ -142,7 +142,7 @@ export default async function handler(req, ctx) {
         // Stream from Claude
         console.log(`[PERF] Claude API call start: ${Date.now() - t0}ms`);
         const response = await anthropic.messages.create({
-          model: 'claude-3-5-haiku-20241022',
+          model: 'claude-sonnet-4-20250514',
           max_tokens: 2000,
           stream: true,
           messages: [{ role: 'user', content: prompt }],
