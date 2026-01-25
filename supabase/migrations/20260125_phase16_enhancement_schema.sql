@@ -325,6 +325,55 @@ FOR EACH ROW
 EXECUTE FUNCTION update_updated_at_column();
 
 -- ============================================
+-- 6. SEMANTIC SEARCH FOR MEETINGS (TASK-027)
+-- ============================================
+-- Function to search meeting notes by semantic similarity
+
+CREATE OR REPLACE FUNCTION match_meeting_notes(
+  query_embedding vector(1536),
+  match_threshold float DEFAULT 0.5,
+  match_count int DEFAULT 10,
+  p_user_id uuid DEFAULT NULL
+)
+RETURNS TABLE (
+  id text,
+  content text,
+  enhanced_content text,
+  meeting_metadata jsonb,
+  created_at timestamptz,
+  similarity float
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    n.id,
+    n.content,
+    n.enhanced_content,
+    n.meeting_metadata,
+    n.created_at,
+    1 - (ne.embedding <=> query_embedding) AS similarity
+  FROM notes n
+  JOIN note_embeddings ne ON ne.note_id = n.id
+  WHERE n.user_id = p_user_id
+    AND n.note_type = 'meeting'
+    AND n.deleted_at IS NULL
+    AND ne.embedding IS NOT NULL
+    AND 1 - (ne.embedding <=> query_embedding) > match_threshold
+  ORDER BY ne.embedding <=> query_embedding
+  LIMIT match_count;
+END;
+$$;
+
+-- Grant execute permission
+GRANT EXECUTE ON FUNCTION match_meeting_notes TO authenticated;
+GRANT EXECUTE ON FUNCTION match_meeting_notes TO service_role;
+
+COMMENT ON FUNCTION match_meeting_notes IS 'TASK-027: Semantic search for meeting notes using pgvector';
+
+-- ============================================
 -- VERIFICATION
 -- ============================================
 
