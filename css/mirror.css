@@ -689,18 +689,52 @@
 }
 
 /* =====================================================
+   STREAMING CURSOR (Issue #5)
+   ===================================================== */
+
+.streaming-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1.1em;
+  background: #1A1A1A;
+  margin-left: 1px;
+  vertical-align: text-bottom;
+  animation: cursorBlink 0.8s ease-in-out infinite;
+}
+
+@keyframes cursorBlink {
+  0%, 45% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+/* Dark mode support */
+[data-theme="dark"] .streaming-cursor {
+  background: #FFFFFF;
+}
+
+/* Streaming message container */
+.mirror-bubble-streaming .mirror-bubble-text {
+  min-height: 1.5em;
+}
+
+/* =====================================================
    REDUCED MOTION
    ===================================================== */
 
 @media (prefers-reduced-motion: reduce) {
   .mirror-message,
   .mirror-typing-dot,
-  .mirror-loading-dot {
+  .mirror-loading-dot,
+  .streaming-cursor {
     animation: none;
   }
 
   .mirror-typing-dot,
   .mirror-loading-dot {
     opacity: 0.6;
+  }
+
+  .streaming-cursor {
+    opacity: 1;
   }
 }

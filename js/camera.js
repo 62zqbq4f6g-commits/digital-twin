@@ -3,6 +3,78 @@
  * Handles image selection, preview, and Vision API processing
  */
 
+/**
+ * UploadProgress - Progress indicator for image uploads (Issue #9)
+ * Design System: 200ms ease-out transitions, Inter font, no spinners
+ */
+const UploadProgress = {
+  element: null,
+
+  /**
+   * Show progress indicator
+   * @param {HTMLElement} container - Container element
+   */
+  show(container) {
+    if (!container) return;
+    this.hide(); // Remove any existing
+
+    this.element = document.createElement('div');
+    this.element.className = 'upload-progress';
+    this.element.innerHTML = `
+      <div class="upload-progress-bar">
+        <div class="upload-progress-fill upload-progress-shimmer"></div>
+      </div>
+      <span class="upload-progress-text">Uploading... 0%</span>
+    `;
+    container.appendChild(this.element);
+  },
+
+  /**
+   * Update progress percentage
+   * @param {number} percent - Progress percentage (0-100)
+   */
+  update(percent) {
+    if (!this.element) return;
+    const fill = this.element.querySelector('.upload-progress-fill');
+    const text = this.element.querySelector('.upload-progress-text');
+    if (fill) {
+      fill.style.width = `${percent}%`;
+      // Remove shimmer when progress is updating
+      fill.classList.remove('upload-progress-shimmer');
+    }
+    if (text) text.textContent = `Uploading... ${percent}%`;
+  },
+
+  /**
+   * Switch to processing state (after upload completes)
+   */
+  processing() {
+    if (!this.element) return;
+    const fill = this.element.querySelector('.upload-progress-fill');
+    const text = this.element.querySelector('.upload-progress-text');
+    if (fill) {
+      fill.style.width = '100%';
+      fill.classList.add('upload-progress-shimmer');
+    }
+    if (text) text.textContent = 'Processing image...';
+  },
+
+  /**
+   * Hide and remove progress indicator
+   */
+  hide() {
+    if (!this.element) return;
+    this.element.style.opacity = '0';
+    setTimeout(() => {
+      this.element?.remove();
+      this.element = null;
+    }, 200);
+  }
+};
+
+// Export for global access
+window.UploadProgress = UploadProgress;
+
 const Camera = {
   currentImage: null,
   isRecordingContext: false,
@@ -312,7 +384,7 @@ const Camera = {
   },
 
   /**
-   * Process image through Vision API
+   * Process image through Vision API with progress indicator (Issue #9)
    */
   async processImage() {
     console.log('[Camera] Processing image, currentImage:', !!this.currentImage);
@@ -345,37 +417,26 @@ const Camera = {
       }
     }
 
-    UI.showProcessing('Analyzing image...');
+    // Show progress indicator in image section
+    const imageSection = document.getElementById('image-section');
+    const progressContainer = imageSection || document.body;
+    UploadProgress.show(progressContainer);
 
     try {
       console.log('[Camera] Calling Vision API...');
-      const response = await fetch('/api/vision', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          image: this.currentImage.base64,
-          context: context
-        })
-      });
 
-      console.log('[Camera] Vision API response status:', response.status);
+      // Use XHR for progress tracking
+      const result = await this.uploadImageWithProgress(
+        this.currentImage.base64,
+        context
+      );
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('[Camera] Vision API error:', errorData);
-        const errorMsg = errorData.details || errorData.error || 'Unknown error';
-        UI.hideProcessing();
-        UI.showToast(`API Error: ${errorMsg.substring(0, 50)}`);
-        return;
-      }
-
-      const result = await response.json();
       console.log('[Camera] Vision result:', result);
 
       // Check if result has an error property
       if (result.error) {
         console.error('[Camera] Vision API returned error:', result);
-        UI.hideProcessing();
+        UploadProgress.hide();
         UI.showToast(`Error: ${result.error}`);
         return;
       }
@@ -404,7 +465,7 @@ const Camera = {
         }
       }
 
-      UI.hideProcessing();
+      UploadProgress.hide();
       UI.showToast('Image processed!');
       this.clearImage();
 
@@ -413,9 +474,69 @@ const Camera = {
 
     } catch (error) {
       console.error('[Camera] Vision processing error:', error);
-      UI.hideProcessing();
+      UploadProgress.hide();
       UI.showToast('Failed to process image');
     }
+  },
+
+  /**
+   * Upload image with progress tracking (Issue #9)
+   * @param {string} base64Image - Base64 encoded image
+   * @param {string} context - User context
+   * @returns {Promise<Object>} Vision API result
+   */
+  uploadImageWithProgress(base64Image, context) {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+
+      // Track upload progress
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) {
+          const percent = Math.round((e.loaded / e.total) * 100);
+          UploadProgress.update(percent);
+        }
+      };
+
+      // Upload complete, now processing on server
+      xhr.upload.onload = () => {
+        UploadProgress.processing();
+      };
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            resolve(JSON.parse(xhr.response));
+          } catch {
+            reject(new Error('Invalid response format'));
+          }
+        } else {
+          try {
+            const errorData = JSON.parse(xhr.response);
+            const errorMsg = errorData.details || errorData.error || 'Unknown error';
+            reject(new Error(errorMsg));
+          } catch {
+            reject(new Error(`API Error: ${xhr.status}`));
+          }
+        }
+      };
+
+      xhr.onerror = () => {
+        reject(new Error('Network error'));
+      };
+
+      xhr.ontimeout = () => {
+        reject(new Error('Request timed out'));
+      };
+
+      xhr.open('POST', '/api/vision');
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.timeout = 60000; // 60 second timeout for large images
+
+      xhr.send(JSON.stringify({
+        image: base64Image,
+        context: context
+      }));
+    });
   },
 
   /**

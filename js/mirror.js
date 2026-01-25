@@ -5,6 +5,52 @@
  * Handles MIRROR tab UI and conversation flow
  */
 
+/**
+ * StreamingCursor - Manages blinking cursor during AI response (Issue #5)
+ * Design System: 200ms ease-out transitions, Inter font
+ */
+const StreamingCursor = {
+  cursorHTML: '<span class="streaming-cursor"></span>',
+
+  /**
+   * Add cursor to element (removes existing first)
+   * @param {HTMLElement} element - Target element
+   */
+  add(element) {
+    if (!element) return;
+    this.remove(element);
+    element.insertAdjacentHTML('beforeend', this.cursorHTML);
+  },
+
+  /**
+   * Remove cursor from element
+   * @param {HTMLElement} element - Target element
+   */
+  remove(element) {
+    if (!element) return;
+    const cursor = element.querySelector('.streaming-cursor');
+    if (cursor) cursor.remove();
+  },
+
+  /**
+   * Insert text before cursor during streaming
+   * @param {HTMLElement} element - Container element
+   * @param {string} text - Text to append
+   */
+  appendText(element, text) {
+    if (!element) return;
+    const cursor = element.querySelector('.streaming-cursor');
+    if (cursor) {
+      cursor.insertAdjacentText('beforebegin', text);
+    } else {
+      element.insertAdjacentText('beforeend', text);
+    }
+  }
+};
+
+// Export for global access
+window.StreamingCursor = StreamingCursor;
+
 class Mirror {
   constructor() {
     this.conversationId = null;
@@ -532,15 +578,13 @@ class Mirror {
   }
 
   /**
-   * Render typing indicator
+   * Render typing indicator with streaming cursor (Issue #5)
    */
   renderTypingIndicator() {
     return `
-      <div class="mirror-message mirror-message-inscript" role="status" aria-label="Inscript is thinking">
-        <div class="mirror-bubble mirror-bubble-inscript mirror-typing">
-          <span class="mirror-typing-dot" aria-hidden="true"></span>
-          <span class="mirror-typing-dot" aria-hidden="true"></span>
-          <span class="mirror-typing-dot" aria-hidden="true"></span>
+      <div class="mirror-message mirror-message-inscript" role="status" aria-label="Inscript is thinking" id="mirror-streaming-message">
+        <div class="mirror-bubble mirror-bubble-inscript mirror-bubble-streaming">
+          <p class="mirror-bubble-text" id="mirror-streaming-text"><span class="streaming-cursor"></span></p>
           <span class="sr-only">Inscript is thinking...</span>
         </div>
       </div>

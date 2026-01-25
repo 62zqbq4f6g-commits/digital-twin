@@ -524,6 +524,106 @@ body {
 }
 
 /* ==========================================================================
+   Undo Toast (Phase 16 Polish)
+   Design System: Black (#1A1A1A) bg, 1px borders, 200ms ease-out, Inter font
+   ========================================================================== */
+
+.undo-toast {
+  position: fixed;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: #1A1A1A;
+  color: #FFFFFF;
+  padding: 14px 20px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  opacity: 0;
+  transition: opacity 200ms ease-out, transform 200ms ease-out;
+  z-index: 10000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.undo-toast.visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.undo-toast-message {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+.undo-toast-btn {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: #FFFFFF;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 6px;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: background 200ms ease-out, border-color 200ms ease-out;
+  white-space: nowrap;
+}
+
+.undo-toast-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.undo-toast-btn:focus {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.6);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.2);
+}
+
+/* ==========================================================================
+   Sync Status Indicator (Phase 16 Polish)
+   ========================================================================== */
+
+.sync-indicator {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.03em;
+  color: #6B6B6B;
+  opacity: 0;
+  transition: opacity 200ms ease-out;
+  white-space: nowrap;
+}
+
+.sync-indicator.syncing {
+  opacity: 1;
+}
+
+.sync-indicator.synced {
+  opacity: 1;
+  color: #1A1A1A;
+}
+
+.sync-indicator.error {
+  opacity: 1;
+  color: #8B0000;
+}
+
+.sync-indicator.syncing::after {
+  content: 'Syncing...';
+}
+
+.sync-indicator.synced::after {
+  content: '\2713  Synced';
+}
+
+.sync-indicator.error::after {
+  content: 'Sync failed';
+}
+
+/* ==========================================================================
    Capture Screen
    ========================================================================== */
 
@@ -1083,6 +1183,52 @@ body {
   100% { opacity: 0; }
 }
 
+/* Notes List Skeleton (Phase 17 - Polish Sprint) */
+.notes-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 0;
+}
+
+.note-card-skeleton {
+  height: 120px;
+  background: linear-gradient(90deg, #F5F5F5 25%, #EEEEEE 50%, #F5F5F5 75%);
+  background-size: 200% 100%;
+  animation: notes-shimmer 1.5s linear infinite;
+  border: 1px solid rgba(0,0,0,0.06);
+  border-radius: 12px;
+}
+
+@keyframes notes-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Staggered fade-in for real note cards */
+.note-card {
+  animation: notesFadeInUp 300ms ease-out forwards;
+  opacity: 0;
+}
+
+.note-card:nth-child(1) { animation-delay: 0ms; }
+.note-card:nth-child(2) { animation-delay: 50ms; }
+.note-card:nth-child(3) { animation-delay: 100ms; }
+.note-card:nth-child(4) { animation-delay: 150ms; }
+.note-card:nth-child(5) { animation-delay: 200ms; }
+.note-card:nth-child(n+6) { animation-delay: 250ms; }
+
+@keyframes notesFadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* Category indicator with diamond */
 .note-category {
   display: inline-flex;
@@ -1532,6 +1678,23 @@ body {
   background-color: var(--color-gray-600);
 }
 
+.dialog-input {
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 16px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  border: 1px solid var(--color-gray-300);
+  border-radius: 4px;
+  background: var(--color-white);
+  color: var(--color-black);
+}
+
+.dialog-input:focus {
+  outline: none;
+  border-color: var(--color-black);
+}
+
 /* ==========================================================================
    Settings Screen
    ========================================================================== */
@@ -1671,6 +1834,43 @@ body {
 
 .image-icon {
   font-size: 1.2em;
+}
+
+/* Ambient Recording Button */
+.ambient-add-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  width: 100%;
+  padding: var(--space-md) 0;
+  background: none;
+  border: none;
+  color: var(--color-gray-400);
+  font-family: var(--font-sans);
+  font-size: var(--text-caption);
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.ambient-add-btn:hover {
+  color: var(--color-black);
+}
+
+.ambient-add-btn:focus {
+  outline: 2px solid var(--color-black);
+  outline-offset: 2px;
+}
+
+.ambient-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ambient-icon svg {
+  width: 18px;
+  height: 18px;
 }
 
 /* Image Preview Container */
@@ -1835,6 +2035,113 @@ body {
 /* Image Section */
 #image-section {
   padding: var(--space-md);
+}
+
+/* ==========================================================================
+   Upload Progress (Issue #9)
+   Design System: 200ms ease-out, Inter font, no spinners
+   ========================================================================== */
+
+.upload-progress {
+  padding: 16px;
+  background: #FAFAFA;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 8px;
+  margin: 12px 0;
+  transition: opacity 200ms ease-out;
+}
+
+.upload-progress-bar {
+  height: 4px;
+  background: #E5E5E5;
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.upload-progress-fill {
+  height: 100%;
+  background: #1A1A1A;
+  border-radius: 2px;
+  width: 0%;
+  transition: width 150ms ease-out;
+}
+
+.upload-progress-text {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  color: #6B6B6B;
+}
+
+/* Image Preview with Upload Overlay */
+.image-preview {
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  max-width: 200px;
+}
+
+.image-preview img {
+  width: 100%;
+  display: block;
+}
+
+.image-preview.uploading img {
+  opacity: 0.6;
+  transition: opacity 200ms ease-out;
+}
+
+.image-preview-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.3);
+  opacity: 0;
+  transition: opacity 200ms ease-out;
+}
+
+.image-preview.uploading .image-preview-overlay {
+  opacity: 1;
+}
+
+.image-preview-status {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  color: #FFFFFF;
+}
+
+.image-preview:not(.uploading) .image-preview-overlay {
+  display: none;
+}
+
+/* Progress shimmer effect */
+.upload-progress-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.upload-progress-shimmer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
+  animation: shimmerSlide 1.5s infinite;
+}
+
+@keyframes shimmerSlide {
+  0% { left: -100%; }
+  100% { left: 100%; }
 }
 
 /* ==========================================================================
@@ -9693,6 +10000,51 @@ body {
 
 .profile-field__edit:hover {
   color: var(--ink-600);
+}
+
+.profile-field__hint {
+  font: 400 0.7rem/1.4 var(--font-sans);
+  color: var(--ink-400);
+  margin-top: var(--space-1);
+}
+
+/* Toggle Switch */
+.profile-field__toggle {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.toggle-track {
+  display: block;
+  width: 40px;
+  height: 22px;
+  background: var(--ink-200);
+  border-radius: 11px;
+  position: relative;
+  transition: background 0.2s ease;
+}
+
+.profile-field__toggle--on .toggle-track {
+  background: var(--ink-900);
+}
+
+.toggle-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  background: white;
+  border-radius: 50%;
+  transition: transform 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+.profile-field__toggle--on .toggle-thumb {
+  transform: translateX(18px);
 }
 
 /* C4: Stats Display */
