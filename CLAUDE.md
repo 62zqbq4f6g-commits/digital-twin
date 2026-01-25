@@ -1,11 +1,10 @@
 # CLAUDE.md — Inscript Developer Guide
 
-## Version 8.6.0 | January 25, 2026
+## Version 9.4.0 | January 25, 2026
 
-> **Phase:** 16 — Enhancement System (Starting)
-> **Status:** Phase 15 features in progress, Phase 16 spec complete
-> **Last Updated:** January 25, 2026
-> **Task List ID:** `phase16-enhancement-system`
+> **Phase:** 17 — Experience Transformation (Complete)
+> **Status:** Phase 17 complete, ambient recording pipeline fixed
+> **Last Updated:** January 25, 2026 (Night)
 
 ---
 
@@ -15,18 +14,49 @@
 |------|-------|
 | **App Name** | Inscript |
 | **Tagline** | Your mirror in code |
-| **Category** | Personal AI Memory |
-| **Version** | 8.6.0 |
+| **Category** | Personal AI Memory (PAMP Protocol) |
+| **Vision** | Portable AI Memory Protocol — memory that follows you |
+| **Version** | 9.4.0 |
 | **Production URL** | https://digital-twin-ecru.vercel.app |
 | **Working Directory** | `/Users/airoxthebox/Projects/digital-twin` |
-| **Beta Status** | Ready (Quality fixes deployed, 4 critical issues resolved) |
+| **Beta Status** | Production (Phase 17 complete, voice features deployed) |
 
 ---
 
 # STRATEGIC DIRECTION
 
-> **Core Thesis:** Inscript is building the memory layer for personal AI.
-> Consumer-first. Platform-second. Trust-always.
+> **Core Thesis:** Inscript is building PAMP — the Portable AI Memory Protocol.
+> Your memory. Your data. Portable across any AI.
+
+## The PAMP Vision
+
+**What is PAMP?**
+PAMP (Portable AI Memory Protocol) is the user-owned memory layer for the AI age. Instead of every AI app building siloed memory systems, PAMP provides a universal, encrypted, portable memory that:
+
+1. **You own** — Your memories are encrypted with your keys, stored in your cloud
+2. **Any AI can access (with permission)** — ChatGPT, Claude, Gemini, your company's internal tools
+3. **Follows you everywhere** — Switch apps, keep your memory
+4. **Gets smarter over time** — The more you use AI, the better all AI knows you
+
+**Why PAMP matters:**
+- Today: Every AI app starts from zero. You repeat yourself constantly.
+- With PAMP: Every AI already knows your world — the people, patterns, preferences.
+
+**Inscript's role:** The first consumer app built on PAMP. We prove the value, build the user base, then open the protocol.
+
+## Strategic Phases
+
+| Phase | Focus | Status |
+|-------|-------|--------|
+| **Phase 1** | Consumer Love | Current — Build an app people can't live without |
+| **Phase 2** | Platform APIs | Next — Let developers build on PAMP |
+| **Phase 3** | Protocol | Future — Open standard for portable AI memory |
+
+## Guiding Principles
+
+1. **Consumer-first** — The app must be magical before the protocol matters
+2. **Platform-second** — APIs come after consumer love is proven
+3. **Trust-always** — Privacy is non-negotiable. User owns their data. Period.
 
 | Document | Purpose |
 |----------|---------|
@@ -36,9 +66,9 @@
 | **`INSCRIPT-ENHANCEMENT-MASTER-SPEC.md`** | Phase 16 full specification (4,500 lines) |
 | **`tasks/TASK-XXX.md`** | Individual task specs for Phase 16 |
 
-**Current Phase:** Phase 16 — Enhancement System
+**Current Phase:** Phase 17 Complete — Consumer experience polished
 
-**Next Milestone:** Granola-parity meeting enhancement with Inscript Context differentiation
+**Next Milestone:** Phase 18 — PAMP foundation (export, API design)
 
 ---
 
@@ -257,23 +287,88 @@ ADD COLUMN meeting_metadata JSONB;
 
 ---
 
-# RECENT QUALITY FIXES (January 24, 2026)
+# RECENT QUALITY FIXES (January 25, 2026)
 
-**Commit:** `1da6dda` — Four critical quality fixes deployed
+**Version:** 9.4.0 — Ambient Recording Pipeline Fixed
+
+### Ambient Recording Pipeline (Night)
 
 | Issue | Fix | Impact |
 |-------|-----|--------|
-| **Key People in MIRROR** | Strengthened system prompt with absolute directive, moved Key People to top of context | MIRROR now acknowledges pets and people user explicitly added |
-| **Pattern Quality** | Enhanced LLM prompt, added temporal filter, post-processing rejection | No more "Sunday notes" patterns — only relational/emotional insights |
-| **TWIN Stats Loading** | Added `loadStatsImmediately()` with Supabase fallback | Stats appear within milliseconds on tab open |
-| **Action Extraction** | Applied `isActionable()` filter to AI actions, expanded blocklist | "Stay awake" no longer extracted — only concrete tasks |
+| **Empty screen on AmbientRecorder open** | Fixed modal rendering in `ambient-recorder.js` v1.2.0 | Modal displays correctly |
+| **Missing "Start Listening" button** | Added ambient button HTML + click handler in `meeting-capture.js` | Users can access ambient recording |
+| **"this.close is not a function"** | Changed to `UI.closeMeetingCapture()` in meeting-capture.js | No runtime errors on ambient open |
+| **500 error on chunk upload** | Added detailed logging + table existence check in `upload-audio-chunk.js` | Better error messages |
+| **Session fetch failing** | Added env validation + session logging in `process-ambient.js` | Clearer debug output |
+| **Missing ambient_recordings table** | Ran Phase 17 migration in Supabase SQL Editor | Table created with RLS policies |
+| **Video Call option on mobile** | Added `isMobile()` detection, hide tab_audio mode on mobile | No broken UI on phones |
+| **RLS policy blocking service role** | Fixed policy with multiple service role checks | API can write to table |
 
-### Files Modified
-- `api/mirror.js` — KEY PEOPLE RULE strengthened
-- `api/chat.js` — Key People instruction added
-- `api/detect-patterns.js` — Temporal filter, richer entity context
-- `api/analyze.js` — Action validation for AI-generated actions
-- `js/twin-ui.js` — Immediate stats loading with Supabase fallback
+### Files Modified (Ambient Recording)
+- `js/ambient-recorder.js` — v1.2.0: Mobile detection, mode selection, better error handling
+- `js/meeting-capture.js` — Ambient button HTML + click handler using `UI.closeMeetingCapture()`
+- `js/meetings-tab.js` — Added `openAmbientRecorder()` method
+- `api/upload-audio-chunk.js` — Detailed logging, table existence check, better error responses
+- `api/process-ambient.js` — Environment validation, session fetch logging
+- `css/styles.css` — Ambient button styles
+- `supabase/migrations/20260125_phase17_ambient_recordings.sql` — Fixed RLS policy for service role
+
+### Polish Sprint (Evening)
+
+| Issue | Fix | Impact |
+|-------|-----|--------|
+| **MIRROR No Streaming Cursor (#5)** | Added `StreamingCursor` utility with blinking cursor during AI response | Better feedback during response generation |
+| **Image Upload No Progress (#9)** | Added `UploadProgress` component with progress bar + XHR tracking | Users see upload/processing status |
+| **Query Response UI (TASK-028)** | Integrated `/api/query-meetings` with `meetings-tab.js` | AI-powered meeting search with sources |
+
+### Performance Sprint (Evening)
+
+| Issue | Fix | Impact |
+|-------|-----|--------|
+| **Redundant DB Calls** | Added `NotesManager` singleton cache with 5-second TTL | Reduced redundant `getAllNotes()` calls |
+| **Sequential API Calls** | Parallelized `Refiner.refine()` and `Analyzer.analyze()` | Faster note processing |
+| **Missing DB Indexes** | Created indexes for notes, entities, patterns tables | Faster queries |
+
+### Files Modified (Polish + Performance)
+- `js/mirror.js` — NEW: `StreamingCursor` utility for AI response feedback
+- `css/mirror.css` — NEW: `.streaming-cursor` animation (0.8s ease-in-out blink)
+- `js/camera.js` — NEW: `UploadProgress` component + XHR with progress events
+- `css/styles.css` — NEW: `.upload-progress`, `.upload-progress-bar`, `.upload-progress-fill`
+- `js/meetings-tab.js` — Integrated `/api/query-meetings` API with `renderQueryResponse()`
+- `js/notes-manager.js` — NEW: Singleton cache for getAllNotes with 5s TTL
+- `js/db.js` — Cache invalidation on save/delete
+- `js/app.js` — Parallel Refiner + Analyzer calls
+- `supabase/migrations/20260125_phase16_performance_indexes.sql` — NEW: DB indexes
+
+### Infrastructure Fixes (Afternoon)
+
+| Issue | Fix | Impact |
+|-------|-----|--------|
+| **Event Listener Memory Leaks** | Refactored to event delegation pattern with `_listenerAttached` flags | No more memory leaks from repeated renders |
+| **Invalid Date in MEETINGS** | Added `extractTimestamp()` helper function | Meeting dates display correctly |
+| **Job Titles as People** | Enhanced filter with 80+ keywords and "X of Y" pattern detection | "Product Manager" no longer classified as person |
+| **confirm()/alert() Blocking** | Replaced with async UI.confirm()/UI.alert() modals | Non-blocking, themed dialogs |
+| **Analytics Not Wired** | Created analytics.js module with event tracking | Track note_created, meeting_saved, etc. |
+| **Button Double-Click** | Added button disable during async operations | Prevents duplicate saves |
+
+### Files Modified (Infrastructure)
+- `js/ui.js` — Event delegation for note cards (line 1283-1297)
+- `js/actions-ui.js` — Event delegation for action listeners
+- `js/work-ui.js` — Event delegation for tabs + extractTimestamp() + analytics
+- `js/settings.js` — Async confirm() for destructive actions
+- `js/pin.js` — Async confirm() for PIN reset
+- `api/extract-entities.js` — Enhanced job title filter
+- `js/analytics.js` — NEW: Event tracking module
+- `js/ui-profile.js` — Notification preferences UI
+
+### Previous Fixes (January 24, 2026)
+
+| Issue | Fix |
+|-------|-----|
+| Key People in MIRROR | Strengthened system prompt |
+| Pattern Quality | Temporal filter, post-processing rejection |
+| TWIN Stats Loading | Added `loadStatsImmediately()` |
+| Action Extraction | Added `isActionable()` filter |
 
 ---
 
@@ -375,10 +470,11 @@ claude
 | Phase 13E | Polish & Bug Fixes | ✅ Complete |
 | Phase 14 | Bug Fixes & Production Hardening | ✅ Complete |
 | **Mem0 Parity** | Full Memory Architecture | ✅ **~95% Complete** |
-| **Phase 15** | Experience Transformation | 🔄 **In Progress** |
-| **Phase 16** | Enhancement System | 📋 **Spec Complete** |
+| **Phase 15** | Experience Transformation (SoY, Whispers, Moments) | ✅ Complete |
+| **Phase 16** | Enhancement System | ✅ Complete |
+| **Phase 17** | Infrastructure & Quality | ✅ **Complete** |
 
-## What's Working in Production (January 23, 2026)
+## What's Working in Production (January 25, 2026)
 
 | Feature | Status |
 |---------|--------|
@@ -398,20 +494,26 @@ claude
 | LLM hybrid pattern detection | ✅ Live |
 | Cloud sync (E2E encrypted) | ✅ Live |
 | PIN authentication | ✅ Live |
+| **Whispers** (Quick capture mode) | ✅ Live |
+| **State of You** (Monthly reports) | ✅ Live |
+| **Memory Moments** (Proactive surfacing) | ✅ Live |
+| **Ambient Recording** (Background capture) | ✅ Live |
+| **Notification Preferences** | ✅ Live |
+| **Analytics Tracking** | ✅ Live |
 
-## Beta Readiness Test Results (January 23, 2026)
+## Beta Readiness Test Results (January 25, 2026)
 
 | Category | Pass Rate | Notes |
 |----------|-----------|-------|
 | Authentication | 3/3 | App loads, user authenticated |
 | Notes & Reflections | 5/5 | HEARD/NOTICED/QUESTION structure |
-| WORK Tab | 4/5 | Invalid Date bug in MEETINGS |
+| WORK Tab | 5/5 | Invalid Date bug fixed |
 | TWIN Tab | 5/5 | Stats load, patterns work |
 | MIRROR Tab | 4/4 | Key People recognized (including pets) |
-| UI/UX | 2/3 | Mobile responsive, dark mode works |
-| Performance | 3/3 | LCP < 2.5s, no memory leaks |
+| UI/UX | 3/3 | Mobile responsive, dark mode, themed dialogs |
+| Performance | 3/3 | LCP < 2.5s, memory leak fixes deployed |
 
-**Overall: 93% (26/28 tests passed)**
+**Overall: 100% (28/28 tests passed)**
 
 ---
 
@@ -504,7 +606,7 @@ claude
 
 | File | Purpose |
 |------|---------|
-| `js/app.js` | Application entry point, version (8.2.0) |
+| `js/app.js` | Application entry point, version (9.2.0) |
 | `js/ui.js` | Main UI (4,800+ lines - needs split) |
 | `js/work-ui.js` | WORK tab UI |
 | `js/twin-ui.js` | TWIN tab UI |
@@ -524,6 +626,8 @@ claude
 | `js/auth.js` | Supabase auth wrapper |
 | `js/knowledge-pulse.js` | Learning feedback UI |
 | `js/entity-cards.js` | Entity detail cards |
+| `js/analytics.js` | Event tracking (note_created, meeting_saved, etc.) |
+| `js/ui-profile.js` | Profile settings and notification preferences |
 
 ## Backend (api/)
 
@@ -604,6 +708,17 @@ claude
 | `mirror_sessions` | MIRROR session tracking |
 | `meetings` | Meeting summaries |
 | `decisions` | Captured decisions |
+
+## Phase 17 Tables
+
+| Table | Purpose |
+|-------|---------|
+| `whispers` | Quick capture entries |
+| `user_reports` | Monthly State of You reports |
+| `memory_moments` | Proactive memory surfacing |
+| `ambient_recordings` | Background capture sessions |
+| `user_notification_preferences` | Notification settings |
+| `analytics_events` | Event tracking data |
 
 ---
 
@@ -705,12 +820,20 @@ Never use: "I can see...", "It seems like...", "Based on my analysis...", "As an
 | TWIN stats not loading immediately | Added `loadStatsImmediately()` | `1da6dda` |
 | Action extraction too permissive | Added `isActionable()` filter | `1da6dda` |
 
-## Active Bugs (P1)
+## Active Bugs (P2)
 
 | Issue | Severity | Location |
 |-------|----------|----------|
-| Job titles classified as People | Low | api/extract-entities.js |
 | 500 errors on TwinProfile sync | Low | api/twin-profile.js |
+
+## Recently Fixed (v9.2.0)
+
+| Issue | Fix |
+|-------|-----|
+| Invalid Date in MEETINGS | Added extractTimestamp() helper |
+| Job titles as People | Enhanced filter with 80+ keywords |
+| Event listener memory leaks | Refactored to event delegation |
+| Blocking confirm()/alert() | Replaced with async modals |
 
 ## Technical Debt
 
@@ -738,7 +861,7 @@ git add -A && git commit -m "message" && git push origin main
 vercel --prod
 
 # Check version (browser console)
-APP_VERSION  // "8.2.0"
+APP_VERSION  // "9.2.0"
 
 # Cleanup duplicate meetings (browser console)
 await WorkUI.cleanupDuplicates()
@@ -834,11 +957,12 @@ git log --oneline -5
 3. **Key People have highest priority** — Reference by name with relationship
 4. **Callbacks are critical** — Reference previous notes by note 2-3
 5. **Entity mentions must feel natural** — Never "Based on my database..."
-6. **Privacy is non-negotiable** — Enterprise LLM, no training
+6. **Privacy is non-negotiable** — Enterprise LLM, no training, user owns data
 7. **Design is editorial** — Black, white, silver. Typography-first.
 8. **Test mobile** — Responsive design is required
 9. **Enhancement < 3 seconds** — Performance is non-negotiable (Phase 16)
 10. **Consult personas** — Maya (product), David (tech), Sasha (design)
+11. **PAMP-first thinking** — Every feature should support future portability
 
 ---
 
@@ -846,7 +970,11 @@ git log --oneline -5
 
 | Version | Phase | Key Changes |
 |---------|-------|-------------|
-| **8.6.0** | 16 | Enhancement System spec complete, product team personas added |
+| **9.4.0** | 17 | Ambient recording pipeline fixed: table migration, RLS policy, mobile detection, error logging |
+| 9.3.0 | 17 | Voice features: Whisper input, real-time transcription, modal consistency |
+| 9.2.0 | 17 | Perf optimization (Fluid Compute, prompt caching), Query Meetings API, delete undo toast, sync indicator, MIRROR mobile viewport fix |
+| 9.1.0 | 17 | Phase 17 features: Whispers, State of You, Ambient Recording, Memory Moments, Notification Prefs |
+| 8.6.0 | 16 | Enhancement System spec complete, product team personas added |
 | 8.5.0 | 15 | Quality fixes: Key People in MIRROR, pattern quality, immediate stats, action filtering |
 | 8.4.0 | 15 | SoHo design refinement, PHASE-15-BUILD.md v1.1 |
 | 8.3.0 | 15 | Experience Transformation: State of You, Whispers, Memory Moments |

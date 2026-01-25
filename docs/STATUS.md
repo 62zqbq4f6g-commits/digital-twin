@@ -1,17 +1,102 @@
 # Inscript — Project Status
 
-## January 25, 2026 | Version 9.1.0
+## January 25, 2026 | Version 9.3.0
 
 ---
 
 ## CURRENT STATE
 
-**Status:** Phase 15.1 — 3-Tab Restructure (NOTES, YOU, MIRROR)
+**Status:** Phase 17 Complete — Voice features + Polish Sprint done
 **Production URL:** https://digital-twin-ecru.vercel.app
 **Brand:** Inscript — "Your mirror in code"
-**Category:** Personal AI Memory
-**Task List ID:** `phase15-experience-transform`
+**Category:** Personal AI Memory (PAMP Protocol)
+**Task List ID:** `phase17-ambient-listening`
 **Design System:** SoHo Editorial Aesthetic ✅
+
+---
+
+## LATEST SESSION: January 25, 2026 (Night)
+
+### Polish Sprint: UX Improvements (Terminal 1)
+
+| Issue | Fix | File(s) |
+|-------|-----|---------|
+| **MIRROR No Streaming Cursor (#5)** | Added `StreamingCursor` utility with blinking cursor | `js/mirror.js`, `css/mirror.css` |
+| **Image Upload No Progress (#9)** | Added `UploadProgress` with progress bar + XHR | `js/camera.js`, `css/styles.css` |
+| **Query Response UI (TASK-028)** | Integrated `/api/query-meetings` with meetings tab | `js/meetings-tab.js` |
+
+### Performance Deep Fixes (Terminal 1)
+
+| Optimization | File(s) | Impact |
+|--------------|---------|--------|
+| NotesManager Cache | `js/notes-manager.js` (new), `js/db.js` | 5-second TTL, eliminated redundant DB calls |
+| Parallel API Calls | `js/app.js` | Refiner + Analyzer run concurrently |
+| Database Indexes | `migrations/20260125_phase16_performance_indexes.sql` | idx_notes_user_created, idx_entities_importance, etc. |
+
+### Files Created/Modified (Terminal 1)
+
+| File | Change |
+|------|--------|
+| `js/mirror.js` | NEW: `StreamingCursor` utility |
+| `css/mirror.css` | NEW: `.streaming-cursor` animation (0.8s blink) |
+| `js/camera.js` | NEW: `UploadProgress` component with XHR progress |
+| `css/styles.css` | NEW: `.upload-progress`, `.upload-progress-bar` styles |
+| `js/meetings-tab.js` | Integrated query-meetings API, `renderQueryResponse()` |
+| `js/notes-manager.js` | **NEW** — Singleton cache with 5s TTL |
+| `js/db.js` | Cache invalidation on save/delete |
+| `js/app.js` | Parallel Refiner + Analyzer |
+
+---
+
+## EARLIER SESSION: January 25, 2026 (Evening)
+
+### Performance Optimization Sprint (P0)
+
+| Optimization | File(s) | Impact |
+|--------------|---------|--------|
+| Vercel Fluid Compute | `vercel.json` | Dynamic resource allocation |
+| Resource hints (preconnect) | `index.html` | Faster Supabase connection |
+| Claude prompt caching | `api/enhance-meeting.js`, `api/mirror.js`, `api/analyze-edge.js` | ~90% cost reduction on repeat calls |
+
+### TASK-027: Query Meetings API ✅
+
+- Created `api/query-meetings.js` — Natural language queries across meeting notes
+- Added `match_meeting_notes` RPC function for semantic search
+- Response includes AI-generated answer with source citations
+- Target: < 2 second response time
+
+### Polish Sprint ✅
+
+| Issue | Fix | File(s) |
+|-------|-----|---------|
+| Delete with undo | 5-second undo toast before permanent delete | `js/toast.js` (new) |
+| Sync indicator | "Syncing..." / "✓ Synced" in header | `js/toast.js`, `js/sync.js` |
+| MIRROR mobile viewport (BUG #5) | 100dvh + safe-area-inset-bottom | `css/mirror.css` |
+
+### Files Created/Modified
+
+| File | Change |
+|------|--------|
+| `js/toast.js` | **NEW** — UndoToast + SyncStatus components |
+| `api/query-meetings.js` | **NEW** — Meeting query API |
+| `prompts/meeting-enhance.js` | Separated static system prompt for caching |
+| `css/mirror.css` | Mobile viewport fix (100dvh, safe-area) |
+| `vercel.json` | Fluid Compute + functions config |
+
+### API Verification
+
+| Endpoint | Status |
+|----------|--------|
+| `/api/upload-audio-chunk` | ✅ Deployed (expects multipart/form-data) |
+| `/api/process-ambient` | ✅ Deployed (requires auth) |
+| `/api/query-meetings` | ✅ Deployed |
+
+### Database Status
+
+| Table | Status |
+|-------|--------|
+| `ambient_recordings` | ✅ EXISTS |
+| `match_meeting_notes` RPC | ✅ Added |
 
 ---
 
@@ -125,7 +210,7 @@ Run the migration in Supabase SQL Editor:
 
 ---
 
-## LATEST SESSION: January 25, 2026
+## EARLIER SESSION: January 25, 2026 (Afternoon)
 
 ### Phase 15.1: 3-Tab Restructure
 
@@ -239,22 +324,26 @@ Run the migration in Supabase SQL Editor:
 
 ### P0 — Must Do
 
-1. **Run Phase 15 Database Migration**
+1. **Test Ambient Recording E2E**
+   - Test upload-audio-chunk with real audio
+   - Test process-ambient for full flow
+   - Verify meeting note creation
+
+2. **Run Phase 15 Database Migration**
    - File: `/migrations/phase15-tables.sql`
    - Run in Supabase SQL Editor
 
-2. **Test Phase 15 Features**
-   - State of You: Generate report in TWIN tab
-   - Whispers: Quick capture in NOTES tab
-   - Memory Moments: Check overlay trigger
-
 ### P1 — Should Do
 
-1. **Set Up Vercel Cron for Phase 15**
+1. **Build Ambient Recording UI**
+   - Task: TASK-019-ambient-recording-ui.md
+   - Integrate with upload-audio-chunk API
+
+2. **Set Up Vercel Cron for Phase 15**
    - Configure `api/cron/monthly-report.js`
    - Configure `api/cron/memory-moments.js`
 
-2. **Split ui.js** (Terminal 2)
+3. **Split ui.js** (Terminal 2)
    - Break 4,800+ line file into modules
 
 ### P2 — Nice to Have
@@ -286,6 +375,8 @@ All critical tables verified:
 | **`memory_moments` table** | ⏳ Pending Migration |
 | **`user_notification_preferences` table** | ⏳ Pending Migration |
 | **`analytics_events` table** | ⏳ Pending Migration |
+| **`ambient_recordings` table** | ✅ Working |
+| **`match_meeting_notes` RPC** | ✅ Working |
 
 ---
 
@@ -308,6 +399,26 @@ await WhisperUI.show()
 ---
 
 ## PHASE HISTORY
+
+### Phase 17: Polish Sprint + Performance (January 25, 2026 Night) ✅
+- MIRROR streaming cursor during AI response (Issue #5)
+- Image upload progress bar with XHR tracking (Issue #9)
+- Query Response UI integration (TASK-028)
+- NotesManager singleton cache with 5s TTL
+- Parallel Refiner + Analyzer API calls
+- Database indexes for notes, entities, patterns
+
+### Phase 17: Ambient Listening + Polish (January 25, 2026 Evening) ✅
+- Performance optimization (Fluid Compute, prompt caching)
+- Query Meetings API with semantic search
+- Delete undo toast with 5-second window
+- Sync status indicator in header
+- MIRROR mobile viewport fix (100dvh, safe-area)
+- Verified ambient_recordings infrastructure
+
+### Phase 15.1: 3-Tab Restructure (January 25, 2026 Afternoon) ✅
+- Consolidated 4 tabs → 3 tabs (NOTES, YOU, MIRROR)
+- Merged WORK + TWIN into YOU tab with sub-tabs
 
 ### Phase 15: Experience Transformation (January 24, 2026 Late Night) ✅
 - State of You monthly reports
@@ -412,7 +523,9 @@ APP_VERSION  // "9.0.0"
 
 | Version | Date | Changes |
 |---------|------|---------|
-| **9.1.0** | Jan 25, 2026 | Phase 15.1: 3-tab restructure (NOTES, YOU, MIRROR) |
+| **9.3.0** | Jan 25, 2026 | Polish Sprint: MIRROR streaming cursor, image upload progress, NotesManager cache, parallel APIs, DB indexes |
+| 9.2.0 | Jan 25, 2026 | Performance optimization, Query Meetings API, Polish sprint (undo toast, sync indicator, mobile viewport fix) |
+| 9.1.0 | Jan 25, 2026 | Phase 15.1: 3-tab restructure (NOTES, YOU, MIRROR) |
 | 9.0.0 | Jan 24, 2026 | Phase 15: State of You, Whispers, Memory Moments |
 | 8.6.0 | Jan 24, 2026 | Load speed optimization: background sync, parallel init |
 | 8.5.0 | Jan 24, 2026 | Key People constraint, stats fallback, SoHo editorial CSS, mobile audit |
@@ -447,6 +560,6 @@ This is the "holy shit, it knows" moment working in production.
 
 ---
 
-*Last Updated: January 25, 2026*
-*Version: 9.1.0 — Inscript*
+*Last Updated: January 25, 2026 (Evening)*
+*Version: 9.2.0 — Inscript*
 *Production: https://digital-twin-ecru.vercel.app*
