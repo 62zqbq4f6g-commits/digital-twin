@@ -5,6 +5,14 @@
     {
       "path": "/api/cron/memory-maintenance",
       "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/memory-moments",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/monthly-report",
+      "schedule": "0 8 1 * *"
     }
   ],
   "headers": [
