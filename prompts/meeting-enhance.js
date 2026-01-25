@@ -5,8 +5,52 @@
  * For non-edge usage, see index.js with file-based loading
  */
 
-export const MEETING_ENHANCE_VERSION = '1.0';
+export const MEETING_ENHANCE_VERSION = '1.1';
 export const MEETING_ENHANCE_UPDATED = '2026-01-25';
+
+/**
+ * Format Inscript Context for prompt inclusion
+ * @param {Object} context - Context from inscript-context API
+ * @returns {string} Formatted context section
+ */
+export function formatContextForPrompt(context) {
+  if (!context) return '';
+
+  const parts = [];
+
+  // Attendee history
+  if (context.attendeeContext?.length) {
+    parts.push('### Attendee History');
+    for (const a of context.attendeeContext) {
+      if (a.meetingCount > 0) {
+        let line = `- ${a.name}: ${a.meetingCount} previous meeting${a.meetingCount > 1 ? 's' : ''}`;
+        if (a.lastMeeting) line += ` (last: ${a.lastMeeting})`;
+        parts.push(line);
+        if (a.recentTopics?.length) {
+          parts.push(`  Recent topics: ${a.recentTopics.slice(0, 5).join(', ')}`);
+        }
+      }
+    }
+  }
+
+  // Relevant patterns
+  if (context.patterns?.length) {
+    parts.push('### Relevant Patterns');
+    for (const p of context.patterns) {
+      parts.push(`- ${p.description} (${p.frequency})`);
+    }
+  }
+
+  // Open loops
+  if (context.openLoops?.length) {
+    parts.push('### Open Loops (unresolved recurring topics)');
+    for (const l of context.openLoops) {
+      parts.push(`- ${l.description} — mentioned ${l.mentionCount}x since ${l.firstMentioned}`);
+    }
+  }
+
+  return parts.length > 0 ? parts.join('\n') : 'No prior context available for these attendees.';
+}
 
 /**
  * Build the meeting enhancement prompt with variables substituted
@@ -15,9 +59,10 @@ export const MEETING_ENHANCE_UPDATED = '2026-01-25';
  * @param {string} params.title - Meeting title
  * @param {string[]} params.attendees - List of attendees
  * @param {string} params.date - Meeting date
+ * @param {Object} params.context - Inscript Context (optional)
  * @returns {string} The complete prompt
  */
-export function buildMeetingEnhancePrompt({ rawInput, title, attendees, date }) {
+export function buildMeetingEnhancePrompt({ rawInput, title, attendees, date, context }) {
   const attendeeList = attendees?.length ? attendees.join(', ') : 'Not specified';
   const meetingDate = date || new Date().toLocaleDateString('en-US', {
     weekday: 'long',
@@ -26,7 +71,26 @@ export function buildMeetingEnhancePrompt({ rawInput, title, attendees, date }) 
     day: 'numeric',
   });
 
-  return `You are an AI assistant that transforms raw, unstructured meeting notes into clean, professional meeting minutes.
+  // Build context section if provided
+  const contextSection = context ? `
+
+## USER'S INSCRIPT MEMORY
+
+The user has a memory system called Inscript. Here's relevant context about the attendees and topics:
+
+${formatContextForPrompt(context)}
+
+Use this context ONLY to:
+1. Add a subtle note in NOTED if an open loop is relevant (e.g., "⚠️ Compensation discussion — 3rd time mentioned, still unresolved")
+2. Reference meeting history naturally if it adds value (e.g., "This continues the Q2 roadmap discussion from last week")
+
+Do NOT:
+- Invent context not provided
+- Add context that isn't relevant to the notes
+- Make assumptions about relationships or history not stated
+` : '';
+
+  return `You are an AI assistant that transforms raw, unstructured meeting notes into clean, professional meeting minutes. You also have access to the user's memory system for relevant context.
 
 ## YOUR TASK
 
@@ -45,7 +109,7 @@ ${rawInput}
 - Title: ${title || 'Untitled Meeting'}
 - Attendees: ${attendeeList}
 - Date: ${meetingDate}
-
+${contextSection}
 ## OUTPUT STRUCTURE
 
 Generate meeting minutes using ONLY these sections (skip any section with no content):
