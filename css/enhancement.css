@@ -781,3 +781,55 @@
     padding: 16px;
   }
 }
+
+/* ===========================================
+   LOADING MESSAGES (TASK-005)
+   =========================================== */
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+  padding: 32px;
+}
+
+.loading-message {
+  font-family: var(--font-editorial, 'Cormorant Garamond', Georgia, serif);
+  font-size: 16px;
+  font-style: italic;
+  color: var(--silver-500, #737373);
+  text-align: center;
+  margin: 0;
+  transition: opacity 0.15s ease;
+  animation: loadingPulse 3s ease-in-out infinite;
+}
+
+@keyframes loadingPulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+/* When message is actively fading for rotation */
+.loading-message.fading {
+  opacity: 0;
+}
+
+/* Loading container within meeting modal */
+.meeting-loading .loading-container {
+  min-height: 100px;
+  padding: 24px;
+}
+
+/* Responsive - Loading */
+@media (max-width: 480px) {
+  .loading-container {
+    min-height: 100px;
+    padding: 24px;
+  }
+
+  .loading-message {
+    font-size: 15px;
+  }
+}

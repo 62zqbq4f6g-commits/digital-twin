@@ -89,8 +89,7 @@ const MeetingCapture = {
         </button>
 
         <div class="meeting-loading hidden" id="mc-loading">
-          <div class="meeting-loading-spinner"></div>
-          <p class="meeting-loading-text">Enhancing your notes...</p>
+          <!-- Loading messages rendered by LoadingMessagesRotator -->
         </div>
 
         <div class="meeting-enhanced-output hidden" id="mc-output">
@@ -240,11 +239,20 @@ const MeetingCapture = {
     this.setState('enhancing');
     this.startTime = Date.now();
 
+    // Start loading messages (TASK-005)
+    const loadingContainer = this.container.querySelector('#mc-loading');
+    let loader = null;
+    if (loadingContainer && typeof LoadingMessagesRotator !== 'undefined') {
+      loader = new LoadingMessagesRotator(loadingContainer, 'meeting');
+      loader.start();
+    }
+
     try {
       // Get user ID for API call
       const userId = typeof Sync !== 'undefined' && Sync.user?.id ? Sync.user.id : null;
 
       if (!userId) {
+        if (loader) loader.stop();
         throw new Error('User not authenticated');
       }
 
@@ -268,12 +276,13 @@ const MeetingCapture = {
       });
 
       if (!response.ok) {
+        if (loader) loader.stop();
         const errorData = await response.json();
         throw new Error(errorData.error?.message || 'Enhancement failed');
       }
 
-      // Handle SSE streaming response
-      await this.handleStreamingResponse(response, data);
+      // Handle SSE streaming response (loader stopped inside when content arrives)
+      await this.handleStreamingResponse(response, data, loader);
 
       this.setState('enhanced');
 
@@ -281,6 +290,7 @@ const MeetingCapture = {
         this.onEnhanceComplete(data);
       }
     } catch (error) {
+      if (loader) loader.stop();
       console.error('[MeetingCapture] Enhancement failed:', error);
       this.setState('capturing'); // Allow retry
       this.showError(error.message || 'Enhancement failed. Please try again.');
@@ -291,10 +301,13 @@ const MeetingCapture = {
    * Handle SSE streaming response from enhance-meeting API
    * @param {Response} response - Fetch response
    * @param {Object} data - Original form data
+   * @param {LoadingMessagesRotator} loader - Optional loader to stop when content arrives
    */
-  async handleStreamingResponse(response, data) {
+  async handleStreamingResponse(response, data, loader = null) {
     const output = this.container.querySelector('#mc-output');
     if (!output) return;
+
+    let loaderStopped = false;
 
     // Use EnhanceDisplay component if available, otherwise fallback
     const useEnhanceDisplay = typeof EnhanceDisplay !== 'undefined';
@@ -362,6 +375,11 @@ const MeetingCapture = {
 
               switch (eventData.type) {
                 case 'metadata':
+                  // Stop loading messages when content starts arriving
+                  if (loader && !loaderStopped) {
+                    loader.stop();
+                    loaderStopped = true;
+                  }
                   if (display) {
                     display.setMetadata(eventData.metadata);
                   } else {

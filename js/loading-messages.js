@@ -92,6 +92,32 @@ window.LoadingMessages = {
     "bear with me..."
   ],
 
+  // Meeting enhancement (TASK-005)
+  meeting: [
+    "weaving your thoughts together...",
+    "finding the threads...",
+    "structuring the conversation...",
+    "connecting to your history...",
+    "enhancing with context...",
+    "organizing the chaos...",
+    "turning fragments into form...",
+    "reading between your lines...",
+    "gathering what matters...",
+    "building the picture..."
+  ],
+
+  // Note enhancement
+  note: [
+    "listening to your thoughts...",
+    "finding the meaning...",
+    "connecting the dots...",
+    "reflecting on your words...",
+    "understanding the context...",
+    "weaving your narrative...",
+    "discovering patterns...",
+    "building understanding..."
+  ],
+
   /**
    * Get a random message for a context
    * @param {string} context - The loading context (mirror, twin, notes, analysis, chat, etc.)
@@ -151,5 +177,116 @@ window.LoadingMessages = {
     `;
   }
 };
+
+/**
+ * LoadingMessagesRotator class
+ * Class-based interface for meeting/note enhancement loading states
+ * Displays rotating contextual messages with fade animation
+ */
+class LoadingMessagesRotator {
+  /**
+   * @param {HTMLElement} container - Container to render messages into
+   * @param {string} type - 'meeting' or 'note'
+   */
+  constructor(container, type = 'meeting') {
+    this.container = container;
+    this.type = type;
+    this.currentIndex = 0;
+    this.interval = null;
+    this.isRunning = false;
+  }
+
+  /**
+   * Get messages array for current type
+   */
+  get messages() {
+    return window.LoadingMessages[this.type] || window.LoadingMessages.generic;
+  }
+
+  /**
+   * Start rotating messages
+   */
+  start() {
+    if (this.isRunning) return;
+    this.isRunning = true;
+
+    // Shuffle starting index for variety
+    this.currentIndex = Math.floor(Math.random() * this.messages.length);
+
+    this.render();
+
+    // Rotate every 3 seconds
+    this.interval = setInterval(() => {
+      this.fadeOut(() => {
+        this.currentIndex = (this.currentIndex + 1) % this.messages.length;
+        this.render();
+        this.fadeIn();
+      });
+    }, 3000);
+
+    console.log(`[LoadingMessagesRotator] Started (${this.type})`);
+  }
+
+  /**
+   * Stop rotating messages
+   */
+  stop() {
+    if (this.interval) {
+      clearInterval(this.interval);
+      this.interval = null;
+    }
+    this.isRunning = false;
+
+    // Fade out before clearing
+    this.fadeOut(() => {
+      if (this.container) {
+        this.container.innerHTML = '';
+      }
+    });
+
+    console.log('[LoadingMessagesRotator] Stopped');
+  }
+
+  /**
+   * Render current message
+   */
+  render() {
+    if (!this.container) return;
+
+    const message = this.messages[this.currentIndex];
+    this.container.innerHTML = `
+      <div class="loading-container">
+        <p class="loading-message" id="loading-rotator-msg">${message}</p>
+      </div>
+    `;
+  }
+
+  /**
+   * Fade out animation
+   * @param {Function} callback - Called after fade completes
+   */
+  fadeOut(callback) {
+    const msgEl = this.container?.querySelector('#loading-rotator-msg');
+    if (msgEl) {
+      msgEl.style.opacity = '0';
+      setTimeout(callback, 150);
+    } else {
+      callback();
+    }
+  }
+
+  /**
+   * Fade in animation
+   */
+  fadeIn() {
+    const msgEl = this.container?.querySelector('#loading-rotator-msg');
+    if (msgEl) {
+      msgEl.style.opacity = '1';
+    }
+  }
+}
+
+// Make class globally available
+window.LoadingMessagesRotator = LoadingMessagesRotator;
 
 console.log('[LoadingMessages] Module loaded');
