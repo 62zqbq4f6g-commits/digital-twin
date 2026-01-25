@@ -32,6 +32,8 @@
   <link rel="stylesheet" href="css/state-of-you.css?v=850">
   <link rel="stylesheet" href="css/whisper.css?v=850">
   <link rel="stylesheet" href="css/memory-moments.css?v=850">
+  <!-- PHASE 16 - T1 -->
+  <link rel="stylesheet" href="css/enhancement.css?v=860">
 </head>
 <body>
   <!-- Loading Overlay -->
@@ -642,6 +644,24 @@
       </div>
     </div>
 
+    <!-- PHASE 16 - T1: Meeting Capture Modal -->
+    <div id="meeting-capture-modal" class="meeting-capture-modal hidden">
+      <div class="meeting-capture-modal-content">
+        <div class="meeting-capture-modal-header">
+          <h2 class="meeting-capture-modal-title">Meeting Notes</h2>
+          <button class="meeting-capture-modal-close" id="meeting-capture-close" aria-label="Close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+        <div id="meeting-capture-container">
+          <!-- MeetingCapture component renders here -->
+        </div>
+      </div>
+    </div>
+
     <!-- Decision Mode Modal (Phase 14) -->
     <div id="decision-modal" class="modal hidden">
       <div class="modal-content decision-modal-content">
@@ -718,6 +738,8 @@
   <script src="js/state-of-you-ui.js?v=850"></script>
   <script src="js/whisper-ui.js?v=850"></script>
   <script src="js/memory-moments-ui.js?v=850"></script>
+  <!-- PHASE 16 - T1: Enhancement System -->
+  <script src="js/meeting-capture.js?v=860"></script>
   <script src="js/quality-learning.js?v=700"></script>
   <script src="js/analyzer.js?v=700"></script>
   <script src="js/analysis-validator.js?v=700"></script>

@@ -4190,6 +4190,92 @@ UI.closeCreateEntityModal = function() { return EntityUI.closeCreateModal(); };
 UI.saveEntity = function(id) { return EntityUI.save(id); };
 UI.deleteEntity = function(id) { return EntityUI.delete(id); };
 
+// PHASE 16 - T1: Meeting Capture Integration
+UI.openMeetingCapture = function() {
+  const modal = document.getElementById('meeting-capture-modal');
+  const container = document.getElementById('meeting-capture-container');
+
+  if (!modal || !container) {
+    console.error('[UI] Meeting capture modal not found');
+    return;
+  }
+
+  // Initialize MeetingCapture component
+  if (typeof MeetingCapture !== 'undefined') {
+    MeetingCapture.init(container, {
+      onEnhanceComplete: (data) => {
+        console.log('[UI] Meeting enhanced:', data);
+        // TODO: Save enhanced meeting as note (TASK-002)
+      }
+    });
+  }
+
+  modal.classList.remove('hidden');
+  document.body.style.overflow = 'hidden'; // Prevent scroll
+
+  // Focus first input
+  const firstInput = container.querySelector('.meeting-title-input');
+  if (firstInput) {
+    setTimeout(() => firstInput.focus(), 100);
+  }
+
+  console.log('[UI] Meeting capture opened');
+};
+
+UI.closeMeetingCapture = function() {
+  const modal = document.getElementById('meeting-capture-modal');
+
+  if (modal) {
+    modal.classList.add('hidden');
+    document.body.style.overflow = '';
+  }
+
+  // Cleanup
+  if (typeof MeetingCapture !== 'undefined') {
+    MeetingCapture.destroy();
+  }
+
+  console.log('[UI] Meeting capture closed');
+};
+
+// Setup meeting capture close button and entry points
+document.addEventListener('DOMContentLoaded', () => {
+  const closeBtn = document.getElementById('meeting-capture-close');
+  if (closeBtn) {
+    closeBtn.addEventListener('click', () => UI.closeMeetingCapture());
+  }
+
+  // Close on backdrop click
+  const modal = document.getElementById('meeting-capture-modal');
+  if (modal) {
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        UI.closeMeetingCapture();
+      }
+    });
+  }
+
+  // Close on Escape
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && modal && !modal.classList.contains('hidden')) {
+      UI.closeMeetingCapture();
+    }
+  });
+
+  // Override WorkUI.openMeetingModal to use new Phase 16 capture
+  // This intercepts the meeting-mode-btn click
+  setTimeout(() => {
+    if (typeof WorkUI !== 'undefined') {
+      WorkUI._openMeetingModalOriginal = WorkUI.openMeetingModal;
+      WorkUI.openMeetingModal = function() {
+        console.log('[Phase 16] Intercepting meeting modal → new capture UI');
+        UI.openMeetingCapture();
+      };
+    }
+  }, 100);
+});
+// END PHASE 16 - T1
+
 // Export for global access
 window.UI = UI;
 
