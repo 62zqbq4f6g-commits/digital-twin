@@ -428,6 +428,7 @@ function extractActionsFromContent(content) {
 
   const actions = [];
   const seen = new Set();
+  const seenTexts = []; // Track full texts for substring checking
 
   for (const pattern of ACTION_PATTERNS) {
     pattern.lastIndex = 0;
@@ -446,16 +447,40 @@ function extractActionsFromContent(content) {
       // Remove trailing punctuation
       action = action.replace(/[,;:]+$/, '').trim();
 
-      if (!seen.has(action.toLowerCase())) {
-        seen.add(action.toLowerCase());
-        actions.push({
-          action: action,  // Must be 'action' not 'text' for ActionsUI
-          effort: 'medium',
-          deadline: null,
-          status: 'suggested',
-          source: 'extracted'
-        });
+      const lowerAction = action.toLowerCase();
+
+      // Skip if exact match already seen
+      if (seen.has(lowerAction)) continue;
+
+      // Skip if this is a substring of an existing action (e.g., "Nancy" when "Reach out to Nancy" exists)
+      const isSubstring = seenTexts.some(existing => existing.includes(lowerAction));
+      if (isSubstring) continue;
+
+      // Remove any existing actions that are substrings of this new one
+      // (e.g., if "Nancy" was added first, remove it when "Reach out to Nancy" comes)
+      const subsToRemove = [];
+      seenTexts.forEach((existing, idx) => {
+        if (lowerAction.includes(existing)) {
+          subsToRemove.push(idx);
+        }
+      });
+      // Remove in reverse order to maintain indices
+      for (let i = subsToRemove.length - 1; i >= 0; i--) {
+        const idx = subsToRemove[i];
+        seen.delete(seenTexts[idx]);
+        seenTexts.splice(idx, 1);
+        actions.splice(idx, 1);
       }
+
+      seen.add(lowerAction);
+      seenTexts.push(lowerAction);
+      actions.push({
+        action: action,  // Must be 'action' not 'text' for ActionsUI
+        effort: 'medium',
+        deadline: null,
+        status: 'suggested',
+        source: 'extracted'
+      });
     }
   }
 
