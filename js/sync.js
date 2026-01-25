@@ -504,6 +504,12 @@ const Sync = {
     this.isSyncing = true;
     this.updateSyncStatus('syncing');
 
+    // Phase 16 Polish: Update header sync indicator
+    if (typeof SyncStatus !== 'undefined') {
+      SyncStatus.set('syncing');
+    }
+    window.dispatchEvent(new CustomEvent('sync-start'));
+
     try {
       // 1. Push local changes to cloud
       await this.pushChanges();
@@ -518,6 +524,11 @@ const Sync = {
       localStorage.setItem(this.lastSyncKey, new Date().toISOString());
       this.updateSyncStatus('connected');
       console.log('Sync complete');
+
+      // Phase 16 Polish: Update header sync indicator
+      if (typeof SyncStatus !== 'undefined') {
+        SyncStatus.set('synced');
+      }
 
       // Fire sync complete callback if registered
       if (this.onSyncComplete && typeof this.onSyncComplete === 'function') {
@@ -535,6 +546,12 @@ const Sync = {
     } catch (error) {
       console.error('Sync error:', error);
       this.updateSyncStatus('error');
+
+      // Phase 16 Polish: Update header sync indicator on error
+      if (typeof SyncStatus !== 'undefined') {
+        SyncStatus.set('error');
+      }
+      window.dispatchEvent(new CustomEvent('sync-error'));
     } finally {
       this.isSyncing = false;
     }

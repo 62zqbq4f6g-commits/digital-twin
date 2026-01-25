@@ -24,8 +24,78 @@
   <link rel="preconnect" href="https://hpvspuqszallvwfsvdjt.supabase.co" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400&family=Playfair+Display:wght@400;500;600&display=swap" rel="stylesheet">
 
+  <!-- Inline Skeleton Styles (renders before JS executes) -->
+  <style id="skeleton-styles">
+    .app-skeleton {
+      position: fixed;
+      inset: 0;
+      background: #FFFFFF;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+    }
+    .app-skeleton.hidden {
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 300ms ease-out;
+    }
+    .skeleton-header {
+      height: 64px;
+      display: flex;
+      align-items: center;
+      padding: 0 24px;
+      border-bottom: 1px solid rgba(0,0,0,0.06);
+    }
+    .skeleton-logo {
+      font-family: 'Inter', -apple-system, sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.2em;
+      color: #1A1A1A;
+      text-transform: uppercase;
+    }
+    .skeleton-content {
+      flex: 1;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      max-width: 600px;
+      margin: 0 auto;
+      width: 100%;
+    }
+    .skeleton-card {
+      height: 120px;
+      background: linear-gradient(90deg, #F5F5F5 25%, #EEEEEE 50%, #F5F5F5 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s linear infinite;
+      border: 1px solid rgba(0,0,0,0.06);
+      border-radius: 12px;
+    }
+    .skeleton-nav {
+      height: 72px;
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      border-top: 1px solid rgba(0,0,0,0.06);
+      padding: 0 48px;
+    }
+    .skeleton-nav-item {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      background: linear-gradient(90deg, #F5F5F5 25%, #EEEEEE 50%, #F5F5F5 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s linear infinite;
+    }
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+  </style>
+
   <!-- Styles -->
-  <link rel="stylesheet" href="css/styles.css?v=910">
+  <link rel="stylesheet" href="css/styles.css?v=911">
   <link rel="stylesheet" href="css/design-system.css?v=804">
   <link rel="stylesheet" href="css/mirror.css?v=800">
   <link rel="stylesheet" href="css/patterns.css?v=800">
@@ -37,6 +107,23 @@
   <link rel="stylesheet" href="css/enhancement.css?v=860">
 </head>
 <body>
+  <!-- App Skeleton (shows instantly before JS loads) -->
+  <div id="app-skeleton" class="app-skeleton">
+    <div class="skeleton-header">
+      <span class="skeleton-logo">Inscript</span>
+    </div>
+    <div class="skeleton-content">
+      <div class="skeleton-card"></div>
+      <div class="skeleton-card"></div>
+      <div class="skeleton-card"></div>
+    </div>
+    <div class="skeleton-nav">
+      <div class="skeleton-nav-item"></div>
+      <div class="skeleton-nav-item"></div>
+      <div class="skeleton-nav-item"></div>
+    </div>
+  </div>
+
   <!-- Loading Overlay -->
   <div id="loading-overlay" class="loading-overlay">
     <div class="loading-content">
@@ -111,6 +198,7 @@
     <!-- Header -->
     <header class="header">
       <h1 class="header-title brand-logo">INSCRIPT</h1>
+      <span id="sync-indicator" class="sync-indicator"></span>
       <div class="header-buttons">
         <button class="header-settings-btn" id="header-settings-btn" aria-label="Settings">
           <span>⚙</span>
@@ -165,6 +253,18 @@
             <button id="image-btn" class="image-add-btn">
               <span class="image-icon">📷</span>
               <span>Add Media</span>
+            </button>
+
+            <!-- Start Listening Button (Ambient Recording) -->
+            <button id="ambient-btn" class="ambient-add-btn" aria-label="Start ambient listening">
+              <span class="ambient-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <circle cx="12" cy="12" r="10"/>
+                  <circle cx="12" cy="12" r="3"/>
+                  <path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
+                </svg>
+              </span>
+              <span>Start Listening</span>
             </button>
           </div>
         </div>
@@ -314,14 +414,7 @@
 
         <!-- MEETINGS Sub-tab -->
         <div id="you-meetings" class="you-content hidden">
-          <div class="you-section">
-            <div class="meetings-list" id="meetings-list">
-              <p class="meetings-empty">No meetings recorded yet.</p>
-            </div>
-            <button class="meetings-add-btn" id="new-meeting-btn">
-              <span>+ New Meeting</span>
-            </button>
-          </div>
+          <!-- MeetingsTab renders here -->
         </div>
 
         <!-- PATTERNS Sub-tab (includes State of You report) -->
@@ -362,6 +455,11 @@
           <!-- What I've Learned Section -->
           <div class="learning-section-container you-section" id="learning-section">
             <!-- Populated by TwinUI.renderLearningSection() -->
+          </div>
+
+          <!-- Notification Preferences Section (Phase 17) -->
+          <div id="notification-prefs-section" class="you-section">
+            <!-- Populated by UIProfile.renderNotificationPrefsSection() -->
           </div>
 
           <!-- Stats Grid -->
@@ -725,7 +823,8 @@
   <script src="js/voice.js?v=700"></script>
   <script src="js/camera.js?v=700"></script>
   <script src="js/digest.js?v=700"></script>
-  <script src="js/sync.js?v=700"></script>
+  <script src="js/toast.js?v=860"></script>
+  <script src="js/sync.js?v=860"></script>
   <script src="js/auth.js?v=700"></script>
   <script src="js/memory-decrypt.js?v=100"></script>
   <script src="js/entity-memory.js?v=700"></script>
@@ -746,6 +845,7 @@
   <script src="js/attendee-suggest.js?v=861"></script>
   <script src="js/meeting-capture.js?v=861"></script>
   <script src="js/auto-enhance.js?v=861"></script>
+  <script src="js/ambient-recorder.js?v=861"></script>
   <script src="js/quality-learning.js?v=700"></script>
   <script src="js/analyzer.js?v=700"></script>
   <script src="js/analysis-validator.js?v=700"></script>
@@ -755,7 +855,8 @@
   <script src="js/decision-tracker.js?v=700"></script>
   <script src="js/actions-ui.js?v=700"></script>
   <script src="js/work-ui.js?v=822"></script>
-  <script src="js/you-ui.js?v=900"></script>
+  <script src="js/meetings-tab.js?v=900"></script>
+  <script src="js/you-ui.js?v=901"></script>
   <script src="js/follow-up.js?v=700"></script>
   <script src="js/nudge-tracker.js?v=700"></script>
   <script src="js/onboarding.js?v=792"></script>
@@ -767,6 +868,7 @@
   <script src="js/knowledge-pulse.js?v=800"></script>
   <script src="js/entity-cards.js?v=800"></script>
   <script src="js/signal-tracker.js?v=800"></script>
+  <script src="js/analytics.js?v=920"></script>
   <script src="js/pattern-verification.js?v=800"></script>
   <script src="js/mirror.js?v=801"></script>
   <script>

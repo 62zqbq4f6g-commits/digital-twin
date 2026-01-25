@@ -34,6 +34,7 @@ const UI = {
 
   /**
    * Show skeleton loading state for notes list
+   * Phase 17 Polish Sprint - Design system compliant shimmer
    */
   showNotesSkeleton() {
     const notesList = document.getElementById('notes-list');
@@ -44,14 +45,15 @@ const UI = {
     if (emptyState) emptyState.classList.add('hidden');
     notesList.classList.remove('hidden');
 
-    // Generate 5 skeleton note cards
-    notesList.innerHTML = Array(5).fill(0).map(() => `
-      <div class="notes-skeleton-item">
-        <div class="skeleton skeleton-title"></div>
-        <div class="skeleton skeleton-text"></div>
-        <div class="skeleton skeleton-text" style="width: 40%"></div>
+    // Generate skeleton cards with shimmer animation
+    notesList.innerHTML = `
+      <div class="notes-skeleton">
+        <div class="note-card-skeleton"></div>
+        <div class="note-card-skeleton"></div>
+        <div class="note-card-skeleton"></div>
+        <div class="note-card-skeleton"></div>
       </div>
-    `).join('');
+    `;
   },
 
   /**
@@ -478,6 +480,128 @@ const UI = {
         toast.remove();
       }, 150);
     }, duration);
+  },
+
+  /**
+   * Show a confirmation dialog (replaces browser confirm())
+   * @param {string} message - Message to display
+   * @param {Object} options - Options
+   * @param {string} options.title - Dialog title (default: 'Confirm')
+   * @param {string} options.confirmText - Confirm button text (default: 'Confirm')
+   * @param {string} options.cancelText - Cancel button text (default: 'Cancel')
+   * @param {boolean} options.danger - Use danger styling (default: false)
+   * @returns {Promise<boolean>} - True if confirmed, false if cancelled
+   */
+  confirm(message, options = {}) {
+    return new Promise((resolve) => {
+      const {
+        title = 'Confirm',
+        confirmText = 'Confirm',
+        cancelText = 'Cancel',
+        danger = false
+      } = options;
+
+      // Create overlay
+      const overlay = document.createElement('div');
+      overlay.className = 'dialog-overlay';
+      overlay.innerHTML = `
+        <div class="dialog">
+          <h3 class="dialog-title">${this.escapeHtml(title)}</h3>
+          <p class="dialog-message">${this.escapeHtml(message)}</p>
+          <div class="dialog-actions">
+            <button class="dialog-btn dialog-btn-cancel">${this.escapeHtml(cancelText)}</button>
+            <button class="dialog-btn ${danger ? 'dialog-btn-danger' : 'dialog-btn-confirm'}">${this.escapeHtml(confirmText)}</button>
+          </div>
+        </div>
+      `;
+
+      // Add event listeners
+      const cancelBtn = overlay.querySelector('.dialog-btn-cancel');
+      const confirmBtn = overlay.querySelector('.dialog-btn-confirm, .dialog-btn-danger');
+
+      const cleanup = () => {
+        overlay.remove();
+        document.removeEventListener('keydown', handleKeydown);
+      };
+
+      const handleKeydown = (e) => {
+        if (e.key === 'Escape') {
+          cleanup();
+          resolve(false);
+        }
+      };
+
+      cancelBtn.addEventListener('click', () => {
+        cleanup();
+        resolve(false);
+      });
+
+      confirmBtn.addEventListener('click', () => {
+        cleanup();
+        resolve(true);
+      });
+
+      document.addEventListener('keydown', handleKeydown);
+      document.body.appendChild(overlay);
+
+      // Focus confirm button for accessibility
+      confirmBtn.focus();
+    });
+  },
+
+  /**
+   * Show an alert dialog (replaces browser alert())
+   * @param {string} message - Message to display
+   * @param {Object} options - Options
+   * @param {string} options.title - Dialog title (default: 'Alert')
+   * @param {string} options.buttonText - Button text (default: 'OK')
+   * @returns {Promise<void>} - Resolves when dismissed
+   */
+  alert(message, options = {}) {
+    return new Promise((resolve) => {
+      const {
+        title = '',
+        buttonText = 'OK'
+      } = options;
+
+      // Create overlay
+      const overlay = document.createElement('div');
+      overlay.className = 'dialog-overlay';
+      overlay.innerHTML = `
+        <div class="dialog">
+          ${title ? `<h3 class="dialog-title">${this.escapeHtml(title)}</h3>` : ''}
+          <p class="dialog-message">${this.escapeHtml(message)}</p>
+          <div class="dialog-actions">
+            <button class="dialog-btn dialog-btn-confirm">${this.escapeHtml(buttonText)}</button>
+          </div>
+        </div>
+      `;
+
+      const btn = overlay.querySelector('.dialog-btn');
+
+      const cleanup = () => {
+        overlay.remove();
+        document.removeEventListener('keydown', handleKeydown);
+      };
+
+      const handleKeydown = (e) => {
+        if (e.key === 'Escape' || e.key === 'Enter') {
+          cleanup();
+          resolve();
+        }
+      };
+
+      btn.addEventListener('click', () => {
+        cleanup();
+        resolve();
+      });
+
+      document.addEventListener('keydown', handleKeydown);
+      document.body.appendChild(overlay);
+
+      // Focus button for accessibility
+      btn.focus();
+    });
   },
 
   // Phase 11.2: Editorial loading messages (poetic, lowercase, Cormorant Garamond)
@@ -1157,22 +1281,29 @@ const UI = {
 
     notesList.innerHTML = html;
 
-    // Add click and keyboard handlers to note cards
-    notesList.querySelectorAll('.note-card').forEach(card => {
-      card.addEventListener('click', () => {
-        const noteId = card.dataset.noteId;
-        console.log('[UI] Note card clicked, noteId:', noteId);
-        this.openNoteDetail(noteId);
-      });
-      // Keyboard accessibility: Enter/Space to open note
-      card.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
+    // Event delegation for note cards (prevents memory leaks from repeated renders)
+    // Only attach once - check if already attached
+    if (!notesList._notesListenerAttached) {
+      notesList.addEventListener('click', (e) => {
+        const card = e.target.closest('.note-card');
+        if (card) {
           const noteId = card.dataset.noteId;
+          console.log('[UI] Note card clicked, noteId:', noteId);
           this.openNoteDetail(noteId);
         }
       });
-    });
+      notesList.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          const card = e.target.closest('.note-card');
+          if (card) {
+            e.preventDefault();
+            const noteId = card.dataset.noteId;
+            this.openNoteDetail(noteId);
+          }
+        }
+      });
+      notesList._notesListenerAttached = true;
+    }
   },
 
   /**
@@ -3351,8 +3482,8 @@ const UI = {
   },
 
   /**
-   * Confirm and delete the note
-   * Phase 8.7: Fixed to use Sync.deleteNote for cloud persistence
+   * Confirm and delete the note with undo capability
+   * Phase 16 Polish: 5-second undo window before permanent deletion
    */
   async confirmDeleteNote() {
     console.log('[UI] confirmDeleteNote called');
@@ -3366,32 +3497,28 @@ const UI = {
     const noteId = this.currentNote.id;
     console.log('[UI] Deleting note ID:', noteId);
 
-    try {
-      // Remove from cache immediately for instant UI update
-      if (typeof NotesCache !== 'undefined') {
-        NotesCache.removeNote(noteId);
-        console.log('[UI] Removed from NotesCache');
+    // Use deleteNoteWithUndo if available (from toast.js)
+    if (typeof deleteNoteWithUndo === 'function') {
+      deleteNoteWithUndo(noteId);
+    } else {
+      // Fallback to immediate delete if toast.js not loaded
+      try {
+        if (typeof NotesCache !== 'undefined') {
+          NotesCache.removeNote(noteId);
+        }
+        if (typeof Sync !== 'undefined' && Sync.deleteNote) {
+          await Sync.deleteNote(noteId);
+        } else {
+          await DB.deleteNote(noteId);
+        }
+        this.hideDeleteDialog();
+        this.closeNoteDetail();
+        this.loadNotes();
+        this.showToast('Note deleted');
+      } catch (error) {
+        console.error('[UI] Failed to delete note:', error);
+        this.showToast('Failed to delete');
       }
-
-      // Phase 8.7: Use Sync.deleteNote to delete from cloud AND local
-      // This prevents deleted notes from reappearing after re-login
-      if (typeof Sync !== 'undefined' && Sync.deleteNote) {
-        console.log('[UI] Using Sync.deleteNote');
-        await Sync.deleteNote(noteId);
-        console.log('[UI] Sync.deleteNote completed');
-      } else {
-        // Fallback to local-only delete if Sync not available
-        console.log('[UI] Using DB.deleteNote fallback');
-        await DB.deleteNote(noteId);
-      }
-      this.hideDeleteDialog();
-      this.closeNoteDetail();
-      this.loadNotes();
-      this.showToast('Note deleted');
-      console.log('[UI] Note delete completed successfully');
-    } catch (error) {
-      console.error('[UI] Failed to delete note:', error);
-      this.showToast('Failed to delete');
     }
   },
 
@@ -3470,11 +3597,25 @@ const UI = {
       if (signInBtn) signInBtn.classList.add('hidden');
       if (authLink) authLink.classList.add('hidden');
       if (signOutBtn) signOutBtn.classList.remove('hidden');
+
+      // Hide app skeleton when authenticated (session restored)
+      this.hideAppSkeleton();
     } else {
       if (emailEl) emailEl.textContent = 'Not signed in';
       if (signInBtn) signInBtn.classList.remove('hidden');
       if (authLink) authLink.classList.remove('hidden');
       if (signOutBtn) signOutBtn.classList.add('hidden');
+    }
+  },
+
+  /**
+   * Hide the initial app skeleton with fade transition
+   */
+  hideAppSkeleton() {
+    const skeleton = document.getElementById('app-skeleton');
+    if (skeleton) {
+      skeleton.classList.add('hidden');
+      setTimeout(() => skeleton.remove(), 300);
     }
   },
 
@@ -3724,7 +3865,11 @@ const UI = {
    * Handle sign out
    */
   async handleSignOut() {
-    const confirmed = confirm('Sign out of cloud sync?');
+    const confirmed = await this.confirm('Sign out of cloud sync?', {
+      title: 'Sign Out',
+      confirmText: 'Sign Out',
+      cancelText: 'Cancel'
+    });
     if (confirmed && typeof Sync !== 'undefined') {
       await Sync.signOut();
       this.updateAuthUI();
@@ -3884,18 +4029,20 @@ const UI = {
       this.hideDeletingOverlay();
 
       if (errors.length > 0) {
-        alert('Data deleted with some warnings.\n\nThe app will now reload.');
+        this.showToast('Data deleted with some warnings. Reloading...', 2000);
       } else {
-        alert('All data deleted successfully.');
+        this.showToast('All data deleted. Reloading...', 2000);
       }
 
-      // Reload
-      window.location.href = window.location.origin + '?cleared=' + Date.now();
+      // Reload after brief delay for toast visibility
+      setTimeout(() => {
+        window.location.href = window.location.origin + '?cleared=' + Date.now();
+      }, 1500);
 
     } catch (error) {
       console.error('Delete failed:', error);
       this.hideDeletingOverlay();
-      alert('Delete failed: ' + error.message + '\n\nPlease try again.');
+      await this.alert('Delete failed: ' + error.message, { title: 'Error' });
     }
   },
 
