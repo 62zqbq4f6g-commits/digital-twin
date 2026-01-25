@@ -123,9 +123,18 @@ const MeetingCapture = {
       });
     }
 
-    if (attendeesInput) {
+    // Attendee auto-suggest (TASK-013)
+    if (attendeesInput && typeof AttendeeSuggest !== 'undefined') {
+      this.attendeeSuggest = new AttendeeSuggest(attendeesInput, {
+        onSelect: (entity) => {
+          console.log('[MeetingCapture] Attendee selected:', entity.name);
+        },
+        getEntities: () => window.Entities?.entities || null
+      });
+    } else if (attendeesInput) {
+      // Fallback: no auto-suggest
       attendeesInput.addEventListener('input', () => {
-        // Optional: could add attendee suggestions
+        // Basic input handling
       });
     }
 
@@ -142,12 +151,111 @@ const MeetingCapture = {
       });
     }
 
-    // Voice button (placeholder for now)
-    if (voiceBtn) {
-      voiceBtn.addEventListener('click', () => {
-        console.log('[MeetingCapture] Voice input clicked - TASK-006');
-        // TODO: Implement in TASK-006
+    // Voice input (TASK-006)
+    if (voiceBtn && typeof VoiceInput !== 'undefined') {
+      // Add idle class initially
+      voiceBtn.classList.add('idle');
+
+      this.voiceInput = new VoiceInput(voiceBtn, {
+        maxDuration: 120000, // 2 minutes
+
+        onRecordingComplete: async (blob) => {
+          console.log('[MeetingCapture] Voice recording complete:', blob.size);
+          await this.handleVoiceRecording(blob);
+        },
+
+        onError: (error) => {
+          console.error('[MeetingCapture] Voice error:', error);
+          this.showVoiceError(error.message);
+        },
+
+        onStateChange: (state) => {
+          console.log('[MeetingCapture] Voice state:', state);
+        }
       });
+    } else if (voiceBtn) {
+      // Fallback: show coming soon
+      voiceBtn.addEventListener('click', () => {
+        console.log('[MeetingCapture] Voice input not available');
+      });
+    }
+  },
+
+  /**
+   * Handle voice recording completion
+   * @param {Blob} blob - Audio blob
+   */
+  async handleVoiceRecording(blob) {
+    const textarea = this.container.querySelector('#mc-content');
+    if (!textarea) return;
+
+    try {
+      // Get user ID for API call
+      const userId = typeof Sync !== 'undefined' && Sync.user?.id ? Sync.user.id : null;
+      if (!userId) {
+        throw new Error('User not authenticated');
+      }
+
+      // Prepare form data
+      const formData = new FormData();
+      formData.append('audio', blob, 'recording.webm');
+      formData.append('userId', userId);
+
+      // Call transcription API
+      const response = await fetch('/api/transcribe-voice', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error?.message || 'Transcription failed');
+      }
+
+      // Append transcribed text to textarea
+      const currentText = textarea.value;
+      const separator = currentText.trim() ? '\n\n' : '';
+      textarea.value = currentText + separator + result.text;
+
+      // Focus textarea and scroll to end
+      textarea.focus();
+      textarea.scrollTop = textarea.scrollHeight;
+      textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+
+      // Update state (may enable enhance button)
+      this.updateState();
+
+      // Set voice input back to idle
+      if (this.voiceInput) {
+        this.voiceInput.setIdle();
+      }
+
+      console.log(`[MeetingCapture] Transcribed ${result.text.length} chars in ${result.processingTime}ms`);
+
+    } catch (error) {
+      console.error('[MeetingCapture] Transcription failed:', error);
+      this.showVoiceError(error.message || 'Transcription failed. Please try again.');
+
+      // Set voice input back to idle
+      if (this.voiceInput) {
+        this.voiceInput.setIdle();
+      }
+    }
+  },
+
+  /**
+   * Show voice error message
+   * @param {string} message
+   */
+  showVoiceError(message) {
+    // Use a toast or inline error
+    // For now, use console and potentially show in UI
+    console.error('[MeetingCapture] Voice error:', message);
+
+    // Could show toast if available
+    if (typeof Toast !== 'undefined' && Toast.show) {
+      Toast.show(message, 'error');
     }
   },
 
@@ -235,9 +343,11 @@ const MeetingCapture = {
     const data = this.getData();
     if (!data.content.trim()) return;
 
+    const t0 = performance.now();
     console.log('[MeetingCapture] Enhancing...', data);
     this.setState('enhancing');
     this.startTime = Date.now();
+    this._perfT0 = t0; // Store for later measurements
 
     // Start loading messages (TASK-005)
     const loadingContainer = this.container.querySelector('#mc-loading');
@@ -262,6 +372,8 @@ const MeetingCapture = {
         : [];
 
       // Call the enhance-meeting API with streaming
+      console.log(`[PERF-CLIENT] Setup to fetch: ${(performance.now() - this._perfT0).toFixed(0)}ms`);
+      const fetchStart = performance.now();
       const response = await fetch('/api/enhance-meeting', {
         method: 'POST',
         headers: {
@@ -274,6 +386,7 @@ const MeetingCapture = {
           userId: userId,
         }),
       });
+      console.log(`[PERF-CLIENT] Fetch response received: ${(performance.now() - fetchStart).toFixed(0)}ms`);
 
       if (!response.ok) {
         if (loader) loader.stop();
@@ -285,6 +398,7 @@ const MeetingCapture = {
       await this.handleStreamingResponse(response, data, loader);
 
       this.setState('enhanced');
+      console.log(`[PERF-CLIENT] Total enhance flow: ${(performance.now() - this._perfT0).toFixed(0)}ms`);
 
       if (this.onEnhanceComplete) {
         this.onEnhanceComplete(data);
@@ -355,6 +469,8 @@ const MeetingCapture = {
     let fullContent = '';
     let processingTime = 0;
     let noteId = null;
+    let firstEventLogged = false;
+    const streamStart = performance.now();
 
     // Read the stream
     const reader = response.body.getReader();
@@ -370,6 +486,10 @@ const MeetingCapture = {
 
         for (const line of lines) {
           if (line.startsWith('data: ')) {
+            if (!firstEventLogged) {
+              console.log(`[PERF-CLIENT] First SSE event: ${(performance.now() - streamStart).toFixed(0)}ms after stream start`);
+              firstEventLogged = true;
+            }
             try {
               const eventData = JSON.parse(line.slice(6));
 
@@ -421,6 +541,7 @@ const MeetingCapture = {
                 case 'done':
                   processingTime = eventData.processingTime || (Date.now() - this.startTime);
                   noteId = eventData.noteId;
+                  console.log(`[PERF-CLIENT] Stream complete: ${(performance.now() - streamStart).toFixed(0)}ms total streaming`);
                   console.log(`[MeetingCapture] Enhanced in ${processingTime}ms`);
 
                   if (display) {
@@ -537,10 +658,20 @@ const MeetingCapture = {
    * Destroy the component
    */
   destroy() {
+    // Cleanup sub-components
+    if (this.voiceInput && this.voiceInput.destroy) {
+      this.voiceInput.destroy();
+    }
+    if (this.attendeeSuggest && this.attendeeSuggest.destroy) {
+      this.attendeeSuggest.destroy();
+    }
+
     if (this.container) {
       this.container.innerHTML = '';
     }
     this.container = null;
+    this.voiceInput = null;
+    this.attendeeSuggest = null;
     this.state = 'empty';
     console.log('[MeetingCapture] Destroyed');
   }
