@@ -225,13 +225,18 @@ class PatternVerification {
    * Rebuild pattern analysis from scratch
    */
   async rebuildPatterns() {
+    console.log('[PatternVerification] rebuildPatterns called');
+
     if (!Sync?.user?.id) {
+      console.error('[PatternVerification] No user ID');
       alert('Please sign in to rebuild patterns.');
       return;
     }
 
     // Show loading state
     const container = document.getElementById('you-patterns-container');
+    console.log('[PatternVerification] Container found:', !!container);
+
     if (container) {
       container.innerHTML = `
         <div class="patterns-rebuilding">
@@ -242,7 +247,7 @@ class PatternVerification {
     }
 
     try {
-      console.log('[PatternVerification] Rebuilding patterns...');
+      console.log('[PatternVerification] Calling API for user:', Sync.user.id);
 
       // Call the detect-patterns API
       const response = await fetch('/api/detect-patterns', {
@@ -253,13 +258,34 @@ class PatternVerification {
         })
       });
 
+      console.log('[PatternVerification] API response status:', response.status);
+
+      const responseData = await response.json();
+      console.log('[PatternVerification] API response:', responseData);
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to rebuild patterns');
+        throw new Error(responseData.error || responseData.message || 'Failed to rebuild patterns');
       }
 
-      const data = await response.json();
-      console.log('[PatternVerification] Rebuild complete:', data);
+      // Check if it's just a "not enough notes" message
+      if (responseData.message && (!responseData.detected || responseData.detected.length === 0)) {
+        console.log('[PatternVerification] Message:', responseData.message);
+        if (container) {
+          container.innerHTML = `
+            <div class="patterns-empty">
+              <p>${responseData.message}</p>
+              <div class="patterns-rebuild">
+                <button class="patterns-rebuild-btn" onclick="PatternVerification.rebuildPatterns()">
+                  Try Again
+                </button>
+              </div>
+            </div>
+          `;
+        }
+        return;
+      }
+
+      console.log('[PatternVerification] Rebuild complete:', responseData);
 
       // Reload patterns to show new ones
       await this.loadPatterns();

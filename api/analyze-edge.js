@@ -449,7 +449,9 @@ function extractActionsFromContent(content) {
       if (!seen.has(action.toLowerCase())) {
         seen.add(action.toLowerCase());
         actions.push({
-          text: action,
+          action: action,  // Must be 'action' not 'text' for ActionsUI
+          effort: 'medium',
+          deadline: null,
           status: 'suggested',
           source: 'extracted'
         });
