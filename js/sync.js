@@ -403,6 +403,19 @@ const Sync = {
 
     try {
       if (eventType === 'INSERT' || eventType === 'UPDATE') {
+        // Check if note was soft-deleted - treat as a delete, not an insert/update
+        if (newRecord.deleted_at) {
+          console.log('[Sync] Realtime: note was deleted, removing locally:', newRecord.id);
+          await DB.deleteNote(newRecord.id);
+          if (typeof NotesCache !== 'undefined') {
+            NotesCache.removeNote(newRecord.id);
+          }
+          window.dispatchEvent(new CustomEvent('sync-complete', {
+            detail: { timestamp: new Date().toISOString(), source: 'realtime' }
+          }));
+          return;
+        }
+
         // Check if this is our own change (already in IndexedDB)
         const existingNote = await DB.getNoteById(newRecord.id);
         const localUpdated = existingNote?.timestamps?.updated_at;
