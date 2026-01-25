@@ -181,7 +181,7 @@ class PatternVerification {
   renderTwinSection() {
     const rebuildBtn = `
       <div class="patterns-rebuild">
-        <button class="patterns-rebuild-btn" onclick="PatternVerification.rebuildPatterns()">
+        <button class="patterns-rebuild-btn" onclick="window.PatternVerification.rebuildPatterns()">
           Rebuild Analysis
         </button>
         <p class="patterns-rebuild-hint">Re-analyze all your notes for new patterns</p>
@@ -275,7 +275,7 @@ class PatternVerification {
             <div class="patterns-empty">
               <p>${responseData.message}</p>
               <div class="patterns-rebuild">
-                <button class="patterns-rebuild-btn" onclick="PatternVerification.rebuildPatterns()">
+                <button class="patterns-rebuild-btn" onclick="window.PatternVerification.rebuildPatterns()">
                   Try Again
                 </button>
               </div>
@@ -302,7 +302,7 @@ class PatternVerification {
         container.innerHTML = `
           <div class="patterns-error">
             <p>Unable to rebuild patterns: ${error.message}</p>
-            <button class="patterns-rebuild-btn" onclick="PatternVerification.rebuildPatterns()">
+            <button class="patterns-rebuild-btn" onclick="window.PatternVerification.rebuildPatterns()">
               Try Again
             </button>
           </div>
