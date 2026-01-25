@@ -319,15 +319,29 @@ const WhisperUI = {
       this.whisperHistory.map(async (whisper) => {
         // Decrypt content
         let content = '';
+        let isEncrypted = false;
         try {
           content = await this.decryptWhisper(whisper.content_encrypted, whisper.iv);
         } catch (e) {
-          content = '[Unable to decrypt]';
+          console.warn('[WhisperUI] Could not decrypt whisper:', whisper.id);
+          isEncrypted = true;
         }
 
         const time = this.formatTime(whisper.created_at);
         const isSelected = this.selectedWhispers.has(whisper.id);
         const entities = whisper.entities_extracted || [];
+
+        // Encrypted whispers show differently and can't be selected
+        if (isEncrypted) {
+          return `
+            <div class="whisper-item whisper-item--encrypted" data-id="${whisper.id}">
+              <p class="whisper-item__content whisper-item__content--encrypted">Encrypted on another device</p>
+              <div class="whisper-item__meta">
+                <span class="whisper-item__time">${time}</span>
+              </div>
+            </div>
+          `;
+        }
 
         return `
           <div class="whisper-item ${isSelected ? 'whisper-item--selected' : ''}" data-id="${whisper.id}">
@@ -376,6 +390,12 @@ const WhisperUI = {
    * Toggle whisper selection
    */
   toggleSelection(id) {
+    // Don't allow selecting encrypted whispers
+    const item = document.querySelector(`.whisper-item[data-id="${id}"]`);
+    if (item && item.classList.contains('whisper-item--encrypted')) {
+      return;
+    }
+
     if (this.selectedWhispers.has(id)) {
       this.selectedWhispers.delete(id);
     } else {
@@ -383,7 +403,6 @@ const WhisperUI = {
     }
 
     // Update UI
-    const item = document.querySelector(`.whisper-item[data-id="${id}"]`);
     if (item) {
       item.classList.toggle('whisper-item--selected', this.selectedWhispers.has(id));
     }

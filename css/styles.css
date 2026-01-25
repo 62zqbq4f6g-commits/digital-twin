@@ -7540,18 +7540,23 @@ body {
   display: block;
   width: 100%;
   margin-top: 12px;
-  padding: 8px;
+  padding: 12px;
   background: transparent;
   border: 1px solid var(--silver-200);
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: 13px;
   cursor: pointer;
   transition: all var(--transition);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  min-height: 44px; /* Accessibility minimum touch target */
 }
 
-.meeting-delete-btn:hover {
+.meeting-delete-btn:hover,
+.meeting-delete-btn:active {
   border-color: #8B0000;
   color: #8B0000;
+  background: rgba(139, 0, 0, 0.05);
 }
 
 .meeting-card-meta {

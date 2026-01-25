@@ -667,12 +667,23 @@ const WorkUI = {
               ${openCount > 1 ? `<span class="more-actions">+${openCount - 1} more</span>` : ''}
             </div>
           ` : ''}
-          <button class="meeting-delete-btn" onclick="event.stopPropagation(); WorkUI.deleteMeeting('${meeting.id}')" aria-label="Delete meeting">
+          <button class="meeting-delete-btn" data-meeting-id="${meeting.id}" aria-label="Delete meeting">
             <span>Delete</span>
           </button>
         </div>
       `;
     }).join('');
+
+    // Attach delete button listeners (works better on mobile than inline onclick)
+    container.querySelectorAll('.meeting-delete-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const meetingId = btn.dataset.meetingId;
+        if (meetingId) {
+          await this.deleteMeeting(meetingId);
+        }
+      });
+    });
   },
 
   /**
