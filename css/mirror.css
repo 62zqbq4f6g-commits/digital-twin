@@ -11,7 +11,8 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  max-height: calc(100vh - 120px);
+  max-height: calc(100vh - 120px); /* Fallback for older browsers */
+  max-height: calc(100dvh - 120px); /* Dynamic viewport height for mobile */
   background: #FFFFFF !important;
 }
 
@@ -377,6 +378,7 @@
 
 .mirror-input-area {
   padding: 16px 20px;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)); /* iOS safe area */
   border-top: 1px solid #E5E5E5 !important;
   background: #FFFFFF !important;
 }
