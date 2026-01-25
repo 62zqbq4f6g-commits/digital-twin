@@ -117,6 +117,12 @@ export default async function handler(req, ctx) {
       });
     }
 
+    // Extract actions from content
+    const extractedActions = extractActionsFromContent(content);
+
+    // Classify category
+    const category = classifyNoteCategory(content);
+
     // Step 4: Return immediately with reflection
     // Format matches original analyze.js flat response expected by processAPIResponse
     return new Response(
@@ -130,13 +136,13 @@ export default async function handler(req, ctx) {
         title: generateTitle(content),
         summary: heard,
         cleanedInput: content,
-        category: 'personal_reflection',
+        category: category,
         type: 'observation',
         emotionalTone: 'neutral',
         confidence: 0.8,
         noteType: 'personal',
-        // Empty defaults for optional fields
-        actions: [],
+        // Extracted actions
+        actions: extractedActions,
         entities: { people: [], projects: [], topics: [] },
         patterns: { reinforced: [], new: [] },
         voice: { energy: 0.5, certainty: 0.5, pace: 'measured', formality: 0.5 },
@@ -387,6 +393,101 @@ function generateTitle(content) {
   }
   // Capitalize first letter
   return title.charAt(0).toUpperCase() + title.slice(1);
+}
+
+// ============================================
+// ACTION EXTRACTION
+// ============================================
+
+const ACTION_PATTERNS = [
+  /need to ([^.!?\n]+)/gi,
+  /should ([^.!?\n]+)/gi,
+  /must ([^.!?\n]+)/gi,
+  /have to ([^.!?\n]+)/gi,
+  /remember to ([^.!?\n]+)/gi,
+  /don't forget (?:to )?([^.!?\n]+)/gi,
+  /going to ([^.!?\n]+)/gi,
+  /will ([^.!?\n]+)/gi,
+  /reach out to ([^.!?\n]+)/gi,
+  /follow up (?:with |on )?([^.!?\n]+)/gi,
+  /schedule ([^.!?\n]+)/gi,
+  /send ([^.!?\n]+)/gi,
+  /call ([^.!?\n]+)/gi,
+  /email ([^.!?\n]+)/gi,
+  /contact ([^.!?\n]+)/gi
+];
+
+const NON_ACTIONABLE = [
+  'stay ', 'be ', 'feel ', 'keep ', 'remain ',
+  'relax', 'calm down', 'focus', 'sleep', 'rest',
+  'think about it', 'remember that', 'believe'
+];
+
+function extractActionsFromContent(content) {
+  if (!content) return [];
+
+  const actions = [];
+  const seen = new Set();
+
+  for (const pattern of ACTION_PATTERNS) {
+    pattern.lastIndex = 0;
+    let match;
+    while ((match = pattern.exec(content)) !== null) {
+      let action = match[1]?.trim();
+      if (!action || action.length < 5) continue;
+
+      // Skip non-actionable items
+      const lower = action.toLowerCase();
+      if (NON_ACTIONABLE.some(na => lower.startsWith(na))) continue;
+
+      // Clean up and capitalize
+      action = action.charAt(0).toUpperCase() + action.slice(1);
+
+      // Remove trailing punctuation
+      action = action.replace(/[,;:]+$/, '').trim();
+
+      if (!seen.has(action.toLowerCase())) {
+        seen.add(action.toLowerCase());
+        actions.push({
+          text: action,
+          status: 'suggested',
+          source: 'extracted'
+        });
+      }
+    }
+  }
+
+  return actions;
+}
+
+// ============================================
+// CATEGORY CLASSIFICATION
+// ============================================
+
+function classifyNoteCategory(content) {
+  const lower = content.toLowerCase();
+
+  // Work indicators
+  const workTerms = ['meeting', 'work', 'project', 'deadline', 'client', 'team', 'boss', 'colleague', 'office', 'presentation', 'proposal', 'contract', 'revenue', 'business', 'stakeholder'];
+  const workCount = workTerms.filter(t => lower.includes(t)).length;
+
+  // Personal/health indicators (all map to 'personal')
+  const personalTerms = ['family', 'friend', 'home', 'weekend', 'vacation', 'hobby', 'birthday', 'anniversary', 'relationship', 'dating', 'love', 'health', 'sleep', 'exercise', 'doctor', 'sick', 'tired', 'stress', 'anxiety', 'therapy', 'meditation'];
+  const personalCount = personalTerms.filter(t => lower.includes(t)).length;
+
+  // Ideas/learning indicators
+  const ideasTerms = ['idea', 'think', 'maybe', 'could', 'wonder', 'curious', 'learn', 'read', 'research', 'explore', 'experiment'];
+  const ideasCount = ideasTerms.filter(t => lower.includes(t)).length;
+
+  // Return category based on highest count
+  if (workCount > personalCount && workCount > ideasCount) {
+    return 'work';
+  }
+  if (ideasCount > personalCount && ideasCount > workCount) {
+    return 'ideas';
+  }
+  // Default to personal (includes health)
+  return 'personal';
 }
 
 // ============================================

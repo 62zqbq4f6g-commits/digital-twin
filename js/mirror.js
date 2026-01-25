@@ -189,6 +189,7 @@ class Mirror {
 
       this.isLoading = false;
       this.render();
+      this.scrollToBottom();
 
     } catch (error) {
       console.error('[Mirror] Open error:', error);
