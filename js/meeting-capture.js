@@ -238,11 +238,42 @@ const MeetingCapture = {
 
     console.log('[MeetingCapture] Enhancing...', data);
     this.setState('enhancing');
+    this.startTime = Date.now();
 
     try {
-      // TODO: Implement actual API call in TASK-002
-      // For now, simulate enhancement with a delay
-      await this.simulateEnhancement(data);
+      // Get user ID for API call
+      const userId = typeof Sync !== 'undefined' && Sync.user?.id ? Sync.user.id : null;
+
+      if (!userId) {
+        throw new Error('User not authenticated');
+      }
+
+      // Parse attendees from comma-separated string
+      const attendeesList = data.attendees
+        ? data.attendees.split(',').map(a => a.trim()).filter(Boolean)
+        : [];
+
+      // Call the enhance-meeting API with streaming
+      const response = await fetch('/api/enhance-meeting', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          rawInput: data.content,
+          title: data.title || null,
+          attendees: attendeesList,
+          userId: userId,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error?.message || 'Enhancement failed');
+      }
+
+      // Handle SSE streaming response
+      await this.handleStreamingResponse(response, data);
 
       this.setState('enhanced');
 
@@ -252,37 +283,128 @@ const MeetingCapture = {
     } catch (error) {
       console.error('[MeetingCapture] Enhancement failed:', error);
       this.setState('capturing'); // Allow retry
-      this.showError('Enhancement failed. Please try again.');
+      this.showError(error.message || 'Enhancement failed. Please try again.');
     }
   },
 
   /**
-   * Simulate enhancement (placeholder for TASK-002)
-   * @param {Object} data - Form data
+   * Handle SSE streaming response from enhance-meeting API
+   * @param {Response} response - Fetch response
+   * @param {Object} data - Original form data
    */
-  async simulateEnhancement(data) {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
-    // Show placeholder output
+  async handleStreamingResponse(response, data) {
     const output = this.container.querySelector('#mc-output');
-    if (output) {
-      output.innerHTML = `
-        <div class="meeting-enhanced-content">
-          <h3 class="meeting-enhanced-title">${data.title || 'Meeting Notes'}</h3>
-          ${data.attendees ? `<p class="meeting-enhanced-attendees">Attendees: ${data.attendees}</p>` : ''}
-          <div class="meeting-enhanced-body">
-            <p class="meeting-enhanced-placeholder">
-              <em>Enhanced output will appear here once the API is connected (TASK-002).</em>
-            </p>
-            <p class="meeting-enhanced-raw">
-              <strong>Raw input:</strong><br>
-              ${data.content.replace(/\n/g, '<br>')}
-            </p>
-          </div>
+    if (!output) return;
+
+    // Prepare output container
+    output.innerHTML = `
+      <div class="meeting-enhanced-content">
+        <div class="meeting-enhanced-header">
+          <h3 class="meeting-enhanced-title" id="mc-enhanced-title">Processing...</h3>
+          <p class="meeting-enhanced-meta" id="mc-enhanced-meta"></p>
         </div>
-      `;
+        <div class="meeting-enhanced-body" id="mc-enhanced-body">
+          <div class="meeting-streaming-cursor"></div>
+        </div>
+      </div>
+    `;
+    output.classList.remove('hidden');
+
+    const titleEl = output.querySelector('#mc-enhanced-title');
+    const metaEl = output.querySelector('#mc-enhanced-meta');
+    const bodyEl = output.querySelector('#mc-enhanced-body');
+
+    let fullContent = '';
+    let processingTime = 0;
+
+    // Read the stream
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split('\n');
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const eventData = JSON.parse(line.slice(6));
+
+              switch (eventData.type) {
+                case 'metadata':
+                  // Update title and meta
+                  if (titleEl && eventData.metadata?.title) {
+                    titleEl.textContent = eventData.metadata.title;
+                  }
+                  if (metaEl && eventData.metadata?.date) {
+                    const attendeesStr = eventData.metadata.attendees?.length
+                      ? ` • ${eventData.metadata.attendees.join(', ')}`
+                      : '';
+                    metaEl.textContent = eventData.metadata.date + attendeesStr;
+                  }
+                  break;
+
+                case 'content':
+                  // Append streaming content
+                  fullContent += eventData.text;
+                  if (bodyEl) {
+                    bodyEl.innerHTML = this.formatEnhancedContent(fullContent);
+                  }
+                  break;
+
+                case 'done':
+                  // Enhancement complete
+                  processingTime = eventData.processingTime || (Date.now() - this.startTime);
+                  console.log(`[MeetingCapture] Enhanced in ${processingTime}ms`);
+
+                  // Add timing info
+                  if (metaEl) {
+                    const seconds = (processingTime / 1000).toFixed(1);
+                    metaEl.textContent += ` • Enhanced in ${seconds}s`;
+                  }
+                  break;
+
+                case 'error':
+                  throw new Error(eventData.error?.message || 'Enhancement failed');
+              }
+            } catch (parseError) {
+              // Skip malformed JSON lines
+              if (parseError.message !== 'Enhancement failed') {
+                console.warn('[MeetingCapture] Parse error:', parseError);
+              } else {
+                throw parseError;
+              }
+            }
+          }
+        }
+      }
+    } finally {
+      reader.releaseLock();
     }
+  },
+
+  /**
+   * Format enhanced content with proper markdown-like styling
+   * @param {string} content - Raw content from API
+   * @returns {string} Formatted HTML
+   */
+  formatEnhancedContent(content) {
+    // Convert markdown-style headers to HTML
+    let html = content
+      // Bold headers like **DISCUSSED**
+      .replace(/\*\*([A-Z][A-Z\s]+)\*\*/g, '<h4 class="meeting-section-header">$1</h4>')
+      // Regular bold
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      // Bullet points
+      .replace(/^[-•]\s+/gm, '<span class="meeting-bullet">•</span> ')
+      // Line breaks
+      .replace(/\n/g, '<br>');
+
+    return html;
   },
 
   /**
