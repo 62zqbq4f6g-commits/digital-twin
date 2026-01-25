@@ -13,7 +13,7 @@ console.log('=== ACTIONS-UI.JS LOADED ===');
 window.debugActions = async function() {
   console.log('=== DEBUGGING ACTIONS ===');
 
-  const notes = await DB.getAllNotes();
+  const notes = await NotesManager.getAll();
   console.log('Total notes:', notes.length);
 
   notes.forEach((note, i) => {
@@ -126,7 +126,7 @@ window.calculateSuggestedScore = calculateSuggestedScore;
  * Phase 5A.7: Debug function to test scoring
  */
 window.debugSuggestedScores = async function() {
-  const notes = await DB.getAllNotes();
+  const notes = await NotesManager.getAll();
   const hour = new Date().getHours();
 
   console.log(`\n=== SUGGESTED SCORES (Current hour: ${hour}) ===\n`);
@@ -197,7 +197,7 @@ const ActionsUI = {
    */
   async loadAllActions() {
     try {
-      const notes = await DB.getAllNotes();
+      const notes = await NotesManager.getAll();
       const actionsMap = new Map(); // Use Map for better deduplication
 
       notes.forEach(note => {

@@ -330,7 +330,14 @@ GOOD (recognizing key person): "You took Seri out for a walk — sounds like qua
       model: 'claude-sonnet-4-20250514',
       max_tokens: 600,
       temperature: 0.4,
-      system: systemPrompt,
+      // System prompt with cache_control for prompt caching (~50% cost reduction on cache hits)
+      system: [
+        {
+          type: 'text',
+          text: systemPrompt,
+          cache_control: { type: 'ephemeral' }
+        }
+      ],
       messages: [
         {
           role: 'user',
@@ -569,13 +576,8 @@ async function processInBackground(supabase, anthropic, userId, noteId, content,
 // ENTITY EXTRACTION
 // ============================================
 
-async function extractEntities(anthropic, content) {
-  try {
-    const message = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 500,
-      temperature: 0,
-      system: `Extract named entities from the note.
+// Static system prompt for entity extraction (cacheable)
+const ENTITY_EXTRACTION_SYSTEM_PROMPT = `Extract named entities from the note.
 
 ENTITY TYPES:
 - person: Named individuals with actual names (e.g., "Sarah", "Marcus Chen", "TestPerson Alpha")
@@ -603,7 +605,22 @@ Correct: [{"name": "Sarah", "entity_type": "person", "description": "Senior Engi
 Wrong: [{"name": "Senior Engineer", "entity_type": "person", ...}]
 
 If no named entities found, return { "entities": [] }
-DO NOT include any text before or after the JSON.`,
+DO NOT include any text before or after the JSON.`;
+
+async function extractEntities(anthropic, content) {
+  try {
+    const message = await anthropic.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 500,
+      temperature: 0,
+      // System prompt with cache_control for prompt caching
+      system: [
+        {
+          type: 'text',
+          text: ENTITY_EXTRACTION_SYSTEM_PROMPT,
+          cache_control: { type: 'ephemeral' }
+        }
+      ],
       messages: [
         { role: 'user', content: `Note: "${content}"` }
       ]
@@ -839,6 +856,9 @@ function classifyEntityCategory(entity) {
   return 'general';
 }
 
+// Static system prompt for summary generation (cacheable)
+const SUMMARY_GENERATION_SYSTEM_PROMPT = `You are updating a user profile summary. REWRITE (don't append) the summary to incorporate new information. If new info conflicts with existing, prefer the new info. Keep it concise (max 100 words). Write in third person about the user.`;
+
 async function generateUpdatedSummary(anthropic, category, existingSummary, newEntities) {
   const entityInfo = newEntities
     .map(e => `- ${e.name} (${e.entity_type}): ${e.description || 'No description'}`)
@@ -849,7 +869,14 @@ async function generateUpdatedSummary(anthropic, category, existingSummary, newE
       model: 'claude-sonnet-4-20250514',
       max_tokens: 300,
       temperature: 0.3,
-      system: `You are updating a user profile summary. REWRITE (don't append) the summary to incorporate new information. If new info conflicts with existing, prefer the new info. Keep it concise (max 100 words). Write in third person about the user.`,
+      // System prompt with cache_control for prompt caching
+      system: [
+        {
+          type: 'text',
+          text: SUMMARY_GENERATION_SYSTEM_PROMPT,
+          cache_control: { type: 'ephemeral' }
+        }
+      ],
       messages: [
         {
           role: 'user',

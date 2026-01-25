@@ -187,7 +187,7 @@ const MemoryMomentsUI = {
     try {
       // Check first note date
       if (typeof DB !== 'undefined') {
-        const notes = await DB.getAllNotes();
+        const notes = await NotesManager.getAll();
         if (notes && notes.length > 0) {
           const oldestNote = notes.reduce((oldest, note) => {
             const noteDate = new Date(note.timestamp);

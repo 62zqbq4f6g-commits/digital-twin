@@ -1,6 +1,12 @@
 {
   "buildCommand": "",
   "outputDirectory": ".",
+  "fluid": true,
+  "functions": {
+    "api/enhance-meeting.js": { "memory": 1024, "maxDuration": 60 },
+    "api/mirror.js": { "memory": 1024, "maxDuration": 60 },
+    "api/analyze-edge.js": { "memory": 1024, "maxDuration": 60 }
+  },
   "crons": [
     {
       "path": "/api/cron/memory-maintenance",

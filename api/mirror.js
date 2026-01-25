@@ -968,7 +968,14 @@ async function generateResponse(user_id, userMessage, history, context, addition
       model: 'claude-sonnet-4-20250514',
       max_tokens: 500,
       temperature: 0.7,
-      system: systemPrompt,
+      // System prompt with cache_control for prompt caching (~50% cost reduction on cache hits)
+      system: [
+        {
+          type: 'text',
+          text: systemPrompt,
+          cache_control: { type: 'ephemeral' }
+        }
+      ],
       messages
     });
 
@@ -1397,7 +1404,14 @@ async function generateConversationSummary(messages) {
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 150,
-      system: 'Summarize this conversation in 1-2 sentences, capturing the key insight or topic discussed.',
+      // System prompt with cache_control for prompt caching
+      system: [
+        {
+          type: 'text',
+          text: 'Summarize this conversation in 1-2 sentences, capturing the key insight or topic discussed.',
+          cache_control: { type: 'ephemeral' }
+        }
+      ],
       messages: [{ role: 'user', content: convoText }]
     });
 

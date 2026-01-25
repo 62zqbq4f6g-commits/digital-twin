@@ -111,6 +111,8 @@ function saveNote(note, options = {}) {
       const request = store.put(note);
 
       request.onsuccess = () => {
+        // Invalidate NotesManager cache
+        if (window.NotesManager) window.NotesManager.invalidate();
         resolve(note);
       };
 
@@ -217,6 +219,8 @@ function deleteNote(id) {
       const request = store.delete(id);
 
       request.onsuccess = () => {
+        // Invalidate NotesManager cache
+        if (window.NotesManager) window.NotesManager.invalidate();
         resolve();
       };
 

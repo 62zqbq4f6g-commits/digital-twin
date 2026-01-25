@@ -254,7 +254,7 @@ const WorkUI = {
    * Phase 14.5: Synthesized insight instead of entity dump
    */
   async generateLocalPulse() {
-    const notes = await DB.getAllNotes();
+    const notes = await NotesManager.getAll();
     const now = new Date();
     const weekAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
 
@@ -466,7 +466,7 @@ const WorkUI = {
       </div>
     `).join('');
 
-    const notes = await DB.getAllNotes();
+    const notes = await NotesManager.getAll();
     console.log('[WorkUI] loadMeetings - Total notes:', notes.length);
 
     // Filter notes that are meetings
@@ -758,7 +758,7 @@ const WorkUI = {
     const container = document.getElementById('commitments-list');
     if (!container) return;
 
-    const notes = await DB.getAllNotes();
+    const notes = await NotesManager.getAll();
     this.commitments = [];
 
     // Extract commitments from all notes
@@ -808,7 +808,7 @@ const WorkUI = {
     const commitment = this.commitments.find(c => c.id === commitmentId);
     if (!commitment) return;
 
-    const notes = await DB.getAllNotes();
+    const notes = await NotesManager.getAll();
     const note = notes.find(n => n.id === commitment.noteId);
     if (!note) return;
 
@@ -1362,7 +1362,7 @@ const WorkUI = {
     const container = document.getElementById('work-actions');
     if (!container) return;
 
-    const notes = await DB.getAllNotes();
+    const notes = await NotesManager.getAll();
 
     // Extract commitments
     const commitments = [];
@@ -1465,7 +1465,7 @@ const WorkUI = {
   async fixCorruptedMeetings() {
     console.log('[WorkUI] Starting corrupted meetings fix...');
 
-    const notes = await DB.getAllNotes();
+    const notes = await NotesManager.getAll();
     let fixedCount = 0;
 
     for (const note of notes) {
@@ -1528,7 +1528,7 @@ const WorkUI = {
   async cleanupDuplicates() {
     console.log('[WorkUI] Starting duplicate cleanup...');
 
-    const notes = await DB.getAllNotes();
+    const notes = await NotesManager.getAll();
     const meetings = notes.filter(n => {
       if (n.type === 'meeting') return true;
       if (n.meeting) return true;

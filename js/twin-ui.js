@@ -91,7 +91,7 @@ const TwinUI = {
       console.log('[TwinUI] Loading stats immediately...');
 
       // Get notes directly from IndexedDB
-      let notes = await DB.getAllNotes();
+      let notes = await NotesManager.getAll();
 
       // Fallback: If IndexedDB is empty but user is authenticated, try to get count from Supabase
       if ((!notes || notes.length === 0) && typeof Sync !== 'undefined' && Sync.user?.id && Sync.supabase) {
@@ -345,7 +345,7 @@ const TwinUI = {
   async updateStats(summary) {
     try {
       // Get all notes for consistent counting
-      const notes = await DB.getAllNotes();
+      const notes = await NotesManager.getAll();
 
       // Count decisions (unresolved) - same logic as "This Week"
       const decisionsCount = notes.filter(note => {
@@ -538,7 +538,7 @@ const TwinUI = {
 
     try {
       // Get all notes
-      const notes = await DB.getAllNotes();
+      const notes = await NotesManager.getAll();
 
       // Filter for unresolved decisions OR notes marked "Still Thinking"
       const openLoops = notes.filter(note => {
@@ -606,7 +606,7 @@ const TwinUI = {
 
     try {
       // Get all notes
-      const notes = await DB.getAllNotes();
+      const notes = await NotesManager.getAll();
 
       // Get start of this week (Sunday)
       const now = new Date();
@@ -670,7 +670,7 @@ const TwinUI = {
     if (!container) return;
 
     try {
-      const notes = await DB.getAllNotes();
+      const notes = await NotesManager.getAll();
       const profile = await TwinProfile.load();
 
       // Not enough notes for pattern detection
@@ -934,7 +934,7 @@ const TwinUI = {
       }
 
       // Get notes count for progress
-      const notes = await DB.getAllNotes();
+      const notes = await NotesManager.getAll();
       const totalNotes = notes.length;
 
       // Show analyzing state with count
@@ -1014,7 +1014,7 @@ const TwinUI = {
   async updateQualitySection() {
     try {
       // Count feedback directly from notes
-      const notes = await DB.getAllNotes();
+      const notes = await NotesManager.getAll();
       const likedCount = notes.filter(n => n.feedback?.rating === 'liked').length;
       const dislikedCount = notes.filter(n => n.feedback?.rating === 'disliked').length;
       const totalFeedback = likedCount + dislikedCount;

@@ -16,7 +16,7 @@
  */
 
 import Anthropic from '@anthropic-ai/sdk';
-import { buildMeetingEnhancePrompt, MEETING_ENHANCE_VERSION } from '../prompts/meeting-enhance.js';
+import { MEETING_ENHANCE_SYSTEM_PROMPT, buildMeetingUserMessage, MEETING_ENHANCE_VERSION } from '../prompts/meeting-enhance.js';
 import { createClient } from '@supabase/supabase-js';
 
 export const config = { runtime: 'edge' };
@@ -131,21 +131,29 @@ export default async function handler(req, ctx) {
           apiKey: process.env.ANTHROPIC_API_KEY,
         });
 
-        // Build enhancement prompt with context (v1.1)
-        const prompt = buildMeetingEnhancePrompt({
+        // Build user message with dynamic content (v1.2)
+        const userMessage = buildMeetingUserMessage({
           rawInput,
           title: inferredTitle,
           attendees,
           context,
         });
 
-        // Stream from Claude
+        // Stream from Claude with prompt caching
         console.log(`[PERF] Claude API call start: ${Date.now() - t0}ms`);
         const response = await anthropic.messages.create({
           model: 'claude-sonnet-4-20250514',
           max_tokens: 2000,
           stream: true,
-          messages: [{ role: 'user', content: prompt }],
+          // System prompt with cache_control for prompt caching (~50% cost reduction on cache hits)
+          system: [
+            {
+              type: 'text',
+              text: MEETING_ENHANCE_SYSTEM_PROMPT,
+              cache_control: { type: 'ephemeral' }
+            }
+          ],
+          messages: [{ role: 'user', content: userMessage }],
         });
 
         // Stream content chunks and accumulate for background processing

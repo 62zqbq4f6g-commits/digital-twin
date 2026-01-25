@@ -1032,6 +1032,57 @@ body {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
+/* Auto-enhance states (Phase 17 - TASK-016) */
+.note-card.enhancing,
+.note-item.enhancing {
+  position: relative;
+  overflow: hidden;
+}
+
+.note-card.enhancing::after,
+.note-item.enhancing::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #E5E5E5, transparent);
+  animation: enhance-shimmer 1.5s infinite;
+}
+
+@keyframes enhance-shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* Just enhanced - subtle badge */
+.note-card.just-enhanced,
+.note-item.just-enhanced {
+  position: relative;
+}
+
+.note-card.just-enhanced::before,
+.note-item.just-enhanced::before {
+  content: '✨ enhanced';
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #6B6B6B;
+  font-family: var(--font-body);
+  font-weight: 500;
+  animation: fade-out 3s forwards;
+  z-index: 10;
+}
+
+@keyframes fade-out {
+  0%, 70% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
 /* Category indicator with diamond */
 .note-category {
   display: inline-flex;

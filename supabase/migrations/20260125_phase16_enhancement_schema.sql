@@ -6,6 +6,7 @@
 -- - Inscript Context (meeting history, open loops)
 --
 -- Created: 2026-01-25
+-- Note: note_id columns use TEXT to match notes.id type
 -- ============================================
 
 -- ============================================
@@ -41,7 +42,7 @@ CREATE TABLE IF NOT EXISTS meeting_history (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   entity_id UUID NOT NULL REFERENCES user_entities(id) ON DELETE CASCADE,
-  note_id UUID NOT NULL REFERENCES notes(id) ON DELETE CASCADE,
+  note_id TEXT NOT NULL REFERENCES notes(id) ON DELETE CASCADE,
   meeting_date TIMESTAMPTZ NOT NULL,
   topics TEXT[] DEFAULT '{}',
   sentiment VARCHAR(20),
@@ -105,10 +106,10 @@ CREATE TABLE IF NOT EXISTS open_loops (
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   description TEXT NOT NULL,
   first_noted_at TIMESTAMPTZ NOT NULL,
-  first_note_id UUID REFERENCES notes(id) ON DELETE SET NULL,
+  first_note_id TEXT REFERENCES notes(id) ON DELETE SET NULL,
   mention_count INTEGER DEFAULT 1,
   last_mentioned_at TIMESTAMPTZ NOT NULL,
-  last_note_id UUID REFERENCES notes(id) ON DELETE SET NULL,
+  last_note_id TEXT REFERENCES notes(id) ON DELETE SET NULL,
   status VARCHAR(20) DEFAULT 'open' CHECK (status IN ('open', 'resolved', 'archived')),
   related_entities UUID[] DEFAULT '{}',
   keywords TEXT[] DEFAULT '{}',
@@ -278,7 +279,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- Function: Update open loop on new mention
 CREATE OR REPLACE FUNCTION update_open_loop_mention(
   p_loop_id UUID,
-  p_note_id UUID,
+  p_note_id TEXT,
   p_context_snippet TEXT DEFAULT NULL
 ) RETURNS void AS $$
 BEGIN

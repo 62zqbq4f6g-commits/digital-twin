@@ -51,27 +51,25 @@ const App = {
       const extracted = Extractor.extract(text);
       console.log('[App.processNote] Extracted title:', extracted.title);
 
-      // 4. REFINE - Generate professional output (async - calls AI API)
-      const refined = await Refiner.refine(text, classification, extracted, inputType);
+      // 4. REFINE + ANALYZE in parallel (performance optimization)
+      const refinePromise = Refiner.refine(text, classification, extracted, inputType);
+      const analyzePromise = typeof Analyzer !== 'undefined'
+        ? Analyzer.analyze({ content: text, type: inputType }).catch(e => {
+            console.warn('[App] Smart analysis unavailable:', e.message);
+            return null;
+          })
+        : Promise.resolve(null);
+
+      const [refined, analysis] = await Promise.all([refinePromise, analyzePromise]);
       console.log('[App.processNote] Refined title:', refined.title);
 
-      // 4a. ANALYZE - Smart analysis for Summary/Insight/Question (Phase 3a)
-      let analysis = null;
-      if (typeof Analyzer !== 'undefined') {
-        try {
-          analysis = await Analyzer.analyze({
-            content: text,
-            type: inputType
-          });
-          // Phase 8.8 DEBUG: Log analysis response
-          console.log('[App] Phase 8.8 - Analysis response keys:', Object.keys(analysis || {}));
-          console.log('[App] Phase 8.8 - analysis.tier:', analysis?.tier);
-          console.log('[App] Phase 8.8 - analysis.heard:', analysis?.heard);
-          console.log('[App] Phase 8.8 - analysis.noticed:', analysis?.noticed);
-          console.log('[App] Phase 8.8 - analysis.experiment:', analysis?.experiment);
-        } catch (e) {
-          console.warn('[App] Smart analysis unavailable:', e.message);
-        }
+      // Phase 8.8 DEBUG: Log analysis response
+      if (analysis) {
+        console.log('[App] Phase 8.8 - Analysis response keys:', Object.keys(analysis || {}));
+        console.log('[App] Phase 8.8 - analysis.tier:', analysis?.tier);
+        console.log('[App] Phase 8.8 - analysis.heard:', analysis?.heard);
+        console.log('[App] Phase 8.8 - analysis.noticed:', analysis?.noticed);
+        console.log('[App] Phase 8.8 - analysis.experiment:', analysis?.experiment);
       }
 
       // 5. BUILD NOTE OBJECT - Full schema from CLAUDE.md 6.2

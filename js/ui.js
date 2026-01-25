@@ -1004,7 +1004,7 @@ const UI = {
       }
 
       // STEP 2: Fetch fresh notes from IndexedDB (async)
-      const freshNotes = await DB.getAllNotes();
+      const freshNotes = await NotesManager.getAll();
 
       // STEP 3: Update cache with fresh data
       if (typeof NotesCache !== 'undefined') {

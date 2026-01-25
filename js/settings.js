@@ -366,7 +366,7 @@ window.Settings = {
 
     try {
       // Get all notes from local DB
-      const notes = await DB.getAllNotes();
+      const notes = await NotesManager.getAll();
 
       // Get twin profile
       const twinProfile = await DB.loadTwinProfile();

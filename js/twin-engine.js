@@ -361,7 +361,7 @@ const TwinEngine = {
     console.log('[TwinEngine] Starting full analysis...');
 
     try {
-      const notes = await DB.getAllNotes();
+      const notes = await NotesManager.getAll();
       console.log(`[TwinEngine] Analyzing ${notes.length} notes...`);
 
       if (notes.length === 0) {

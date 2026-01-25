@@ -446,11 +446,55 @@ const MeetingCapture = {
         this.updateState();
       });
 
-      display.onSave((noteId, content, metadata) => {
+      display.onSave(async (noteId, content, metadata) => {
         console.log('[MeetingCapture] Save clicked', { noteId, metadata });
-        // TODO: Save to notes in TASK-014
-        if (this.onEnhanceComplete) {
-          this.onEnhanceComplete({ ...data, noteId, enhancedContent: content, metadata });
+
+        try {
+          // Build note object matching app schema
+          const now = new Date();
+          const note = this.buildNoteObject({
+            noteId,
+            content,
+            metadata,
+            rawInput: data.content,
+            title: metadata?.title || data.title || 'Meeting Notes',
+            attendees: metadata?.attendees || data.attendees?.split(',').map(a => a.trim()).filter(Boolean) || [],
+          });
+
+          // Save to IndexedDB (will sync to cloud automatically)
+          await DB.saveNote(note);
+          console.log('[MeetingCapture] Note saved:', note.id);
+
+          // Show success feedback
+          if (typeof UI !== 'undefined' && UI.showToast) {
+            UI.showToast('Meeting saved!');
+          }
+
+          // Close modal
+          if (typeof UI !== 'undefined' && UI.closeMeetingCapture) {
+            UI.closeMeetingCapture();
+          }
+
+          // Refresh notes list
+          if (typeof UI !== 'undefined' && UI.loadNotes) {
+            await UI.loadNotes();
+          }
+
+          // Trigger sync if available
+          if (typeof Sync !== 'undefined' && Sync.pushPendingChanges) {
+            Sync.pushPendingChanges().catch(err => console.warn('[MeetingCapture] Sync error:', err));
+          }
+
+          // Call completion callback
+          if (this.onEnhanceComplete) {
+            this.onEnhanceComplete({ ...data, noteId, enhancedContent: content, metadata, saved: true });
+          }
+
+        } catch (error) {
+          console.error('[MeetingCapture] Save failed:', error);
+          if (typeof UI !== 'undefined' && UI.showToast) {
+            UI.showToast('Failed to save meeting');
+          }
         }
       });
     } else {
@@ -671,6 +715,117 @@ const MeetingCapture = {
     `;
     output.classList.remove('hidden');
     console.log(`[PERF-CLIENT] Skeleton shown: ${(performance.now() - this._perfT0).toFixed(0)}ms`);
+  },
+
+  /**
+   * Build a note object from enhanced meeting data
+   * @param {Object} params - Note parameters
+   * @returns {Object} Note object matching app schema
+   */
+  buildNoteObject({ noteId, content, metadata, rawInput, title, attendees }) {
+    const now = new Date();
+    const id = noteId || DB.generateId();
+
+    // Extract sections from enhanced content
+    const sections = this.parseEnhancedContent(content);
+
+    return {
+      id,
+      version: '1.0',
+      timestamps: {
+        created_at: now.toISOString(),
+        input_date: now.toISOString().slice(0, 10),
+        input_time: now.toTimeString().slice(0, 5),
+        input_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        day_of_week: now.toLocaleDateString('en-US', { weekday: 'long' })
+      },
+      input: {
+        type: 'meeting',
+        raw_text: rawInput,
+        enhanced_text: content,
+        meeting_metadata: {
+          title,
+          attendees,
+          meetingDate: now.toISOString(),
+        }
+      },
+      classification: {
+        category: 'work',
+        confidence: 0.9,
+        reasoning: 'Meeting note enhanced by AI'
+      },
+      extracted: {
+        title: title,
+        topics: sections.discussed || [],
+        action_items: sections.actions || [],
+        sentiment: 'neutral',
+        people: attendees
+      },
+      refined: {
+        summary: sections.summary || title,
+        formatted_output: content
+      },
+      analysis: {
+        cleanedInput: rawInput,
+        summary: sections.summary || title,
+        title: title,
+        actions: sections.actions || [],
+        category: 'work'
+      }
+    };
+  },
+
+  /**
+   * Parse enhanced content to extract sections
+   * @param {string} content - Enhanced content from API
+   * @returns {Object} Parsed sections
+   */
+  parseEnhancedContent(content) {
+    const sections = {
+      discussed: [],
+      actions: [],
+      decisions: [],
+      summary: ''
+    };
+
+    if (!content) return sections;
+
+    // Extract DISCUSSED items
+    const discussedMatch = content.match(/##?\s*DISCUSSED\s*\n([\s\S]*?)(?=##|$)/i);
+    if (discussedMatch) {
+      sections.discussed = discussedMatch[1]
+        .split('\n')
+        .filter(line => line.match(/^[-•→]/))
+        .map(line => line.replace(/^[-•→]\s*/, '').trim())
+        .filter(Boolean);
+    }
+
+    // Extract ACTION ITEMS
+    const actionsMatch = content.match(/##?\s*ACTION ITEMS?\s*\n([\s\S]*?)(?=##|$)/i);
+    if (actionsMatch) {
+      sections.actions = actionsMatch[1]
+        .split('\n')
+        .filter(line => line.match(/^[-•→]/))
+        .map(line => line.replace(/^[-•→]\s*/, '').trim())
+        .filter(Boolean);
+    }
+
+    // Extract DECISIONS
+    const decisionsMatch = content.match(/##?\s*DECISIONS?\s*\n([\s\S]*?)(?=##|$)/i);
+    if (decisionsMatch) {
+      sections.decisions = decisionsMatch[1]
+        .split('\n')
+        .filter(line => line.match(/^[-•→]/))
+        .map(line => line.replace(/^[-•→]\s*/, '').trim())
+        .filter(Boolean);
+    }
+
+    // Generate summary from first few discussed items
+    if (sections.discussed.length > 0) {
+      sections.summary = sections.discussed.slice(0, 2).join('; ');
+    }
+
+    return sections;
   },
 
   /**
