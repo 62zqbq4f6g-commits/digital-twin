@@ -179,10 +179,20 @@ class PatternVerification {
    * Render patterns section for TWIN tab (Layer 3)
    */
   renderTwinSection() {
+    const rebuildBtn = `
+      <div class="patterns-rebuild">
+        <button class="patterns-rebuild-btn" onclick="PatternVerification.rebuildPatterns()">
+          Rebuild Analysis
+        </button>
+        <p class="patterns-rebuild-hint">Re-analyze all your notes for new patterns</p>
+      </div>
+    `;
+
     if (!this.patterns || this.patterns.length === 0) {
       return `
         <div class="patterns-empty">
           <p>No patterns detected yet. Keep sharing, and I'll notice the threads.</p>
+          ${rebuildBtn}
         </div>
       `;
     }
@@ -205,8 +215,74 @@ class PatternVerification {
             ${confirmed.map(p => this.renderPatternCard(p, 'confirmed')).join('')}
           </div>
         ` : ''}
+
+        ${rebuildBtn}
       </div>
     `;
+  }
+
+  /**
+   * Rebuild pattern analysis from scratch
+   */
+  async rebuildPatterns() {
+    if (!Sync?.user?.id) {
+      alert('Please sign in to rebuild patterns.');
+      return;
+    }
+
+    // Show loading state
+    const container = document.getElementById('you-patterns-container');
+    if (container) {
+      container.innerHTML = `
+        <div class="patterns-rebuilding">
+          <p>Analyzing your notes for deeper patterns...</p>
+          <div class="patterns-rebuilding-spinner"></div>
+        </div>
+      `;
+    }
+
+    try {
+      console.log('[PatternVerification] Rebuilding patterns...');
+
+      // Call the detect-patterns API
+      const response = await fetch('/api/detect-patterns', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: Sync.user.id
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to rebuild patterns');
+      }
+
+      const data = await response.json();
+      console.log('[PatternVerification] Rebuild complete:', data);
+
+      // Reload patterns to show new ones
+      await this.loadPatterns();
+
+      // Re-render the section
+      if (container) {
+        container.innerHTML = this.renderTwinSection();
+      }
+
+    } catch (error) {
+      console.error('[PatternVerification] Rebuild error:', error);
+
+      if (container) {
+        container.innerHTML = `
+          <div class="patterns-error">
+            <p>Unable to rebuild patterns: ${error.message}</p>
+            <button class="patterns-rebuild-btn" onclick="PatternVerification.rebuildPatterns()">
+              Try Again
+            </button>
+          </div>
+        `;
+      }
+    }
   }
 
   /**

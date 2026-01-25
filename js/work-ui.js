@@ -653,20 +653,23 @@ const WorkUI = {
       }
 
       return `
-        <div class="meeting-card" data-note-id="${meeting.id}" onclick="WorkUI.openMeetingDetail('${meeting.id}')">
-          <div class="meeting-card-header">
+        <div class="meeting-card" data-note-id="${meeting.id}">
+          <div class="meeting-card-header" onclick="WorkUI.openMeetingDetail('${meeting.id}')">
             <div class="meeting-card-title">${title}</div>
             <div class="meeting-card-date">${formattedDate}</div>
           </div>
           ${contentPreview ? `
-            <div class="meeting-card-preview">${contentPreview}</div>
+            <div class="meeting-card-preview" onclick="WorkUI.openMeetingDetail('${meeting.id}')">${contentPreview}</div>
           ` : ''}
           ${firstAction ? `
-            <div class="meeting-card-action-preview">
+            <div class="meeting-card-action-preview" onclick="WorkUI.openMeetingDetail('${meeting.id}')">
               <span class="action-bullet">→</span> ${firstAction}
               ${openCount > 1 ? `<span class="more-actions">+${openCount - 1} more</span>` : ''}
             </div>
           ` : ''}
+          <button class="meeting-delete-btn" onclick="event.stopPropagation(); WorkUI.deleteMeeting('${meeting.id}')" aria-label="Delete meeting">
+            <span>Delete</span>
+          </button>
         </div>
       `;
     }).join('');
@@ -682,6 +685,37 @@ const WorkUI = {
       UI.openNoteDetail(noteId);
     } else {
       console.error('[WorkUI] UI.openNoteDetail not available');
+    }
+  },
+
+  /**
+   * Delete a meeting (which is a note)
+   */
+  async deleteMeeting(noteId) {
+    if (!confirm('Delete this meeting?')) return;
+
+    console.log('[WorkUI] Deleting meeting:', noteId);
+
+    try {
+      // Use Sync.deleteNote for cloud + local deletion
+      if (typeof Sync !== 'undefined' && Sync.deleteNote) {
+        await Sync.deleteNote(noteId);
+      } else {
+        await DB.deleteNote(noteId);
+      }
+
+      // Remove from local cache
+      if (typeof NotesCache !== 'undefined') {
+        NotesCache.removeNote(noteId);
+      }
+
+      // Refresh meetings list
+      await this.loadMeetings();
+
+      console.log('[WorkUI] Meeting deleted successfully');
+    } catch (error) {
+      console.error('[WorkUI] Failed to delete meeting:', error);
+      alert('Failed to delete meeting. Please try again.');
     }
   },
 

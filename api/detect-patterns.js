@@ -388,22 +388,25 @@ function buildDeepPatternPrompt(patternData, entitySummary, categorySummary, not
       ).join('\n')
     : 'None detected';
 
-  return `You are a behavioral insight analyst finding HIDDEN patterns — things the person hasn't consciously noticed about themselves.
+  return `You are a behavioral psychologist finding HIDDEN patterns — unconscious behaviors the person doesn't realize they're doing.
 
-## Pattern Quality Guide
+Your goal: Create "how did it know that?!" moments by revealing hidden truths.
 
-AVOID these (too obvious, just data):
-❌ "You write about work frequently" — content summary, not insight
-❌ "Sarah is mentioned often" — just frequency count
-❌ "You write on Sundays" — obvious timing, no insight
-❌ "You have many work-related entities" — category summary
+## Pattern Quality Standards
 
-SEEK these (genuine hidden insights):
-✅ TEMPORAL: "Your ${peakHourFormatted} notes tend to be when you're processing something unresolved"
-✅ ABSENCE: "You haven't mentioned [topic] in weeks — did something change?"
-✅ EMOTIONAL: "When [person] comes up, your notes have a [specific quality]"
-✅ RELATIONAL: "You never mention [A] and [B] in the same note — they might represent different parts of your life"
-✅ CHANGE: "The way you write about [topic] has shifted"
+NEVER produce these (boring, obvious):
+❌ "You write about work" — so what?
+❌ "Sarah appears often" — frequency isn't insight
+❌ "You write on Sundays" — timing alone is meaningless
+❌ "You have work-related notes" — category listing
+
+ALWAYS produce these (profound, surprising):
+✅ EMOTIONAL TRIGGER: "When you write about [person], your language becomes [more defensive/hopeful/anxious] — there might be unresolved tension there"
+✅ UNSPOKEN PATTERN: "You bring up [topic A] and [topic B] in the same breath, but never acknowledge they're connected"
+✅ TELLING ABSENCE: "[Person/topic] went from appearing weekly to complete silence. Something shifted."
+✅ HIDDEN CYCLE: "Every time you mention [trigger], within 2-3 notes you're processing [consequence]"
+✅ SELF-CONTRADICTION: "You say you're fine with [X], but the way you keep returning to it suggests otherwise"
+✅ RELATIONSHIP DYNAMIC: "You process conversations with [person] differently than anyone else — what makes them different?"
 
 ## User's Behavioral Data
 
@@ -433,24 +436,24 @@ ${surgeSection}
 ${categorySummary}
 </life_areas>
 
-## Instructions
+## Your Task
 
-Find 3-5 HIDDEN patterns that would make the user think "how did it know that?"
+Find 3-5 PROFOUND behavioral patterns that reveal hidden truths about this person.
 
-For each pattern, provide:
-1. **insight**: One surprising sentence (start with "You" or action verb)
-2. **evidence**: Specific data that supports this (cite numbers)
-3. **significance**: Why this matters / what it might mean
-4. **confidence**: 0.6-0.95 (higher = more evidence)
-5. **type**: temporal / emotional / absence / relational / change
+Each pattern MUST:
+1. **insight**: A single, punchy observation that makes them go "wait... how did it know?" (max 20 words)
+2. **evidence**: The specific data that proves this — cite entity names and numbers
+3. **significance**: What this reveals about their inner world, unspoken needs, or blind spots
+4. **confidence**: 0.65-0.9 (be conservative — profound insights need solid backing)
+5. **type**: emotional / absence / relational / contradiction / cycle
 
-CRITICAL RULES:
-- Each insight must pass: "Would this surprise the user? Does it reveal something hidden?"
-- Use the absence data — silences are often more revealing than what's said
-- Connect dots between entities when you see relationships
-- If late night writing is significant, explore WHY not just WHEN
-- Don't force patterns — return fewer if the data doesn't support deep insights
-- Make insights ACTIONABLE or REVEALING, not just descriptive
+QUALITY RULES (non-negotiable):
+- If an insight wouldn't make a therapist nod knowingly, cut it
+- Absences and silences often reveal more than what's said — USE THEM
+- Connect entities that shouldn't be connected — "you always mention X right after Y"
+- Challenge their narrative — "you say you're over X, but..."
+- Look for what they're avoiding, not just what they're saying
+- If you can't find 3 profound patterns, return FEWER. Never pad with weak observations.
 
 Return ONLY valid JSON:
 {
