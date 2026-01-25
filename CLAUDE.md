@@ -313,6 +313,28 @@ ADD COLUMN meeting_metadata JSONB;
 - `css/styles.css` — Ambient button styles
 - `supabase/migrations/20260125_phase17_ambient_recordings.sql` — Fixed RLS policy for service role
 
+### UX Polish + Performance (Late Evening)
+
+| Issue | Fix | Impact |
+|-------|-----|--------|
+| **MIRROR Mobile Viewport (BUG #5)** | Changed 100vh → 100dvh, added safe-area-inset-bottom | Input field no longer cut off on mobile Safari |
+| **Delete Without Undo** | Added 5-second undo toast before permanent delete | Users can recover accidentally deleted notes |
+| **No Sync Feedback** | Added sync status indicator in header | Users see "Syncing..." / "✓ Synced" status |
+| **Vercel Fluid Compute** | Enabled dynamic resource allocation in vercel.json | Better performance under load |
+| **Claude Prompt Caching** | Added cache_control to enhance/mirror/analyze APIs | ~90% cost reduction on repeat calls |
+
+### Files Modified (UX Polish + Performance)
+- `css/mirror.css` — 100dvh + safe-area-inset-bottom for mobile viewport
+- `js/toast.js` — **NEW**: UndoToast + SyncStatus components
+- `js/sync.js` — Dispatch sync events, call SyncStatus
+- `js/ui.js` — Use deleteNoteWithUndo for note deletion
+- `index.html` — Sync indicator in header, preconnect hints
+- `api/enhance-meeting.js` — Claude prompt caching
+- `api/mirror.js` — Claude prompt caching
+- `api/analyze-edge.js` — Claude prompt caching
+- `prompts/meeting-enhance.js` — Separated static system prompt
+- `vercel.json` — Fluid Compute + functions config
+
 ### Polish Sprint (Evening)
 
 | Issue | Fix | Impact |

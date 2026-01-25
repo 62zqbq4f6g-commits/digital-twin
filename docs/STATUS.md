@@ -4,13 +4,30 @@
 
 ---
 
+## THE VISION: PAMP
+
+**Inscript is building PAMP — the Portable AI Memory Protocol.**
+
+> Your memory. Your data. Portable across any AI.
+
+| Principle | Meaning |
+|-----------|---------|
+| **User-owned** | Your memories are encrypted with your keys |
+| **Portable** | Works with any AI — ChatGPT, Claude, Gemini, internal tools |
+| **Accumulating** | Gets smarter over time, follows you everywhere |
+| **Private** | Never sold, never used for training, delete means delete |
+
+**Strategic Path:** Consumer app (current) → Platform APIs → Open protocol
+
+---
+
 ## CURRENT STATE
 
-**Status:** Phase 17 Complete — Voice features + Polish Sprint done
+**Status:** Phase 17 Complete — Consumer experience polished
 **Production URL:** https://digital-twin-ecru.vercel.app
 **Brand:** Inscript — "Your mirror in code"
 **Category:** Personal AI Memory (PAMP Protocol)
-**Task List ID:** `phase17-ambient-listening`
+**Next Phase:** Phase 18 — PAMP Foundation (export, API design)
 **Design System:** SoHo Editorial Aesthetic ✅
 
 ---
