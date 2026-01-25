@@ -3332,7 +3332,15 @@ const UI = {
    * Show delete confirmation dialog
    */
   showDeleteDialog() {
-    document.getElementById('delete-dialog').classList.remove('hidden');
+    console.log('[UI] showDeleteDialog called');
+    const dialog = document.getElementById('delete-dialog');
+    console.log('[UI] Delete dialog element:', dialog);
+    if (dialog) {
+      dialog.classList.remove('hidden');
+      console.log('[UI] Dialog shown');
+    } else {
+      console.error('[UI] Delete dialog not found!');
+    }
   },
 
   /**
@@ -3347,30 +3355,42 @@ const UI = {
    * Phase 8.7: Fixed to use Sync.deleteNote for cloud persistence
    */
   async confirmDeleteNote() {
-    if (!this.currentNote) return;
+    console.log('[UI] confirmDeleteNote called');
+    console.log('[UI] currentNote:', this.currentNote);
+
+    if (!this.currentNote) {
+      console.error('[UI] No current note to delete!');
+      return;
+    }
 
     const noteId = this.currentNote.id;
+    console.log('[UI] Deleting note ID:', noteId);
 
     try {
       // Remove from cache immediately for instant UI update
       if (typeof NotesCache !== 'undefined') {
         NotesCache.removeNote(noteId);
+        console.log('[UI] Removed from NotesCache');
       }
 
       // Phase 8.7: Use Sync.deleteNote to delete from cloud AND local
       // This prevents deleted notes from reappearing after re-login
       if (typeof Sync !== 'undefined' && Sync.deleteNote) {
+        console.log('[UI] Using Sync.deleteNote');
         await Sync.deleteNote(noteId);
+        console.log('[UI] Sync.deleteNote completed');
       } else {
         // Fallback to local-only delete if Sync not available
+        console.log('[UI] Using DB.deleteNote fallback');
         await DB.deleteNote(noteId);
       }
       this.hideDeleteDialog();
       this.closeNoteDetail();
       this.loadNotes();
       this.showToast('Note deleted');
+      console.log('[UI] Note delete completed successfully');
     } catch (error) {
-      console.error('Failed to delete note:', error);
+      console.error('[UI] Failed to delete note:', error);
       this.showToast('Failed to delete');
     }
   },

@@ -675,9 +675,26 @@ const WorkUI = {
     }).join('');
 
     // Attach delete button listeners (works better on mobile than inline onclick)
-    container.querySelectorAll('.meeting-delete-btn').forEach(btn => {
+    const deleteButtons = container.querySelectorAll('.meeting-delete-btn');
+    console.log('[WorkUI] Found delete buttons:', deleteButtons.length);
+
+    deleteButtons.forEach(btn => {
+      console.log('[WorkUI] Attaching listener to button with meeting ID:', btn.dataset.meetingId);
       btn.addEventListener('click', async (e) => {
+        e.preventDefault();
         e.stopPropagation();
+        console.log('[WorkUI] Delete button clicked');
+        const meetingId = btn.dataset.meetingId;
+        console.log('[WorkUI] Meeting ID:', meetingId);
+        if (meetingId) {
+          await this.deleteMeeting(meetingId);
+        }
+      });
+      // Also add touch event for mobile
+      btn.addEventListener('touchend', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('[WorkUI] Delete button touched');
         const meetingId = btn.dataset.meetingId;
         if (meetingId) {
           await this.deleteMeeting(meetingId);
