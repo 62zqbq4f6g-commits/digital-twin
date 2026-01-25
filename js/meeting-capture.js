@@ -349,6 +349,9 @@ const MeetingCapture = {
     this.startTime = Date.now();
     this._perfT0 = t0; // Store for later measurements
 
+    // IMMEDIATELY show skeleton UI for perceived performance
+    this.showSkeleton(data);
+
     // Start loading messages (TASK-005)
     const loadingContainer = this.container.querySelector('#mc-loading');
     let loader = null;
@@ -622,6 +625,52 @@ const MeetingCapture = {
       `;
       output.classList.remove('hidden');
     }
+  },
+
+  /**
+   * Show skeleton UI immediately for perceived performance
+   * @param {Object} data - Form data with title, attendees
+   */
+  showSkeleton(data) {
+    const output = this.container.querySelector('#mc-output');
+    if (!output) return;
+
+    // Build preview title from data
+    const previewTitle = data.title ||
+      (data.attendees ? `Meeting with ${data.attendees.split(',')[0].trim()}` : 'Meeting Notes');
+    const previewDate = new Date().toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+
+    output.innerHTML = `
+      <div class="enhanced-skeleton">
+        <div class="skeleton-header">
+          <h3 class="skeleton-title">${previewTitle}</h3>
+          <p class="skeleton-date">${previewDate}</p>
+        </div>
+        <div class="skeleton-badge">
+          <span class="skeleton-badge-text shimmer-text">ENHANCING</span>
+        </div>
+        <div class="skeleton-body">
+          <div class="skeleton-section">
+            <div class="skeleton-section-title shimmer"></div>
+            <div class="skeleton-line shimmer"></div>
+            <div class="skeleton-line shimmer" style="width: 85%"></div>
+            <div class="skeleton-line shimmer" style="width: 70%"></div>
+          </div>
+          <div class="skeleton-section">
+            <div class="skeleton-section-title shimmer"></div>
+            <div class="skeleton-line shimmer" style="width: 90%"></div>
+            <div class="skeleton-line shimmer" style="width: 60%"></div>
+          </div>
+        </div>
+      </div>
+    `;
+    output.classList.remove('hidden');
+    console.log(`[PERF-CLIENT] Skeleton shown: ${(performance.now() - this._perfT0).toFixed(0)}ms`);
   },
 
   /**
