@@ -395,6 +395,10 @@ const MeetingCapture = {
   formatEnhancedContent(content) {
     // Convert markdown-style headers to HTML
     let html = content
+      // Markdown h1 headers like # Meeting Minutes
+      .replace(/^#\s+(.+)$/gm, '<h3 class="meeting-enhanced-title-inline">$1</h3>')
+      // Markdown h2 headers like ## DISCUSSED
+      .replace(/^##\s+([A-Z][A-Z\s]+)$/gm, '<h4 class="meeting-section-header">$1</h4>')
       // Bold headers like **DISCUSSED**
       .replace(/\*\*([A-Z][A-Z\s]+)\*\*/g, '<h4 class="meeting-section-header">$1</h4>')
       // Regular bold

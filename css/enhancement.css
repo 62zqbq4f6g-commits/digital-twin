@@ -311,6 +311,15 @@
   margin: 8px 0 0 0;
 }
 
+/* Inline Title from Markdown # */
+.meeting-enhanced-title-inline {
+  font-family: var(--font-display, 'Playfair Display', Georgia, serif);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink, #000);
+  margin: 0 0 8px 0;
+}
+
 /* Section Headers (DISCUSSED, ACTION ITEMS, etc.) */
 .meeting-section-header {
   font-family: var(--font-body, 'Inter', -apple-system, sans-serif);
