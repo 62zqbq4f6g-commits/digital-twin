@@ -296,26 +296,52 @@ const MeetingCapture = {
     const output = this.container.querySelector('#mc-output');
     if (!output) return;
 
-    // Prepare output container
-    output.innerHTML = `
-      <div class="meeting-enhanced-content">
-        <div class="meeting-enhanced-header">
-          <h3 class="meeting-enhanced-title" id="mc-enhanced-title">Processing...</h3>
-          <p class="meeting-enhanced-meta" id="mc-enhanced-meta"></p>
-        </div>
-        <div class="meeting-enhanced-body" id="mc-enhanced-body">
-          <div class="meeting-streaming-cursor"></div>
-        </div>
-      </div>
-    `;
-    output.classList.remove('hidden');
+    // Use EnhanceDisplay component if available, otherwise fallback
+    const useEnhanceDisplay = typeof EnhanceDisplay !== 'undefined';
+    let display = null;
 
-    const titleEl = output.querySelector('#mc-enhanced-title');
-    const metaEl = output.querySelector('#mc-enhanced-meta');
-    const bodyEl = output.querySelector('#mc-enhanced-body');
+    if (useEnhanceDisplay) {
+      display = new EnhanceDisplay(output);
+
+      // Wire up callbacks
+      display.onTryAgain(() => {
+        this.reset();
+        // Re-populate with original data
+        const textarea = this.container.querySelector('#mc-content');
+        const titleInput = this.container.querySelector('#mc-title');
+        const attendeesInput = this.container.querySelector('#mc-attendees');
+        if (textarea) textarea.value = data.content;
+        if (titleInput) titleInput.value = data.title;
+        if (attendeesInput) attendeesInput.value = data.attendees;
+        this.updateState();
+      });
+
+      display.onSave((noteId, content, metadata) => {
+        console.log('[MeetingCapture] Save clicked', { noteId, metadata });
+        // TODO: Save to notes in TASK-014
+        if (this.onEnhanceComplete) {
+          this.onEnhanceComplete({ ...data, noteId, enhancedContent: content, metadata });
+        }
+      });
+    } else {
+      // Fallback: basic output container
+      output.innerHTML = `
+        <div class="meeting-enhanced-content">
+          <div class="meeting-enhanced-header">
+            <h3 class="meeting-enhanced-title" id="mc-enhanced-title">Processing...</h3>
+            <p class="meeting-enhanced-meta" id="mc-enhanced-meta"></p>
+          </div>
+          <div class="meeting-enhanced-body" id="mc-enhanced-body">
+            <div class="meeting-streaming-cursor"></div>
+          </div>
+        </div>
+      `;
+      output.classList.remove('hidden');
+    }
 
     let fullContent = '';
     let processingTime = 0;
+    let noteId = null;
 
     // Read the stream
     const reader = response.body.getReader();
@@ -336,48 +362,75 @@ const MeetingCapture = {
 
               switch (eventData.type) {
                 case 'metadata':
-                  // Update title and meta
-                  if (titleEl && eventData.metadata?.title) {
-                    titleEl.textContent = eventData.metadata.title;
-                  }
-                  if (metaEl && eventData.metadata?.date) {
-                    const attendeesStr = eventData.metadata.attendees?.length
-                      ? ` • ${eventData.metadata.attendees.join(', ')}`
-                      : '';
-                    metaEl.textContent = eventData.metadata.date + attendeesStr;
+                  if (display) {
+                    display.setMetadata(eventData.metadata);
+                  } else {
+                    // Fallback rendering
+                    const titleEl = output.querySelector('#mc-enhanced-title');
+                    const metaEl = output.querySelector('#mc-enhanced-meta');
+                    if (titleEl && eventData.metadata?.title) {
+                      titleEl.textContent = eventData.metadata.title;
+                    }
+                    if (metaEl && eventData.metadata?.date) {
+                      const attendeesStr = eventData.metadata.attendees?.length
+                        ? ` • ${eventData.metadata.attendees.join(', ')}`
+                        : '';
+                      metaEl.textContent = eventData.metadata.date + attendeesStr;
+                    }
                   }
                   break;
 
                 case 'content':
-                  // Append streaming content
                   fullContent += eventData.text;
-                  if (bodyEl) {
-                    bodyEl.innerHTML = this.formatEnhancedContent(fullContent);
+                  if (display) {
+                    display.appendContent(eventData.text);
+                  } else {
+                    // Fallback rendering
+                    const bodyEl = output.querySelector('#mc-enhanced-body');
+                    if (bodyEl) {
+                      bodyEl.innerHTML = this.formatEnhancedContent(fullContent);
+                    }
+                  }
+                  break;
+
+                case 'context':
+                  // Inscript Context item
+                  if (display && eventData.item) {
+                    display.addContextItem(eventData.item);
                   }
                   break;
 
                 case 'done':
-                  // Enhancement complete
                   processingTime = eventData.processingTime || (Date.now() - this.startTime);
+                  noteId = eventData.noteId;
                   console.log(`[MeetingCapture] Enhanced in ${processingTime}ms`);
 
-                  // Add timing info
-                  if (metaEl) {
-                    const seconds = (processingTime / 1000).toFixed(1);
-                    metaEl.textContent += ` • Enhanced in ${seconds}s`;
+                  if (display) {
+                    display.complete(noteId, processingTime);
+                  } else {
+                    // Fallback: add timing info
+                    const metaEl = output.querySelector('#mc-enhanced-meta');
+                    if (metaEl) {
+                      const seconds = (processingTime / 1000).toFixed(1);
+                      metaEl.textContent += ` • Enhanced in ${seconds}s`;
+                    }
                   }
                   break;
 
                 case 'error':
-                  throw new Error(eventData.error?.message || 'Enhancement failed');
+                  const errorMsg = eventData.error?.message || 'Enhancement failed';
+                  if (display) {
+                    display.showError(errorMsg, eventData.error?.rawInput);
+                  }
+                  throw new Error(errorMsg);
               }
             } catch (parseError) {
-              // Skip malformed JSON lines
-              if (parseError.message !== 'Enhancement failed') {
-                console.warn('[MeetingCapture] Parse error:', parseError);
-              } else {
+              // Skip malformed JSON lines unless it's our thrown error
+              if (parseError.message === 'Enhancement failed' ||
+                  parseError.message.includes('Enhancement')) {
                 throw parseError;
               }
+              console.warn('[MeetingCapture] Parse error:', parseError);
             }
           }
         }
@@ -385,6 +438,11 @@ const MeetingCapture = {
     } finally {
       reader.releaseLock();
     }
+
+    // Store reference for later use
+    this.display = display;
+    this.enhancedContent = fullContent;
+    this.noteId = noteId;
   },
 
   /**

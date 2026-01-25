@@ -29,7 +29,8 @@
   "homepage": "https://github.com/62zqbq4f6g-commits/digital-twin#readme",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",
-    "@supabase/supabase-js": "^2.90.1"
+    "@supabase/supabase-js": "^2.90.1",
+    "openai": "^6.16.0"
   },
   "devDependencies": {
     "dotenv": "^17.2.3"
