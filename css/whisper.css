@@ -296,7 +296,20 @@
 
 .whisper-item--selected {
   border-color: var(--ink);
-  background: var(--paper-warm);
+  background: var(--ink);
+}
+
+.whisper-item--selected .whisper-item__content {
+  color: var(--paper);
+}
+
+.whisper-item--selected .whisper-item__time {
+  color: var(--silver-300);
+}
+
+.whisper-item--selected .whisper-item__entity {
+  color: var(--paper);
+  background: rgba(255, 255, 255, 0.15);
 }
 
 .whisper-item__checkbox {

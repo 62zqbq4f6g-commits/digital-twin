@@ -3,10 +3,10 @@
  * Phase 15.1: 3-Tab Restructure
  *
  * Manages the YOU tab with 4 sub-tabs:
- * - STREAM: Whispers + Pulse + Actions (activity feed)
- * - PATTERNS: Detected behavioral patterns
- * - REPORT: State of You monthly report
- * - STATS: Note count, streak, entities learned
+ * - STREAM: Actions + Whispers (prioritized activity)
+ * - MEETINGS: Meeting summaries
+ * - PATTERNS: Detected behavioral patterns + State of You
+ * - STATS: Note count, entities learned
  */
 
 const YouUI = {
@@ -71,11 +71,11 @@ const YouUI = {
       case 'stream':
         await this.loadStream();
         break;
+      case 'meetings':
+        await this.loadMeetings();
+        break;
       case 'patterns':
         await this.loadPatterns();
-        break;
-      case 'report':
-        await this.loadReport();
         break;
       case 'stats':
         await this.loadStats();
@@ -84,35 +84,36 @@ const YouUI = {
   },
 
   /**
-   * Load STREAM content (Whispers + Pulse + Actions)
+   * Load STREAM content (Actions + Whispers)
    */
   async loadStream() {
     console.log('[YouUI] Loading stream...');
+
+    // Load actions (prioritized)
+    if (typeof ActionsUI !== 'undefined' && ActionsUI.refresh) {
+      await ActionsUI.refresh();
+    }
 
     // Load whisper history
     const whisperContainer = document.getElementById('you-whisper-list');
     if (whisperContainer && typeof WhisperUI !== 'undefined') {
       await WhisperUI.loadHistory(whisperContainer);
     }
+  },
 
-    // Load pulse (reuse WorkUI pulse logic)
-    if (typeof WorkUI !== 'undefined' && WorkUI.loadPulse) {
-      await WorkUI.loadPulse();
-    }
+  /**
+   * Load MEETINGS content
+   */
+  async loadMeetings() {
+    console.log('[YouUI] Loading meetings...');
 
-    // Load actions
-    if (typeof ActionsUI !== 'undefined' && ActionsUI.refresh) {
-      await ActionsUI.refresh();
-    }
-
-    // Load meetings
     if (typeof WorkUI !== 'undefined' && WorkUI.loadMeetings) {
       await WorkUI.loadMeetings();
     }
   },
 
   /**
-   * Load PATTERNS content
+   * Load PATTERNS content (includes State of You report)
    */
   async loadPatterns() {
     console.log('[YouUI] Loading patterns...');
@@ -152,17 +153,11 @@ const YouUI = {
       console.error('[YouUI] Error loading patterns:', error);
       container.innerHTML = '<p class="you-empty">Unable to load patterns.</p>';
     }
-  },
 
-  /**
-   * Load REPORT content (State of You)
-   */
-  async loadReport() {
-    console.log('[YouUI] Loading report...');
-
-    const container = document.getElementById('you-report-container');
-    if (container && typeof StateOfYouUI !== 'undefined') {
-      await StateOfYouUI.load(container);
+    // Also load State of You report (moved from separate REPORT tab)
+    const reportContainer = document.getElementById('you-report-container');
+    if (reportContainer && typeof StateOfYouUI !== 'undefined') {
+      await StateOfYouUI.load(reportContainer);
     }
   },
 

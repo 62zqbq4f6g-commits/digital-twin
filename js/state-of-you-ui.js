@@ -390,10 +390,6 @@ const StateOfYouUI = {
           <span class="stat-item__value">${stats.whispers_count || 0}</span>
           <span class="stat-item__label">whispers</span>
         </div>
-        <div class="stat-item">
-          <span class="stat-item__value">${stats.streak_days || 0}</span>
-          <span class="stat-item__label">day streak</span>
-        </div>
       </div>
     `;
   },

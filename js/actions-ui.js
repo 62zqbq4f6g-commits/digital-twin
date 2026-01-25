@@ -432,9 +432,6 @@ const ActionsUI = {
     html += this.renderTabContent(suggested, incomplete, done);
     html += `</div>`;
 
-    // Streak section
-    html += this.renderStreakSection();
-
     listEl.innerHTML = html;
 
     // Attach listeners

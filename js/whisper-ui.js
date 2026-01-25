@@ -461,7 +461,7 @@ const WhisperUI = {
       }
 
       // Call batch reflect API
-      const response = await fetch('/api/whisper/reflect', {
+      const response = await fetch('/api/whisper-reflect', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

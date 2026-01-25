@@ -282,30 +282,14 @@
         <!-- Sub-tab Navigation -->
         <div class="you-tabs">
           <button class="you-tab active" data-you-tab="stream">STREAM</button>
+          <button class="you-tab" data-you-tab="meetings">MEETINGS</button>
           <button class="you-tab" data-you-tab="patterns">PATTERNS</button>
-          <button class="you-tab" data-you-tab="report">REPORT</button>
           <button class="you-tab" data-you-tab="stats">STATS</button>
         </div>
 
-        <!-- STREAM Sub-tab (Whispers + Pulse + Actions) -->
+        <!-- STREAM Sub-tab (Actions + Whispers) -->
         <div id="you-stream" class="you-content">
-          <!-- Whisper History Section -->
-          <div class="you-section">
-            <h3 class="you-section-title">Whispers</h3>
-            <div id="you-whisper-list" class="you-whisper-list">
-              <p class="you-empty">No whispers yet. Use the Whisper button in NOTES to capture quick thoughts.</p>
-            </div>
-          </div>
-
-          <!-- Pulse Section (from old WORK tab) -->
-          <div class="you-section">
-            <h3 class="you-section-title">Pulse</h3>
-            <div class="pulse-container">
-              <p class="pulse-loading">Loading your pulse...</p>
-            </div>
-          </div>
-
-          <!-- Actions Section (from old WORK tab) -->
+          <!-- Actions Section (prioritized) -->
           <div class="you-section">
             <h3 class="you-section-title">Actions</h3>
             <div class="actions-list" id="actions-list">
@@ -316,9 +300,18 @@
             </div>
           </div>
 
-          <!-- Meetings Section (from old WORK tab) -->
+          <!-- Whisper History Section -->
           <div class="you-section">
-            <h3 class="you-section-title">Meetings</h3>
+            <h3 class="you-section-title">Whispers</h3>
+            <div id="you-whisper-list" class="you-whisper-list">
+              <p class="you-empty">No whispers yet. Use the Whisper button in NOTES to capture quick thoughts.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- MEETINGS Sub-tab -->
+        <div id="you-meetings" class="you-content hidden">
+          <div class="you-section">
             <div class="meetings-list" id="meetings-list">
               <p class="meetings-empty">No meetings recorded yet.</p>
             </div>
@@ -328,7 +321,7 @@
           </div>
         </div>
 
-        <!-- PATTERNS Sub-tab -->
+        <!-- PATTERNS Sub-tab (includes State of You report) -->
         <div id="you-patterns" class="you-content hidden">
           <div class="you-section">
             <h3 class="you-section-title">Patterns I've Noticed</h3>
@@ -336,10 +329,8 @@
               <p class="you-empty">No patterns detected yet. Keep writing to reveal your rhythms.</p>
             </div>
           </div>
-        </div>
 
-        <!-- REPORT Sub-tab (State of You) -->
-        <div id="you-report" class="you-content hidden">
+          <!-- State of You Report (moved from REPORT tab) -->
           <div class="you-section">
             <h3 class="you-section-title">State of You</h3>
             <div id="you-report-container">
