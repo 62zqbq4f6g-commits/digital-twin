@@ -14,6 +14,7 @@
  */
 
 import Anthropic from '@anthropic-ai/sdk';
+import { buildMeetingEnhancePrompt, MEETING_ENHANCE_VERSION } from '../prompts/meeting-enhance.js';
 
 export const config = { runtime: 'edge' };
 
@@ -107,8 +108,12 @@ export default async function handler(req, ctx) {
           apiKey: process.env.ANTHROPIC_API_KEY,
         });
 
-        // Build enhancement prompt
-        const prompt = buildEnhancementPrompt(rawInput, inferredTitle, attendees);
+        // Build enhancement prompt (v1.0)
+        const prompt = buildMeetingEnhancePrompt({
+          rawInput,
+          title: inferredTitle,
+          attendees,
+        });
 
         // Stream from Claude
         const response = await anthropic.messages.create({
@@ -142,6 +147,7 @@ export default async function handler(req, ctx) {
               type: 'done',
               noteId,
               processingTime,
+              promptVersion: MEETING_ENHANCE_VERSION,
             })}\n\n`
           )
         );
@@ -223,51 +229,3 @@ function inferTitle(rawInput, attendees) {
   return cleanLine || 'Meeting Notes';
 }
 
-/**
- * Build the enhancement prompt
- * Placeholder - will be replaced with full prompt from TASK-003
- */
-function buildEnhancementPrompt(rawInput, title, attendees) {
-  const attendeeList = attendees?.length ? attendees.join(', ') : 'Not specified';
-  const today = new Date().toLocaleDateString('en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
-
-  return `You are an AI assistant that transforms raw meeting notes into clean, structured meeting minutes.
-
-## RAW NOTES
-${rawInput}
-
-## MEETING CONTEXT
-- Title: ${title}
-- Attendees: ${attendeeList}
-- Date: ${today}
-
-## OUTPUT FORMAT
-
-Transform the raw notes into this format:
-
-## DISCUSSED
-- [Bullet points of topics covered]
-
-## ACTION ITEMS
-${attendees?.length ? attendees.map(a => `→ @${a}: [Actions for this person]`).join('\n') : '→ [Actions with owners if specified]'}
-
-## NOTED
-[Important observations, warnings, or concerns - only if present in notes]
-
-## RULES
-1. NEVER invent information not in the raw notes
-2. Preserve exact quotes in "quotation marks"
-3. Preserve exact numbers, dates, and figures
-4. Fix typos and expand abbreviations (q2→Q2, eng→engineering, mtg→meeting)
-5. Keep scannable with bullets, not paragraphs
-6. Skip sections with no content (don't include empty sections)
-7. If attendees mentioned, attribute action items to them
-8. Use → for action items, - for discussion points
-
-Generate the enhanced meeting minutes now.`;
-}
