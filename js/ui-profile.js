@@ -878,14 +878,21 @@ window.UIProfile = {
 
   async updateKeyPeopleCount() {
     try {
-      const { count } = await Sync.supabase
+      // Use regular select instead of HEAD request (head: true) which can cause 502 errors
+      const { data, error } = await Sync.supabase
         .from('user_key_people')
-        .select('id', { count: 'exact', head: true })
+        .select('id')
         .eq('user_id', Sync.user.id);
 
+      if (error) {
+        console.warn('[UIProfile] Key people count error:', error);
+        return;
+      }
+
+      const count = data?.length || 0;
       const countEl = document.getElementById('key-people-count');
       if (countEl) {
-        countEl.textContent = `${count || 0} people`;
+        countEl.textContent = `${count} people`;
       }
     } catch (err) {
       console.warn('[UIProfile] Failed to update people count:', err);
