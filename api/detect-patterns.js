@@ -233,13 +233,13 @@ module.exports = async function handler(req, res) {
 
     const newPatterns = [];
     for (const pattern of patterns) {
+      // Note: Only include columns that exist in user_patterns table schema
+      // Removed: pattern_text, long_description (don't exist in schema)
       const insertData = {
         user_id,
         pattern_type: pattern.type || 'behavioral',
-        pattern_text: pattern.insight,
         description: `${pattern.insight}\n\nEvidence: ${pattern.evidence || 'Based on note patterns'}\n\nSignificance: ${pattern.significance || 'This reveals something about how you process and think.'}`,
         short_description: pattern.insight,
-        long_description: pattern.significance || '',
         confidence: pattern.confidence || 0.7,
         evidence: {
           evidence_text: pattern.evidence,
@@ -256,7 +256,6 @@ module.exports = async function handler(req, res) {
           pattern_type: pattern.type || 'behavioral',
           description: insertData.description,
           short_description: pattern.insight,
-          long_description: pattern.significance || '',
           evidence: insertData.evidence
         };
         insertData.encrypted_data = encryptForStorage(sensitiveData, encryptionKey);
