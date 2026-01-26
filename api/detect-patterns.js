@@ -234,12 +234,13 @@ module.exports = async function handler(req, res) {
     const newPatterns = [];
     let firstInsertError = null;
     for (const pattern of patterns) {
-      // Note: Only include columns that exist in user_patterns table schema
-      // Removed: pattern_text, long_description (don't exist in schema)
+      // Include all required columns for user_patterns table
+      const fullDescription = `${pattern.insight}\n\nEvidence: ${pattern.evidence || 'Based on note patterns'}\n\nSignificance: ${pattern.significance || 'This reveals something about how you process and think.'}`;
       const insertData = {
         user_id,
         pattern_type: pattern.type || 'behavioral',
-        description: `${pattern.insight}\n\nEvidence: ${pattern.evidence || 'Based on note patterns'}\n\nSignificance: ${pattern.significance || 'This reveals something about how you process and think.'}`,
+        pattern_text: pattern.insight, // Required NOT NULL column
+        description: fullDescription,
         short_description: pattern.insight,
         confidence: pattern.confidence || 0.7,
         evidence: {

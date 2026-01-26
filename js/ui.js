@@ -4355,9 +4355,84 @@ UI.openMeetingCapture = function() {
   // Initialize MeetingCapture component
   if (typeof MeetingCapture !== 'undefined') {
     MeetingCapture.init(container, {
-      onEnhanceComplete: (data) => {
+      onEnhanceComplete: async (data) => {
         console.log('[UI] Meeting enhanced:', data);
-        // TODO: Save enhanced meeting as note (TASK-002)
+
+        try {
+          // Parse attendees from comma-separated string
+          const attendeesStr = data.attendees || '';
+          const attendees = attendeesStr.split(',').map(a => a.trim()).filter(Boolean);
+
+          // Use enhanced content if available, otherwise original
+          const noteContent = data.enhanced || data.content || '';
+
+          if (!noteContent.trim()) {
+            console.warn('[UI] No content to save for meeting');
+            return;
+          }
+
+          // Process note through App pipeline
+          console.log('[UI] Meeting save - Processing through App.processNote...');
+          const savedNote = await App.processNote(noteContent, 'text');
+          console.log('[UI] Meeting save - Note processed, ID:', savedNote.id);
+
+          // Add meeting metadata
+          savedNote.type = 'meeting';
+          savedNote.note_type = 'meeting'; // Database column for filtering
+          savedNote.meeting = {
+            title: data.title || `Meeting with ${attendees.join(', ') || 'team'}`,
+            attendees: attendees,
+            content: data.content || noteContent
+          };
+
+          // Store enhanced content separately if different from original
+          if (data.enhanced && data.enhanced !== data.content) {
+            savedNote.enhanced_content = data.enhanced;
+          }
+
+          // Extract action items from analysis if present
+          if (savedNote.analysis?.actions) {
+            savedNote.meeting.actionItems = savedNote.analysis.actions.map(a => ({
+              text: typeof a === 'string' ? a : a.action || a.text,
+              owner: 'you',
+              done: false
+            }));
+          }
+
+          console.log('[UI] Meeting save - Saving with metadata:', {
+            id: savedNote.id,
+            type: savedNote.type,
+            note_type: savedNote.note_type,
+            title: savedNote.meeting.title,
+            attendees: savedNote.meeting.attendees
+          });
+
+          // Save the updated note with meeting metadata
+          await DB.saveNote(savedNote);
+          console.log('[UI] Meeting save - Saved to DB');
+
+          // Trigger cloud sync
+          if (typeof Sync !== 'undefined' && Sync.isAuthenticated && Sync.isAuthenticated()) {
+            Sync.syncNow().catch(e => console.warn('[UI] Meeting sync error:', e));
+          }
+
+          // Show success and close modal
+          if (typeof UI !== 'undefined' && UI.showToast) {
+            UI.showToast('Meeting saved');
+          }
+          UI.closeMeetingCapture();
+
+          // Refresh notes list
+          if (typeof UI !== 'undefined' && UI.loadNotes) {
+            UI.loadNotes();
+          }
+
+        } catch (error) {
+          console.error('[UI] Failed to save meeting:', error);
+          if (typeof UI !== 'undefined' && UI.showToast) {
+            UI.showToast('Failed to save meeting');
+          }
+        }
       }
     });
   }
