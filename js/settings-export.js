@@ -54,52 +54,47 @@ const ExportUI = {
 
     // Create export section
     const section = document.createElement('section');
+    section.id = 'export-section';
     section.className = 'settings-section export-section';
     section.innerHTML = `
-      <h3 class="settings-section-title">Your Data</h3>
-
-      <div class="export-description">
-        <p class="export-tagline">Take your memory anywhere.</p>
-        <p class="export-subtext">
-          Export everything Inscript knows about you in a portable format.
-          Use it with ChatGPT, Claude, or any AI assistant.
-        </p>
+      <div class="export-header">
+        <h3 class="export-title">Your Data</h3>
       </div>
 
-      <button id="export-memory-btn" class="export-button">
-        <span class="export-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-            <polyline points="7 10 12 15 17 10"/>
-            <line x1="12" y1="15" x2="12" y2="3"/>
+      <p class="export-description">
+        Export everything Inscript knows about you — your identity,
+        the people in your life, your notes, and patterns we've detected.
+        Take it to ChatGPT, Claude, or any AI.
+      </p>
+
+      <button id="export-btn" class="export-button" type="button">
+        <span class="export-button-icon">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M8 12L8 3M8 12L4 8M8 12L12 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M3 14H13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
           </svg>
         </span>
-        <span class="export-label">Export My Memory</span>
-        <span class="export-spinner hidden">
-          <svg class="spinner-svg" width="20" height="20" viewBox="0 0 24 24">
-            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none" opacity="0.25"/>
-            <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/>
-          </svg>
-        </span>
+        <span class="export-button-label">Export My Memory</span>
       </button>
 
-      <div class="export-meta">
-        <div class="export-info" id="export-info">
-          <span class="export-info-icon">i</span>
-          <span class="export-info-text">Private items are excluded. Your file contains personal information.</span>
-        </div>
+      <div id="export-status" class="export-status" hidden>
+        <span class="export-status-icon"></span>
+        <span class="export-status-text"></span>
       </div>
+
+      <p class="export-note">
+        Items marked as private are excluded. The exported file contains personal information — store it securely.
+      </p>
 
       <details class="export-details">
         <summary class="export-details-summary">What's included?</summary>
         <div class="export-details-content">
-          <ul class="export-list">
-            <li><strong>Identity:</strong> Your profile, preferences, and key people</li>
-            <li><strong>Entities:</strong> People, places, projects, and concepts you've mentioned</li>
-            <li><strong>Episodes:</strong> Notes, meetings, and conversations</li>
-            <li><strong>Patterns:</strong> Behavioral and emotional patterns detected</li>
-            <li><strong>Relationships:</strong> How entities connect to each other</li>
-          </ul>
+        <ul class="export-list">
+          <li><strong>Identity</strong> — Your name, goals, communication preferences</li>
+          <li><strong>People & Projects</strong> — Everyone and everything you've mentioned</li>
+          <li><strong>Notes</strong> — All your entries (except private ones)</li>
+          <li><strong>Patterns</strong> — Habits and preferences we've detected</li>
+        </ul>
         </div>
       </details>
     `;
@@ -126,30 +121,35 @@ const ExportUI = {
    * Bind event listeners
    */
   bindEvents() {
-    const btn = document.getElementById('export-memory-btn');
-    if (btn) {
-      btn.addEventListener('click', () => this.handleExport());
-    }
+    const btn = document.getElementById('export-btn');
+    if (!btn) return;
+
+    btn.addEventListener('click', () => this.handleExport());
+
+    // Keyboard accessibility
+    btn.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        this.handleExport();
+      }
+    });
   },
 
   /**
    * Handle export button click
    */
   async handleExport() {
-    const btn = document.getElementById('export-memory-btn');
-    if (!btn || btn.disabled) return;
+    const btn = document.getElementById('export-btn');
+    const label = btn?.querySelector('.export-button-label');
 
-    const label = btn.querySelector('.export-label');
-    const icon = btn.querySelector('.export-icon');
-    const spinner = btn.querySelector('.export-spinner');
-    const info = document.getElementById('export-info');
+    // Prevent double-click
+    if (!btn || btn.disabled) return;
 
     // Set loading state
     btn.disabled = true;
     btn.classList.add('loading');
-    label.textContent = 'Preparing export...';
-    icon.classList.add('hidden');
-    spinner.classList.remove('hidden');
+    if (label) label.textContent = 'Preparing export...';
+    this.hideStatus();
 
     try {
       let exportData;
@@ -161,16 +161,23 @@ const ExportUI = {
       } else {
         // Call real API
         console.log('[ExportUI] Calling export API');
+        const token = await this.getAuthToken();
+        if (!token) {
+          throw new Error('Not authenticated');
+        }
+
         const response = await fetch(this.API_ENDPOINT, {
           method: 'GET',
           headers: {
+            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
           credentials: 'include'
         });
 
         if (!response.ok) {
-          throw new Error(`Export failed: ${response.status}`);
+          const error = await response.json().catch(() => ({}));
+          throw new Error(error.message || `Export failed: ${response.status}`);
         }
 
         exportData = await response.json();
@@ -179,13 +186,38 @@ const ExportUI = {
       // Download the export
       this.downloadExport(exportData);
 
-      // Show success state
-      this.showSuccess(btn, label, icon, spinner, info);
+      // Show success
+      this.showStatus('success', 'Export complete! Check your downloads.');
 
     } catch (error) {
       console.error('[ExportUI] Export failed:', error);
-      this.showError(btn, label, icon, spinner, info, error.message);
+      this.showStatus('error', error.message || 'Export failed. Please try again.');
+    } finally {
+      // Reset button
+      btn.disabled = false;
+      btn.classList.remove('loading');
+      if (label) label.textContent = 'Export My Memory';
     }
+  },
+
+  /**
+   * Get current user's auth token
+   */
+  async getAuthToken() {
+    // Option 1: From Supabase client
+    if (typeof Sync !== 'undefined' && Sync.supabase) {
+      const { data: { session } } = await Sync.supabase.auth.getSession();
+      return session?.access_token;
+    }
+
+    // Option 2: From window.supabase
+    if (window.supabase) {
+      const { data: { session } } = await window.supabase.auth.getSession();
+      return session?.access_token;
+    }
+
+    console.warn('[ExportUI] Could not find auth token');
+    return null;
   },
 
   /**
@@ -341,71 +373,44 @@ const ExportUI = {
   },
 
   /**
-   * Show success state
+   * Show status message
    */
-  showSuccess(btn, label, icon, spinner, info) {
-    btn.classList.remove('loading');
-    btn.classList.add('success');
-    label.textContent = 'Export complete!';
-    spinner.classList.add('hidden');
-    icon.classList.remove('hidden');
-    icon.innerHTML = `
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <polyline points="20 6 9 17 4 12"/>
-      </svg>
-    `;
+  showStatus(type, message) {
+    const status = document.getElementById('export-status');
+    if (!status) return;
 
-    // Show toast if available
-    if (typeof UI !== 'undefined' && UI.showToast) {
-      UI.showToast('Memory exported successfully');
+    const icon = status.querySelector('.export-status-icon');
+    const text = status.querySelector('.export-status-text');
+
+    status.hidden = false;
+    status.className = `export-status ${type}`;
+    if (text) text.textContent = message;
+
+    // Icon based on type
+    if (icon) {
+      if (type === 'success') {
+        icon.innerHTML = '✓';
+      } else if (type === 'error') {
+        icon.innerHTML = '✕';
+      } else {
+        icon.innerHTML = '';
+      }
     }
 
-    // Reset after 3 seconds
-    setTimeout(() => this.resetButton(btn, label, icon, spinner), 3000);
+    // Auto-hide success after 5 seconds
+    if (type === 'success') {
+      setTimeout(() => this.hideStatus(), 5000);
+    }
   },
 
   /**
-   * Show error state
+   * Hide status message
    */
-  showError(btn, label, icon, spinner, info, message) {
-    btn.classList.remove('loading');
-    btn.classList.add('error');
-    label.textContent = 'Export failed';
-    spinner.classList.add('hidden');
-    icon.classList.remove('hidden');
-    icon.innerHTML = `
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <circle cx="12" cy="12" r="10"/>
-        <line x1="15" y1="9" x2="9" y2="15"/>
-        <line x1="9" y1="9" x2="15" y2="15"/>
-      </svg>
-    `;
-
-    // Show error toast
-    if (typeof UI !== 'undefined' && UI.showToast) {
-      UI.showToast(message || 'Export failed. Please try again.');
+  hideStatus() {
+    const status = document.getElementById('export-status');
+    if (status) {
+      status.hidden = true;
     }
-
-    // Reset after 3 seconds
-    setTimeout(() => this.resetButton(btn, label, icon, spinner), 3000);
-  },
-
-  /**
-   * Reset button to default state
-   */
-  resetButton(btn, label, icon, spinner) {
-    btn.disabled = false;
-    btn.classList.remove('loading', 'success', 'error');
-    label.textContent = 'Export My Memory';
-    spinner.classList.add('hidden');
-    icon.classList.remove('hidden');
-    icon.innerHTML = `
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-        <polyline points="7 10 12 15 17 10"/>
-        <line x1="12" y1="15" x2="12" y2="3"/>
-      </svg>
-    `;
   }
 };
 
