@@ -258,7 +258,7 @@ Returns: downloadable JSON file
 
 | Version | Date | Changes |
 |---------|------|---------|
-| **9.5.0** | Jan 27, 2026 | Phase 18 Sprint 1 complete. Privacy Philosophy documented. Sprint 2 in progress. |
+| **9.5.0** | Jan 27, 2026 | Phase 18 Sprint 2 complete. Structured facts, entity_facts table, export wired with facts + conversations. |
 | 9.4.0 | Jan 25, 2026 | Ambient recording pipeline fixed |
 | 9.3.0 | Jan 25, 2026 | Whisper voice input, real-time transcription |
 | 9.2.0 | Jan 25, 2026 | Phase 17 polish sprint |

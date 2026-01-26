@@ -24,6 +24,7 @@ import {
   getProfile,
   getKeyPeople,
   getEntities,
+  getEntityFacts,
   getNotes,
   getMeetings,
   getConversations,
@@ -100,11 +101,12 @@ export default async function handler(req, res) {
     };
 
     // Gather all data in parallel using T2's functions
-    const [profile, keyPeople, entities, notes, meetings, conversations, patterns] =
+    const [profile, keyPeople, entities, facts, notes, meetings, conversations, patterns] =
       await Promise.all([
         timeQuery('profile', () => getProfile(user_id)),
         timeQuery('keyPeople', () => getKeyPeople(user_id)),
         timeQuery('entities', () => getEntities(user_id)),
+        timeQuery('facts', () => getEntityFacts(user_id)),
         timeQuery('notes', () => getNotes(user_id)),
         timeQuery('meetings', () => getMeetings(user_id)),
         timeQuery('conversations', () => getConversations(user_id)),
@@ -112,7 +114,7 @@ export default async function handler(req, res) {
       ]);
 
     console.log(`[Export] Query timings:`, timings);
-    console.log(`[Export] Data gathered: ${entities.length} entities, ${notes.length} notes, ${patterns.length} patterns`);
+    console.log(`[Export] Data gathered: ${entities.length} entities, ${facts.length} facts, ${notes.length} notes, ${patterns.length} patterns`);
 
     // ============================================
     // PRIVACY FILTERING (T2's privacy layer)
@@ -147,7 +149,7 @@ export default async function handler(req, res) {
     const exportData = {
       inscript_export: {
         identity: buildIdentity(profile, keyPeople),
-        entities: publicEntities.map(transformEntity),
+        entities: publicEntities.map(e => transformEntity(e, facts)),
         episodes: {
           notes: publicNotes.map(transformNote),
           meetings: meetings.map(transformMeeting),
@@ -157,7 +159,9 @@ export default async function handler(req, res) {
         meta: buildMeta({
           entities: publicEntities,
           notes: publicNotes,
-          patterns: publicPatterns
+          patterns: publicPatterns,
+          facts,
+          conversations
         })
       }
     };

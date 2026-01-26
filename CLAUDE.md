@@ -283,7 +283,7 @@
 
 | Version | Phase | Key Changes |
 |---------|-------|-------------|
-| **9.5.0** | 18 | Portable Memory Export: Sprint 1 complete, Sprint 2 in progress. Privacy Philosophy documented. |
+| **9.5.0** | 18 | Portable Memory Export: Sprint 2 complete. Structured facts, entity_facts table, export with facts + conversations. |
 | 9.4.0 | 17 | Ambient recording pipeline fixed: table migration, RLS policy, mobile detection, error logging |
 | 9.3.0 | 17 | Voice features: Whisper input, real-time transcription, modal consistency |
 | 9.2.0 | 17 | Perf optimization, Query Meetings API, delete undo toast, sync indicator |
