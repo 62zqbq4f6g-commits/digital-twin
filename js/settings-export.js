@@ -368,12 +368,17 @@ const ExportUI = {
    */
   showStatus(type, message) {
     const status = document.getElementById('export-status');
-    if (!status) return;
+    if (!status) {
+      console.warn('[ExportUI] Status element not found');
+      return;
+    }
 
     const icon = status.querySelector('.export-status-icon');
     const text = status.querySelector('.export-status-text');
 
-    status.hidden = false;
+    // P3 FIX: Use removeAttribute for explicit hidden removal
+    status.removeAttribute('hidden');
+    status.style.display = 'flex';
     status.className = `export-status ${type}`;
     if (text) text.textContent = message;
 
@@ -400,7 +405,8 @@ const ExportUI = {
   hideStatus() {
     const status = document.getElementById('export-status');
     if (status) {
-      status.hidden = true;
+      status.setAttribute('hidden', '');
+      status.style.display = 'none';
     }
   }
 };
@@ -412,8 +418,9 @@ if (typeof window !== 'undefined') {
 
 // Auto-initialize if Settings page is already loaded
 if (document.readyState === 'complete') {
-  // Check if we're on the settings page
-  if (document.querySelector('.settings-content')) {
+  // Check if we're on the settings page (and it's visible)
+  const settingsScreen = document.querySelector('#screen-settings');
+  if (settingsScreen && !settingsScreen.classList.contains('hidden')) {
     ExportUI.init();
   }
 }
