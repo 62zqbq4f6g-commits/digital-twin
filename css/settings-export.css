@@ -166,10 +166,14 @@
 
 [data-theme="dark"] .export-status.success {
   background: #1A1A1A;
+  color: #34D399;
+  border-color: #34D399;
 }
 
 [data-theme="dark"] .export-status.error {
   background: #1A1A1A;
+  color: #F87171;
+  border-color: #F87171;
 }
 
 .export-status-icon {

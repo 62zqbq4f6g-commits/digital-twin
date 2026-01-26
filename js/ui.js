@@ -419,6 +419,11 @@ const UI = {
       if (typeof ActionsUI !== 'undefined') {
         ActionsUI.refresh();
       }
+    } else if (screenName === 'settings') {
+      // EXPORT - T3: Initialize Export UI when settings screen opens
+      if (typeof ExportUI !== 'undefined') {
+        ExportUI.init();
+      }
     }
   },
 
