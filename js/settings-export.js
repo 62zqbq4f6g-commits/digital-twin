@@ -18,7 +18,7 @@
 
 const ExportUI = {
   // Configuration
-  USE_MOCK: true, // Toggle to false when T1 API is ready
+  USE_MOCK: false, // T1 API is ready
   API_ENDPOINT: '/api/export',
 
   /**
@@ -36,10 +36,10 @@ const ExportUI = {
    * Inject export section into Settings page
    */
   injectExportSection() {
-    // Find the Privacy & Security section to insert after
-    const settingsContent = document.querySelector('.settings-content');
-    if (!settingsContent) {
-      console.warn('[ExportUI] Settings content container not found');
+    // Find the settings screen container
+    const settingsScreen = document.querySelector('#screen-settings');
+    if (!settingsScreen) {
+      console.warn('[ExportUI] Settings screen not found');
       return;
     }
 
@@ -49,17 +49,15 @@ const ExportUI = {
       return;
     }
 
-    // Find the privacy section to insert after
-    const privacySection = settingsContent.querySelector('.settings-privacy');
+    // Find the DATA section to insert after (before DANGER ZONE)
+    const dangerZone = settingsScreen.querySelector('.settings-danger-zone');
 
     // Create export section
     const section = document.createElement('section');
     section.id = 'export-section';
     section.className = 'settings-section export-section';
     section.innerHTML = `
-      <div class="export-header">
-        <h3 class="export-title">Your Data</h3>
-      </div>
+      <h2 class="settings-heading export-title">PORTABLE MEMORY</h2>
 
       <p class="export-description">
         Export everything Inscript knows about you — your identity,
@@ -99,19 +97,12 @@ const ExportUI = {
       </details>
     `;
 
-    // Insert after privacy section, or at the end
-    if (privacySection && privacySection.nextSibling) {
-      settingsContent.insertBefore(section, privacySection.nextSibling);
+    // Insert before DANGER ZONE section
+    if (dangerZone) {
+      settingsScreen.insertBefore(section, dangerZone);
     } else {
-      // Find the Data section and insert before it
-      const dataSection = Array.from(settingsContent.querySelectorAll('.settings-section'))
-        .find(s => s.querySelector('.settings-section-title')?.textContent === 'Data');
-
-      if (dataSection) {
-        settingsContent.insertBefore(section, dataSection);
-      } else {
-        settingsContent.appendChild(section);
-      }
+      // Fallback: append to settings screen
+      settingsScreen.appendChild(section);
     }
 
     console.log('[ExportUI] Export section injected');
