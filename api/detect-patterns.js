@@ -232,6 +232,7 @@ module.exports = async function handler(req, res) {
     }
 
     const newPatterns = [];
+    let firstInsertError = null;
     for (const pattern of patterns) {
       // Note: Only include columns that exist in user_patterns table schema
       // Removed: pattern_text, long_description (don't exist in schema)
@@ -270,6 +271,10 @@ module.exports = async function handler(req, res) {
       if (insertError) {
         console.error('[detect-patterns] Insert error:', insertError);
         console.error('[detect-patterns] Insert data was:', JSON.stringify(insertData, null, 2).substring(0, 500));
+        // Capture first error for debugging
+        if (!firstInsertError) {
+          firstInsertError = insertError;
+        }
       } else if (inserted) {
         console.log(`[detect-patterns] Inserted: "${inserted.short_description.substring(0, 50)}..."${hasValidEncryption ? ' [encrypted]' : ''}`);
         newPatterns.push(inserted);
@@ -287,6 +292,7 @@ module.exports = async function handler(req, res) {
       patterns_found: patterns.length,
       patterns_inserted: newPatterns.length,
       insert_failures: insertErrors,
+      insert_error: firstInsertError ? { message: firstInsertError.message, code: firstInsertError.code, details: firstInsertError.details } : null,
       method: 'deep_behavioral',
       data_summary: {
         absences: patternData.absences.length,

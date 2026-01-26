@@ -626,12 +626,14 @@ const Sync = {
           const encrypted = await Auth.encrypt(note);
 
           // Upsert to Supabase
+          // Include note_type so meetings/decisions are queryable
           const { error } = await this.supabase
             .from('notes')
             .upsert({
               id: note.id,
               user_id: this.user.id,
               encrypted_data: encrypted,
+              note_type: note.note_type || null,
               updated_at: new Date().toISOString()
             }, { onConflict: 'id' });
 
