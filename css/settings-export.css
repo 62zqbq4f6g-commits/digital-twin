@@ -336,3 +336,75 @@
     transition: none;
   }
 }
+
+/* =====================================================
+   PRIVACY INDICATOR - T3 Sprint 2
+   ===================================================== */
+
+.privacy-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 0.875rem;
+  border-radius: 2px;
+  border: 1px solid #E5E5E5;
+}
+
+.privacy-indicator.loading {
+  color: #666666;
+  background: #F9F9F9;
+}
+
+.privacy-indicator.all-included {
+  color: #333333;
+  background: #FFFFFF;
+}
+
+.privacy-indicator.has-private {
+  color: #000000;
+  background: #F9F9F9;
+}
+
+[data-theme="dark"] .privacy-indicator {
+  border-color: #333333;
+}
+
+[data-theme="dark"] .privacy-indicator.loading {
+  color: #A3A3A3;
+  background: #1A1A1A;
+}
+
+[data-theme="dark"] .privacy-indicator.all-included {
+  color: #E5E5E5;
+  background: transparent;
+}
+
+[data-theme="dark"] .privacy-indicator.has-private {
+  color: #FFFFFF;
+  background: #1A1A1A;
+}
+
+.privacy-indicator-icon {
+  font-size: 1rem;
+}
+
+.privacy-indicator-text {
+  flex: 1;
+}
+
+.privacy-indicator-link {
+  color: #000000;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.privacy-indicator-link:hover {
+  text-decoration-thickness: 2px;
+}
+
+[data-theme="dark"] .privacy-indicator-link {
+  color: #FFFFFF;
+}
