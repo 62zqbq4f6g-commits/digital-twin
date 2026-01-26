@@ -1,0 +1,276 @@
+/**
+ * INSCRIPT: Privacy Controls Styles
+ *
+ * T3 Frontend Lead - Sprint 2
+ * OWNER: T3
+ *
+ * Design System Compliance:
+ * - Black, white, silver only
+ * - 1px borders
+ * - No rounded corners > 2px
+ * - Inter for UI, Playfair Display for headings
+ */
+
+/* =====================================================
+   PRIVACY SECTION
+   ===================================================== */
+
+.privacy-section {
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid #E5E5E5;
+}
+
+[data-theme="dark"] .privacy-section {
+  border-top-color: #333333;
+}
+
+.privacy-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.25rem;
+  font-weight: 500;
+  color: #000000;
+  margin: 0 0 0.75rem 0;
+}
+
+[data-theme="dark"] .privacy-title {
+  color: #FFFFFF;
+}
+
+.privacy-description {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: #333333;
+  margin: 0 0 1.5rem 0;
+  max-width: 480px;
+}
+
+[data-theme="dark"] .privacy-description {
+  color: #A3A3A3;
+}
+
+/* =====================================================
+   TABS
+   ===================================================== */
+
+.privacy-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid #E5E5E5;
+}
+
+[data-theme="dark"] .privacy-tabs {
+  border-bottom-color: #333333;
+}
+
+.privacy-tab {
+  padding: 0.75rem 1rem;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #666666;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color 150ms ease, border-color 150ms ease;
+}
+
+.privacy-tab:hover {
+  color: #000000;
+}
+
+[data-theme="dark"] .privacy-tab:hover {
+  color: #FFFFFF;
+}
+
+.privacy-tab.active {
+  color: #000000;
+  border-bottom-color: #000000;
+}
+
+[data-theme="dark"] .privacy-tab {
+  color: #737373;
+}
+
+[data-theme="dark"] .privacy-tab.active {
+  color: #FFFFFF;
+  border-bottom-color: #FFFFFF;
+}
+
+/* =====================================================
+   LIST
+   ===================================================== */
+
+.privacy-list {
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid #E5E5E5;
+  border-radius: 2px;
+}
+
+[data-theme="dark"] .privacy-list {
+  border-color: #333333;
+}
+
+.privacy-loading,
+.privacy-empty,
+.privacy-error {
+  padding: 2rem;
+  text-align: center;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 0.875rem;
+  color: #666666;
+}
+
+[data-theme="dark"] .privacy-loading,
+[data-theme="dark"] .privacy-empty {
+  color: #A3A3A3;
+}
+
+.privacy-error {
+  color: #8B0000;
+}
+
+[data-theme="dark"] .privacy-error {
+  color: #F87171;
+}
+
+/* =====================================================
+   ITEM
+   ===================================================== */
+
+.privacy-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #F0F0F0;
+}
+
+[data-theme="dark"] .privacy-item {
+  border-bottom-color: #2A2A2A;
+}
+
+.privacy-item:last-child {
+  border-bottom: none;
+}
+
+.privacy-item.is-private {
+  background: #F9F9F9;
+}
+
+[data-theme="dark"] .privacy-item.is-private {
+  background: #1A1A1A;
+}
+
+.privacy-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.privacy-item-name {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 0.875rem;
+  color: #000000;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+[data-theme="dark"] .privacy-item-name {
+  color: #FFFFFF;
+}
+
+.privacy-item-type {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 0.75rem;
+  color: #666666;
+  text-transform: capitalize;
+}
+
+[data-theme="dark"] .privacy-item-type {
+  color: #737373;
+}
+
+/* =====================================================
+   TOGGLE
+   ===================================================== */
+
+.privacy-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.privacy-toggle input {
+  width: 16px;
+  height: 16px;
+  accent-color: #000000;
+  cursor: pointer;
+}
+
+[data-theme="dark"] .privacy-toggle input {
+  accent-color: #FFFFFF;
+}
+
+.privacy-toggle-label {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 0.75rem;
+  color: #333333;
+}
+
+[data-theme="dark"] .privacy-toggle-label {
+  color: #A3A3A3;
+}
+
+/* =====================================================
+   RESPONSIVE
+   ===================================================== */
+
+@media (max-width: 640px) {
+  .privacy-list {
+    max-height: 300px;
+  }
+
+  .privacy-tab {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8125rem;
+  }
+
+  .privacy-item {
+    padding: 0.625rem 0.75rem;
+  }
+}
+
+/* =====================================================
+   ACCESSIBILITY
+   ===================================================== */
+
+.privacy-tab:focus {
+  outline: none;
+  text-decoration: underline;
+}
+
+.privacy-toggle input:focus {
+  outline: 2px solid #000000;
+  outline-offset: 2px;
+}
+
+[data-theme="dark"] .privacy-toggle input:focus {
+  outline-color: #FFFFFF;
+}
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .privacy-tab {
+    transition: none;
+  }
+}

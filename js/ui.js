@@ -424,6 +424,10 @@ const UI = {
       if (typeof ExportUI !== 'undefined') {
         ExportUI.init();
       }
+      // PRIVACY - T3: Initialize Privacy Controls when settings screen opens
+      if (typeof PrivacyControls !== 'undefined') {
+        PrivacyControls.init();
+      }
     }
   },
 

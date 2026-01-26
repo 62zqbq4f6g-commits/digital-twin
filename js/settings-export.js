@@ -65,6 +65,11 @@ const ExportUI = {
         Take it to ChatGPT, Claude, or any AI.
       </p>
 
+      <!-- PRIVACY - T3: Privacy indicator -->
+      <div id="privacy-indicator" class="privacy-indicator loading">
+        <span class="privacy-indicator-text">Checking privacy settings...</span>
+      </div>
+
       <button id="export-btn" class="export-button" type="button">
         <span class="export-button-icon">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -106,6 +111,9 @@ const ExportUI = {
     }
 
     console.log('[ExportUI] Export section injected');
+
+    // PRIVACY - T3: Fetch privacy summary after injection
+    this.fetchPrivacySummary();
   },
 
   /**
@@ -407,6 +415,75 @@ const ExportUI = {
     if (status) {
       status.setAttribute('hidden', '');
       status.style.display = 'none';
+    }
+  },
+
+  // ============================================
+  // PRIVACY - T3: Privacy indicator methods
+  // ============================================
+
+  /**
+   * Fetch and display privacy summary
+   */
+  async fetchPrivacySummary() {
+    const token = await this.getAuthToken();
+    if (!token) {
+      this.updatePrivacyIndicator({ private_entities: 0, private_notes: 0, private_patterns: 0 });
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/privacy-summary', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (!response.ok) {
+        // API might not exist yet (T1 dependency)
+        console.warn('[ExportUI] Privacy summary API not available');
+        this.updatePrivacyIndicator({ private_entities: 0, private_notes: 0, private_patterns: 0 });
+        return;
+      }
+
+      const summary = await response.json();
+      this.updatePrivacyIndicator(summary);
+    } catch (err) {
+      console.warn('[ExportUI] Could not fetch privacy summary:', err);
+      this.updatePrivacyIndicator({ private_entities: 0, private_notes: 0, private_patterns: 0 });
+    }
+  },
+
+  /**
+   * Update the privacy indicator display
+   */
+  updatePrivacyIndicator(summary) {
+    const indicator = document.getElementById('privacy-indicator');
+    if (!indicator) return;
+
+    const total = (summary.private_entities || 0) + (summary.private_notes || 0) + (summary.private_patterns || 0);
+
+    if (total === 0) {
+      indicator.innerHTML = `
+        <span class="privacy-indicator-icon">✓</span>
+        <span class="privacy-indicator-text">All items will be included in export</span>
+      `;
+      indicator.className = 'privacy-indicator all-included';
+    } else {
+      indicator.innerHTML = `
+        <span class="privacy-indicator-icon">⚑</span>
+        <span class="privacy-indicator-text">${total} private item${total > 1 ? 's' : ''} will be excluded</span>
+        <a href="#" class="privacy-indicator-link" onclick="ExportUI.showPrivacyDetails(); return false;">Manage</a>
+      `;
+      indicator.className = 'privacy-indicator has-private';
+    }
+  },
+
+  /**
+   * Show privacy management section
+   */
+  showPrivacyDetails() {
+    const privacySection = document.getElementById('privacy-management-section');
+    if (privacySection) {
+      privacySection.scrollIntoView({ behavior: 'smooth' });
     }
   }
 };
