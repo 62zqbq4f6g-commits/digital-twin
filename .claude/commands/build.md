@@ -78,24 +78,36 @@ Follow this sequence: **PLAN → BUILD → TEST → DOCUMENT → SHIP**
 
 1. Ask the user: "What are we building today?"
 2. Once they describe the feature, state:
-   - Goal and deliverables
-   - Tasks in dependency order
-   - Risks and constraints
+   - **Goal:** One sentence describing the outcome
+   - **Deliverables:** Numbered list of concrete outputs
+   - **Success Metrics:** How do we know it worked? (e.g., "User can export data in <2 clicks", "Page loads in <500ms")
+   - **Tasks:** In dependency order
+   - **Risks:** What could go wrong?
+
+**Well-scoped request:** "Add export button to settings that downloads user data as JSON"
+**Poorly-scoped request:** "Make the app better" (ask for specifics)
 
 **[CHECKPOINT: PLAN]**
 State approval from each persona:
-- [ ] Alex (CTO): Architecture approved?
-- [ ] Jordan (Product): Scope approved?
-- [ ] Sam (Audit): Privacy model approved?
-- [ ] Riley (Design): UX flow approved?
+- [ ] Alex (CTO): Architecture approved? Simplest solution?
+- [ ] Jordan (Product): Scope approved? Success metrics defined?
+- [ ] Sam (Audit): Privacy model approved? Data flows documented?
+- [ ] Riley (Design): UX flow approved? Accessibility considered?
 
 ### PHASE 2: BUILD
 
 Execute tasks in order. After each major piece of code:
 
 **[CHECKPOINT: CODE]**
-- [ ] Sam (Audit): No content logging? RLS enabled?
-- [ ] Alex (CTO): Clean implementation?
+- [ ] Sam (Audit): No content logging? RLS enabled? No PII in error messages?
+- [ ] Alex (CTO): Clean implementation? No unnecessary complexity?
+
+**🚨 PRIVACY VIOLATION DISCOVERED?**
+If you find code that logs user content, leaks PII, or bypasses RLS:
+1. **STOP immediately** — do not commit
+2. **Document** the violation (file, line, issue)
+3. **Fix** before any other work continues
+4. **Audit** surrounding code for similar issues
 
 **Commit after each task** with format:
 ```
@@ -104,6 +116,7 @@ Execute tasks in order. After each major piece of code:
 Examples:
 [BUILD]: Export - Add entity_facts to export
 [TEST]: Export - E2E tests passing
+[FIX]: Privacy - Remove PII from error logs
 ```
 
 ### PHASE 3: TEST
@@ -125,19 +138,17 @@ Examples:
 1. **Sequential (Chrome MCP):** Run database migrations, setup test data
 2. **Parallel (Agent Browser):** Spawn multiple Task agents to test different flows simultaneously
 
-```javascript
-// Example: Parallel E2E testing with Agent Browser
-// Use Task tool with subagent_type="agent-browser" and run_in_background=true
+**Parallel E2E Testing Pattern:**
 
-// Test 1: Verify login flow
-Task({ prompt: "Test login with dog@cat.com", subagent_type: "agent-browser", run_in_background: true })
+Use the Task tool with `subagent_type: "agent-browser"` and `run_in_background: true` to spawn multiple test agents simultaneously. Never hardcode credentials in prompts — reference them securely.
 
-// Test 2: Verify meeting creation (runs in parallel)
-Task({ prompt: "Create a meeting and verify it appears in MEETINGS tab", subagent_type: "agent-browser", run_in_background: true })
+| Test | Agent Browser Prompt |
+|------|---------------------|
+| Auth flow | "Log in with test credentials and verify dashboard loads" |
+| Feature test | "Create a meeting and verify it appears in MEETINGS tab" |
+| State test | "Check TWIN tab shows patterns correctly" |
 
-// Test 3: Verify pattern detection (runs in parallel)
-Task({ prompt: "Check TWIN tab shows patterns", subagent_type: "agent-browser", run_in_background: true })
-```
+All three agents run in parallel, reducing test time by ~3x.
 
 #### Agent Browser Commands
 ```bash
@@ -172,12 +183,15 @@ Update after every build:
    - Spawn multiple agents to verify critical paths simultaneously
    - Test: Auth flow, main feature, edge cases — all in parallel
 
-```javascript
-// Production verification (parallel)
-Task({ prompt: "Verify login works on production", subagent_type: "agent-browser", run_in_background: true })
-Task({ prompt: "Verify [NEW FEATURE] works on production", subagent_type: "agent-browser", run_in_background: true })
-Task({ prompt: "Verify no console errors on production", subagent_type: "agent-browser", run_in_background: true })
-```
+**Production Smoke Tests (Parallel):**
+
+| Critical Path | Agent Browser Prompt |
+|---------------|---------------------|
+| Auth | "Verify login works on production" |
+| New Feature | "Verify [FEATURE NAME] works on production" |
+| Stability | "Check for console errors on production" |
+
+**Rollback Plan:** If any smoke test fails, immediately run `git revert HEAD && vercel --prod` and investigate.
 
 **[CHECKPOINT: SHIP]**
 - [ ] All personas: Approved for production?
@@ -186,12 +200,15 @@ Task({ prompt: "Verify no console errors on production", subagent_type: "agent-b
 
 ## Non-Negotiable Rules
 
-### Privacy Rules
+### Privacy Rules (Zero Tolerance)
 1. **Export everything by default** — No paternalistic filtering
 2. **Privacy toggles = user choice** — We don't decide what's sensitive
 3. **Never log content** — IDs and timestamps only
-4. **Zero-retention LLMs only** — Anthropic API, OpenAI API
-5. **RLS on all tables** — Users see only their data
+4. **Never include content in error messages** — Log error codes, not user data
+5. **Never send content to analytics** — Track events, not content
+6. **Zero-retention LLMs only** — Anthropic API, OpenAI API
+7. **RLS on all tables** — Users see only their data
+8. **No credentials in code or docs** — Use environment variables, reference securely
 
 ### Design System Rules
 - **Colors:** Black, white, silver only
