@@ -112,6 +112,11 @@ window.Settings = {
         </div>
       </div>
     `;
+
+    // EXPORT - T3: Initialize Export UI after settings page renders
+    if (typeof ExportUI !== 'undefined') {
+      setTimeout(() => ExportUI.init(), 0);
+    }
   },
 
   /**
@@ -158,7 +163,11 @@ window.Settings = {
    * Sign out of account
    */
   async signOut() {
-    const confirmed = confirm('Sign out of your account?');
+    const confirmed = await UI.confirm('Sign out of your account?', {
+      title: 'Sign Out',
+      confirmText: 'Sign Out',
+      cancelText: 'Cancel'
+    });
     if (!confirmed) return;
 
     console.log('[Settings] Signing out');
@@ -251,30 +260,18 @@ window.Settings = {
     // Validate current PIN
     const isCurrentValid = await PIN.verify(currentPIN);
     if (!isCurrentValid) {
-      if (typeof UI !== 'undefined' && UI.showError) {
-        UI.showError('Current PIN is incorrect.');
-      } else {
-        alert('Current PIN is incorrect.');
-      }
+      UI.showToast('Current PIN is incorrect');
       return;
     }
 
     // Validate new PIN
     if (newPIN.length < 4) {
-      if (typeof UI !== 'undefined' && UI.showError) {
-        UI.showError('PIN must be at least 4 digits.');
-      } else {
-        alert('PIN must be at least 4 digits.');
-      }
+      UI.showToast('PIN must be at least 4 digits');
       return;
     }
 
     if (newPIN !== confirmPIN) {
-      if (typeof UI !== 'undefined' && UI.showError) {
-        UI.showError('New PINs do not match.');
-      } else {
-        alert('New PINs do not match.');
-      }
+      UI.showToast('New PINs do not match');
       return;
     }
 
@@ -312,19 +309,23 @@ window.Settings = {
    */
   async deleteAllData() {
     // First confirmation
-    const firstConfirm = confirm(
-      'This will permanently delete ALL your data including notes, entities, and everything the Twin has learned. This cannot be undone.\n\nAre you sure?'
+    const firstConfirm = await UI.confirm(
+      'This will permanently delete ALL your data including notes, entities, and everything the Twin has learned. This cannot be undone.',
+      {
+        title: 'Delete All Data',
+        confirmText: 'Continue',
+        cancelText: 'Cancel',
+        danger: true
+      }
     );
 
     if (!firstConfirm) return;
 
     // Second confirmation: require typing DELETE
-    const typed = prompt('To confirm deletion, please type DELETE in all caps:');
+    const typed = await this.showDeletePrompt();
 
     if (typed !== 'DELETE') {
-      if (typeof UI !== 'undefined' && UI.showError) {
-        UI.showError('Deletion cancelled. You must type DELETE to confirm.');
-      }
+      UI.showToast('Deletion cancelled');
       return;
     }
 
@@ -432,9 +433,13 @@ window.Settings = {
         }
 
         // Check if there's a waiting worker (new version available)
-        setTimeout(() => {
+        setTimeout(async () => {
           if (registration.waiting) {
-            const shouldUpdate = confirm('A new version is available. Would you like to update now?');
+            const shouldUpdate = await UI.confirm('A new version is available. Would you like to update now?', {
+              title: 'Update Available',
+              confirmText: 'Update Now',
+              cancelText: 'Later'
+            });
             if (shouldUpdate) {
               registration.waiting.postMessage({ type: 'SKIP_WAITING' });
               location.reload();
@@ -456,5 +461,73 @@ window.Settings = {
         UI.showError('Could not check for updates.');
       }
     }
+  },
+
+  /**
+   * Show custom prompt dialog for DELETE confirmation
+   * @returns {Promise<string>} The typed value
+   */
+  showDeletePrompt() {
+    return new Promise((resolve) => {
+      const overlay = document.createElement('div');
+      overlay.className = 'dialog-overlay';
+      overlay.innerHTML = `
+        <div class="dialog">
+          <h3 class="dialog-title">Confirm Deletion</h3>
+          <p class="dialog-message">To confirm deletion, type DELETE in all caps:</p>
+          <input
+            type="text"
+            id="delete-confirm-input"
+            class="dialog-input"
+            placeholder="Type DELETE"
+            autocomplete="off"
+          >
+          <div class="dialog-actions">
+            <button class="dialog-btn dialog-btn-cancel">Cancel</button>
+            <button class="dialog-btn dialog-btn-danger">Delete Everything</button>
+          </div>
+        </div>
+      `;
+
+      const cancelBtn = overlay.querySelector('.dialog-btn-cancel');
+      const confirmBtn = overlay.querySelector('.dialog-btn-danger');
+      const input = overlay.querySelector('#delete-confirm-input');
+
+      const cleanup = () => {
+        overlay.remove();
+      };
+
+      cancelBtn.addEventListener('click', () => {
+        cleanup();
+        resolve('');
+      });
+
+      confirmBtn.addEventListener('click', () => {
+        const value = input.value.trim();
+        cleanup();
+        resolve(value);
+      });
+
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          const value = input.value.trim();
+          cleanup();
+          resolve(value);
+        } else if (e.key === 'Escape') {
+          cleanup();
+          resolve('');
+        }
+      });
+
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+          cleanup();
+          resolve('');
+        }
+      });
+
+      document.body.appendChild(overlay);
+      input.focus();
+    });
   }
 };

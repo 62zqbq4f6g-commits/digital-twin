@@ -1,0 +1,388 @@
+/**
+ * INSCRIPT: Portable Memory Export Styles
+ *
+ * T3 Frontend Lead - Export Build
+ *
+ * Design System Compliance:
+ * - Black buttons (#000000)
+ * - 1px borders with rgba(255,255,255,0.25) for dark / #E5E5E5 for light
+ * - 200ms ease-out transitions
+ * - Inter font family
+ * - No rounded corners > 2px
+ */
+
+/* =====================================================
+   EXPORT SECTION CONTAINER
+   ===================================================== */
+
+.export-section {
+  padding: 24px 0;
+  border-top: 1px solid #E5E5E5;
+}
+
+[data-theme="dark"] .export-section {
+  border-top-color: #333333;
+}
+
+/* =====================================================
+   EXPORT DESCRIPTION
+   ===================================================== */
+
+.export-description {
+  margin-bottom: 20px;
+}
+
+.export-tagline {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 18px;
+  font-style: italic;
+  color: #171717;
+  margin: 0 0 8px 0;
+}
+
+[data-theme="dark"] .export-tagline {
+  color: #E5E5E5;
+}
+
+.export-subtext {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #525252;
+  margin: 0;
+}
+
+[data-theme="dark"] .export-subtext {
+  color: #A3A3A3;
+}
+
+/* =====================================================
+   EXPORT BUTTON
+   ===================================================== */
+
+.export-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 14px 20px;
+  background: #000000;
+  color: #FFFFFF;
+  border: none;
+  border-radius: 2px;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 200ms ease-out;
+}
+
+.export-button:hover:not(:disabled) {
+  background: #1A1A1A;
+  transform: translateY(-1px);
+}
+
+.export-button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.export-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* Dark mode button - invert */
+[data-theme="dark"] .export-button {
+  background: #FFFFFF;
+  color: #000000;
+}
+
+[data-theme="dark"] .export-button:hover:not(:disabled) {
+  background: #F5F5F5;
+}
+
+/* =====================================================
+   BUTTON STATES
+   ===================================================== */
+
+/* Loading state */
+.export-button.loading {
+  background: #333333;
+}
+
+[data-theme="dark"] .export-button.loading {
+  background: #D4D4D4;
+}
+
+/* Success state */
+.export-button.success {
+  background: #065F46;
+}
+
+[data-theme="dark"] .export-button.success {
+  background: #10B981;
+  color: #000000;
+}
+
+/* Error state */
+.export-button.error {
+  background: #8B0000;
+}
+
+[data-theme="dark"] .export-button.error {
+  background: #EF4444;
+  color: #000000;
+}
+
+/* =====================================================
+   BUTTON ICONS
+   ===================================================== */
+
+.export-icon,
+.export-spinner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+}
+
+.export-icon.hidden,
+.export-spinner.hidden {
+  display: none;
+}
+
+.export-label {
+  flex: 1;
+  text-align: center;
+}
+
+/* Spinner animation */
+.spinner-svg {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* =====================================================
+   EXPORT META INFO
+   ===================================================== */
+
+.export-meta {
+  margin-top: 12px;
+}
+
+.export-info {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  background: #FAFAFA;
+  border: 1px solid #E5E5E5;
+  border-radius: 2px;
+}
+
+[data-theme="dark"] .export-info {
+  background: #262626;
+  border-color: #404040;
+}
+
+.export-info-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  background: #E5E5E5;
+  color: #525252;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 600;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+[data-theme="dark"] .export-info-icon {
+  background: #404040;
+  color: #A3A3A3;
+}
+
+.export-info-text {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #525252;
+}
+
+[data-theme="dark"] .export-info-text {
+  color: #A3A3A3;
+}
+
+/* =====================================================
+   WHAT'S INCLUDED DETAILS
+   ===================================================== */
+
+.export-details {
+  margin-top: 16px;
+}
+
+.export-details-summary {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: #525252;
+  cursor: pointer;
+  padding: 8px 0;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.export-details-summary::-webkit-details-marker {
+  display: none;
+}
+
+.export-details-summary::before {
+  content: '+';
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  font-size: 14px;
+  font-weight: 400;
+  color: #737373;
+  transition: transform 200ms ease-out;
+}
+
+.export-details[open] .export-details-summary::before {
+  content: '-';
+}
+
+[data-theme="dark"] .export-details-summary {
+  color: #A3A3A3;
+}
+
+[data-theme="dark"] .export-details-summary::before {
+  color: #737373;
+}
+
+.export-details-summary:hover {
+  color: #171717;
+}
+
+[data-theme="dark"] .export-details-summary:hover {
+  color: #E5E5E5;
+}
+
+.export-details-content {
+  padding: 12px 0 0 22px;
+}
+
+.export-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.export-list li {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #525252;
+  padding: 4px 0;
+}
+
+.export-list li strong {
+  color: #171717;
+  font-weight: 500;
+}
+
+[data-theme="dark"] .export-list li {
+  color: #A3A3A3;
+}
+
+[data-theme="dark"] .export-list li strong {
+  color: #E5E5E5;
+}
+
+/* =====================================================
+   MOBILE RESPONSIVE
+   ===================================================== */
+
+@media (max-width: 480px) {
+  .export-section {
+    padding: 20px 0;
+  }
+
+  .export-tagline {
+    font-size: 16px;
+  }
+
+  .export-subtext {
+    font-size: 13px;
+  }
+
+  .export-button {
+    padding: 12px 16px;
+    font-size: 14px;
+  }
+
+  .export-info {
+    padding: 8px 10px;
+  }
+
+  .export-info-text {
+    font-size: 11px;
+  }
+
+  .export-details-summary {
+    font-size: 12px;
+  }
+
+  .export-list li {
+    font-size: 12px;
+  }
+}
+
+/* =====================================================
+   ACCESSIBILITY
+   ===================================================== */
+
+.export-button:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px #FFFFFF, 0 0 0 4px #000000;
+}
+
+[data-theme="dark"] .export-button:focus {
+  box-shadow: 0 0 0 2px #1A1A1A, 0 0 0 4px #FFFFFF;
+}
+
+.export-details-summary:focus {
+  outline: none;
+  text-decoration: underline;
+}
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .export-button {
+    transition: none;
+  }
+
+  .spinner-svg {
+    animation: none;
+  }
+
+  .export-details-summary::before {
+    transition: none;
+  }
+}
