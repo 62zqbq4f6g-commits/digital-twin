@@ -269,6 +269,7 @@ module.exports = async function handler(req, res) {
 
       if (insertError) {
         console.error('[detect-patterns] Insert error:', insertError);
+        console.error('[detect-patterns] Insert data was:', JSON.stringify(insertData, null, 2).substring(0, 500));
       } else if (inserted) {
         console.log(`[detect-patterns] Inserted: "${inserted.short_description.substring(0, 50)}..."${hasValidEncryption ? ' [encrypted]' : ''}`);
         newPatterns.push(inserted);
@@ -277,10 +278,15 @@ module.exports = async function handler(req, res) {
 
     console.log('[detect-patterns] Completed. Inserted:', newPatterns.length);
 
+    // Include any insert errors in response for debugging
+    const insertErrors = patterns.length - newPatterns.length;
+
     return res.status(200).json({
       detected: newPatterns,
       total_analyzed: notes.length,
       patterns_found: patterns.length,
+      patterns_inserted: newPatterns.length,
+      insert_failures: insertErrors,
       method: 'deep_behavioral',
       data_summary: {
         absences: patternData.absences.length,
