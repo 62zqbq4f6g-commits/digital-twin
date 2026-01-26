@@ -285,7 +285,7 @@ async function deleteNoteWithUndo(noteId, options = {}) {
         } catch (error) {
           console.error('[deleteNoteWithUndo] Delete error:', error);
           if (typeof UI !== 'undefined' && UI.showToast) {
-            UI.showToast('Delete failed');
+            UI.showToast('Couldn\'t delete — try again');
           }
         }
       }
@@ -294,7 +294,7 @@ async function deleteNoteWithUndo(noteId, options = {}) {
   } catch (error) {
     console.error('[deleteNoteWithUndo] Error:', error);
     if (typeof UI !== 'undefined' && UI.showToast) {
-      UI.showToast('Failed to delete');
+      UI.showToast('Couldn\'t delete — try again');
     }
   }
 }

@@ -107,9 +107,40 @@ const YouUI = {
   async loadMeetings() {
     console.log('[YouUI] Loading meetings...');
 
-    if (typeof WorkUI !== 'undefined' && WorkUI.loadMeetings) {
-      await WorkUI.loadMeetings();
+    const container = document.getElementById('you-meetings');
+    if (!container) {
+      console.warn('[YouUI] Meetings container not found');
+      return;
     }
+
+    // Initialize MeetingsTab if available
+    if (typeof MeetingsTab !== 'undefined') {
+      if (!MeetingsTab.initialized) {
+        MeetingsTab.init(container, {
+          userId: Sync?.user?.id
+        });
+      }
+      await MeetingsTab.load();
+    } else {
+      // Fallback to old WorkUI
+      console.warn('[YouUI] MeetingsTab not available, using WorkUI fallback');
+      if (typeof WorkUI !== 'undefined' && WorkUI.loadMeetings) {
+        await WorkUI.loadMeetings();
+      }
+    }
+  },
+
+  /**
+   * Get patterns skeleton HTML
+   */
+  getPatternsSkeletonHTML() {
+    return `
+      <div class="patterns-skeleton">
+        <div class="pattern-card-skeleton"></div>
+        <div class="pattern-card-skeleton"></div>
+        <div class="pattern-card-skeleton"></div>
+      </div>
+    `;
   },
 
   /**
@@ -135,8 +166,8 @@ const YouUI = {
         return;
       }
 
-      // Show loading state
-      container.innerHTML = '<p class="you-empty">Finding your patterns...</p>';
+      // Show skeleton loading state
+      container.innerHTML = this.getPatternsSkeletonHTML();
 
       // Load patterns using the instance
       await window.PatternVerification.loadPatterns();
@@ -202,6 +233,15 @@ const YouUI = {
         const learningSection = document.getElementById('learning-section');
         if (learningSection) {
           learningSection.innerHTML = TwinUI.renderLearningSection();
+        }
+      }
+
+      // Render Notification Preferences section (Phase 17)
+      if (typeof UIProfile !== 'undefined' && UIProfile.renderNotificationPrefsSection) {
+        await UIProfile.loadNotificationPrefs();
+        const notifSection = document.getElementById('notification-prefs-section');
+        if (notifSection) {
+          notifSection.innerHTML = UIProfile.renderNotificationPrefsSection();
         }
       }
     } catch (error) {

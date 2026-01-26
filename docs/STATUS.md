@@ -19,6 +19,20 @@
 
 **Strategic Path:** Consumer app (current) → Platform APIs → Open protocol
 
+**Current PAMP Readiness:** 83% (26 tables, 45+ APIs audited)
+
+| PAMP Layer | Coverage | Key Gaps |
+|------------|----------|----------|
+| Layer 1: Core Identity | 70% | Privacy controls, values capture |
+| Layer 2: Semantic Memory | 85% | Structured facts, aliases |
+| Layer 3: Episodic Memory | 90% | Per-note privacy level |
+| Layer 4: Procedural Memory | 75% | Structured pattern data |
+| Layer 5: Embeddings | 95% | Model version tracking |
+
+**Documentation:**
+- Schema: `/docs/PAMP-SCHEMA.md`
+- Gap Analysis: `/docs/PAMP-ARCHITECTURE-AUDIT.md`
+
 ---
 
 ## CURRENT STATE
@@ -339,16 +353,22 @@ Run the migration in Supabase SQL Editor:
 
 ## NEXT SESSION PRIORITIES
 
-### P0 — Must Do
+### P0 — PAMP Export (Sprint 1)
 
-1. **Test Ambient Recording E2E**
-   - Test upload-audio-chunk with real audio
-   - Test process-ambient for full flow
-   - Verify meeting note creation
+1. **Create `/api/pamp/export` endpoint**
+   - Map all 26 tables to PAMP JSON-LD format
+   - Follow `/docs/PAMP-SCHEMA.md` specification
+   - Generate integrity checksums (sha256)
+   - Add Export button in Settings UI
 
-2. **Run Phase 15 Database Migration**
-   - File: `/migrations/phase15-tables.sql`
-   - Run in Supabase SQL Editor
+2. **Layer Mapping Implementation**
+   - Layer 1: `user_profiles` + `onboarding_data` → Profile
+   - Layer 2: `user_entities` + `entity_relationships` → Entities
+   - Layer 3: `notes` (decrypted) + `mirror_conversations` → Episodes
+   - Layer 4: `user_patterns` + `category_summaries` → Patterns
+   - Skip embeddings (regenerate on import)
+
+**Full implementation plan:** `/docs/PAMP-ARCHITECTURE-AUDIT.md`
 
 ### P1 — Should Do
 
@@ -577,6 +597,21 @@ This is the "holy shit, it knows" moment working in production.
 
 ---
 
-*Last Updated: January 25, 2026 (Evening)*
-*Version: 9.2.0 — Inscript*
+## PAMP ROADMAP
+
+| Phase | Focus | Status |
+|-------|-------|--------|
+| **Phase 1: Consumer Love** | Build app people can't live without | ✅ Current |
+| **Phase 2: Platform APIs** | Let developers build on PAMP | Next |
+| **Phase 3: Protocol** | Open standard for portable AI memory | Future |
+
+**The Moat:** Competitors can copy features. They can't copy accumulated understanding. A user at 6 months can't switch without losing 6 months of learning — and with PAMP, they never have to. The memory follows them.
+
+**The Vision:** Imagine telling ChatGPT, Claude, or your company's internal AI: "Connect to my Inscript." Instantly, that AI knows your world — the people, patterns, preferences — with your permission. That's PAMP.
+
+---
+
+*Last Updated: January 25, 2026*
+*Version: 9.3.0 — Inscript*
+*Vision: PAMP — Portable AI Memory Protocol*
 *Production: https://digital-twin-ecru.vercel.app*

@@ -335,7 +335,7 @@ const Camera = {
 
     } catch (error) {
       console.error('[Camera] Compression error:', error);
-      UI.showToast('Failed to process image');
+      UI.showToast('Couldn\'t process image — try again');
     }
   },
 
@@ -475,7 +475,7 @@ const Camera = {
     } catch (error) {
       console.error('[Camera] Vision processing error:', error);
       UploadProgress.hide();
-      UI.showToast('Failed to process image');
+      UI.showToast('Couldn\'t process image — try again');
     }
   },
 

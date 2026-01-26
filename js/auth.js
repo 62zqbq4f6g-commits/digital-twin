@@ -81,6 +81,9 @@ const Auth = {
     screen.classList.remove('hidden');
     if (appContent) appContent.classList.add('hidden');
 
+    // Hide the app skeleton when showing auth screen
+    this.hideAppSkeleton();
+
     this.attachAuthListeners();
   },
 
@@ -93,6 +96,20 @@ const Auth = {
 
     if (screen) screen.classList.add('hidden');
     if (appContent) appContent.classList.remove('hidden');
+
+    // Hide the app skeleton with fade transition
+    this.hideAppSkeleton();
+  },
+
+  /**
+   * Hide the initial app skeleton
+   */
+  hideAppSkeleton() {
+    const skeleton = document.getElementById('app-skeleton');
+    if (skeleton) {
+      skeleton.classList.add('hidden');
+      setTimeout(() => skeleton.remove(), 300);
+    }
   },
 
   /**

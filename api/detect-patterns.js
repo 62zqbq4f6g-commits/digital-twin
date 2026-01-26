@@ -162,8 +162,28 @@ module.exports = async function handler(req, res) {
       // Extract JSON from response
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
-        patterns = parsed.patterns || [];
+        try {
+          const parsed = JSON.parse(jsonMatch[0]);
+          patterns = parsed.patterns || [];
+        } catch (parseError) {
+          console.error('[detect-patterns] JSON parse error:', parseError.message);
+          console.error('[detect-patterns] Raw JSON that failed:', jsonMatch[0].substring(0, 500));
+          // Return error so frontend knows detection failed
+          return res.status(200).json({
+            detected: [],
+            message: 'Pattern detection returned invalid JSON - please try again',
+            error: 'json_parse_failed',
+            debug: text.substring(0, 200)
+          });
+        }
+      } else {
+        console.error('[detect-patterns] No JSON found in LLM response');
+        console.error('[detect-patterns] Raw response:', text.substring(0, 500));
+        return res.status(200).json({
+          detected: [],
+          message: 'Pattern detection did not return structured data - please try again',
+          error: 'no_json_in_response'
+        });
       }
 
       console.log(`[detect-patterns] LLM found ${patterns.length} patterns`);

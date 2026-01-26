@@ -2423,7 +2423,7 @@
   border-radius: 8px;
   padding: 12px 20px;
   min-width: auto;
-  max-width: 200px;
+  max-width: 320px;
   z-index: 1000;
   font-family: var(--font-body);
   font-size: 14px;
@@ -2449,6 +2449,12 @@
 .pulse-check {
   color: #065F46;
   font-weight: 600;
+}
+
+.pulse-detail {
+  color: var(--silver-600, #525252);
+  font-weight: 400;
+  font-style: italic;
 }
 
 /* Entity link styling (used in entity-cards.js) */

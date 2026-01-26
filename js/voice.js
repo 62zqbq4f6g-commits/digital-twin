@@ -145,7 +145,7 @@ const Voice = {
       this.recognition.start();
     } catch (error) {
       console.error('Failed to start recognition:', error);
-      UI.showToast('Failed to start voice input');
+      UI.showToast('Couldn\'t start recording — check microphone');
     }
   },
 

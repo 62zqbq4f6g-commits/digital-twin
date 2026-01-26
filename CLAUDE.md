@@ -44,6 +44,27 @@ PAMP (Portable AI Memory Protocol) is the user-owned memory layer for the AI age
 
 **Inscript's role:** The first consumer app built on PAMP. We prove the value, build the user base, then open the protocol.
 
+## PAMP Data Architecture (5 Layers)
+
+PAMP mirrors human cognitive architecture:
+
+| Layer | Name | What It Stores | Inscript Tables | Coverage |
+|-------|------|----------------|-----------------|----------|
+| **1** | Core Identity | Profile, communication style, values | `onboarding_data`, `user_profiles`, `user_key_people` | 70% |
+| **2** | Semantic Memory | Entities, facts, relationships | `user_entities`, `entity_relationships` | 85% |
+| **3** | Episodic Memory | Notes, conversations, events | `notes`, `mirror_conversations`, `meetings` | 90% |
+| **4** | Procedural Memory | Patterns, preferences, habits | `user_patterns`, `category_summaries` | 75% |
+| **5** | Embeddings | Vector representations for search | `note_embeddings`, entity embeddings | 95% |
+
+**Current PAMP Readiness:** 83% — Key gaps: export API, privacy controls, structured facts
+
+**Key Principle:** Rich Over Shallow
+- Mem0 stores: `"User likes coffee"`
+- PAMP stores: WHO, WHAT, WHEN, WHY, HOW MUCH (confidence), RELATED TO (graph)
+
+**Full Schema:** `/docs/PAMP-SCHEMA.md`
+**Gap Analysis:** `/docs/PAMP-ARCHITECTURE-AUDIT.md`
+
 ## Strategic Phases
 
 | Phase | Focus | Status |
@@ -62,6 +83,8 @@ PAMP (Portable AI Memory Protocol) is the user-owned memory layer for the AI age
 |----------|---------|
 | **`/docs/STATUS.md`** | Current project status and next priorities |
 | **`/docs/PRD.md`** | Product requirements document |
+| **`/docs/PAMP-SCHEMA.md`** | PAMP technical schema specification |
+| **`/docs/PAMP-ARCHITECTURE-AUDIT.md`** | Current→PAMP gap analysis & upgrade plan |
 | **`/docs/ROADMAP.md`** | Development roadmap |
 | **`INSCRIPT-ENHANCEMENT-MASTER-SPEC.md`** | Phase 16 full specification (4,500 lines) |
 | **`tasks/TASK-XXX.md`** | Individual task specs for Phase 16 |

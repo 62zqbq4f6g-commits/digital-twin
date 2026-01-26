@@ -341,6 +341,18 @@
   align-items: center;
 }
 
+.mirror-typing-dots {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  padding: 8px 4px;
+}
+
+.mirror-bubble-typing {
+  padding: 12px 16px;
+  min-width: 50px;
+}
+
 .mirror-typing-dot {
   width: 6px;
   height: 6px;

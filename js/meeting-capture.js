@@ -79,6 +79,24 @@ const MeetingCapture = {
           </button>
         </div>
 
+        <!-- Start Listening option for ambient recording -->
+        <div class="meeting-ambient-option">
+          <span class="ambient-option-text">or</span>
+          <button
+            class="meeting-ambient-btn"
+            id="mc-ambient-btn"
+            type="button"
+            aria-label="Start ambient recording"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
+            </svg>
+            <span>Start Listening</span>
+          </button>
+        </div>
+
         <button
           class="meeting-enhance-button"
           id="mc-enhance-btn"
@@ -178,6 +196,46 @@ const MeetingCapture = {
       voiceBtn.addEventListener('click', () => {
         console.log('[MeetingCapture] Voice input not available');
       });
+    }
+
+    // Ambient recording button - opens AmbientRecorder
+    const ambientBtn = this.container.querySelector('#mc-ambient-btn');
+    console.log('[MeetingCapture] Ambient button found:', !!ambientBtn, ambientBtn);
+    if (ambientBtn) {
+      ambientBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('[MeetingCapture] Opening AmbientRecorder');
+
+        // Close MeetingCapture modal
+        if (typeof UI !== 'undefined' && UI.closeMeetingCapture) {
+          UI.closeMeetingCapture();
+        }
+
+        // Open AmbientRecorder
+        if (typeof AmbientRecorder !== 'undefined') {
+          AmbientRecorder.open({
+            userId: typeof Sync !== 'undefined' && Sync.user?.id ? Sync.user.id : 'anonymous',
+            onComplete: async (result) => {
+              console.log('[MeetingCapture] Ambient recording complete:', result);
+              // Refresh meetings list if available
+              if (typeof MeetingsTab !== 'undefined' && MeetingsTab.refresh) {
+                await MeetingsTab.refresh();
+              }
+              if (typeof UI !== 'undefined' && UI.showToast) {
+                UI.showToast('Meeting captured and enhanced');
+              }
+            }
+          });
+        } else {
+          console.warn('[MeetingCapture] AmbientRecorder not available');
+          if (typeof UI !== 'undefined' && UI.showToast) {
+            UI.showToast('Ambient recording not available');
+          }
+        }
+      });
+    } else {
+      console.warn('[MeetingCapture] Ambient button not found in container');
     }
   },
 
@@ -493,7 +551,7 @@ const MeetingCapture = {
         } catch (error) {
           console.error('[MeetingCapture] Save failed:', error);
           if (typeof UI !== 'undefined' && UI.showToast) {
-            UI.showToast('Failed to save meeting');
+            UI.showToast('Couldn\'t save meeting — try again');
           }
         }
       });

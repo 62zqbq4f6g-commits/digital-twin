@@ -83,24 +83,19 @@ class Mirror {
     // Input handling is done dynamically after render
 
     // Listen for new notes to track in session (for immediate MIRROR context)
-    window.addEventListener('note-saved', async (e) => {
+    window.addEventListener('note-saved', (e) => {
       try {
-        const noteId = e.detail?.noteId;
-        if (!noteId) return;
+        // Get raw text directly from event (before encryption)
+        const rawText = e.detail?.rawText;
+        const title = e.detail?.title || 'Recent note';
 
-        // Get note from local DB (before encryption, so we have content)
-        const note = await DB.get('notes', noteId);
-        if (!note) return;
-
-        // Extract content from note
-        const content = note.input?.raw_text || note.analysis?.cleanedInput || '';
-        if (!content || content.length < 10) return;
+        if (!rawText || rawText.length < 10) return;
 
         // Add to session notes (keep last 5)
         this.sessionNotes.push({
-          content: content.substring(0, 500), // Limit size
-          timestamp: note.created_at || new Date().toISOString(),
-          title: note.analysis?.title || 'Recent note'
+          content: rawText.substring(0, 500), // Limit size
+          timestamp: new Date().toISOString(),
+          title: title
         });
 
         // Keep only last 5 session notes
@@ -182,6 +177,40 @@ class Mirror {
   }
 
   /**
+   * Load recent notes from local storage for historical context
+   * This ensures Mirror has context even for notes saved before this session
+   */
+  async loadRecentNotesFromStorage() {
+    try {
+      if (typeof NotesManager === 'undefined') return;
+
+      const allNotes = await NotesManager.getAll();
+      if (!allNotes || allNotes.length === 0) return;
+
+      // Get last 10 notes by date (includes notes from before this session)
+      const recentNotes = allNotes
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+        .slice(0, 10)
+        .map(note => ({
+          content: (note.content || '').substring(0, 500),
+          timestamp: note.created_at,
+          title: note.title || 'Note'
+        }));
+
+      // Merge with session notes (session notes have priority for duplicates)
+      const sessionIds = new Set(this.sessionNotes.map(n => n.timestamp));
+      const historicalNotes = recentNotes.filter(n => !sessionIds.has(n.timestamp));
+
+      // Combine: session notes first, then historical notes, max 10 total
+      this.sessionNotes = [...this.sessionNotes, ...historicalNotes].slice(0, 10);
+
+      console.log('[Mirror] Loaded historical notes. Total context notes:', this.sessionNotes.length);
+    } catch (error) {
+      console.warn('[Mirror] Failed to load historical notes:', error);
+    }
+  }
+
+  /**
    * Open MIRROR tab - initialize or resume conversation
    */
   async open() {
@@ -194,6 +223,9 @@ class Mirror {
     this.render();
 
     try {
+      // Load recent notes from local storage (includes historical notes)
+      await this.loadRecentNotesFromStorage();
+
       // Get client-side decrypted context
       const clientContext = await this.getClientContext();
 
@@ -578,13 +610,17 @@ class Mirror {
   }
 
   /**
-   * Render typing indicator with streaming cursor (Issue #5)
+   * Render typing indicator with animated dots
    */
   renderTypingIndicator() {
     return `
       <div class="mirror-message mirror-message-inscript" role="status" aria-label="Inscript is thinking" id="mirror-streaming-message">
-        <div class="mirror-bubble mirror-bubble-inscript mirror-bubble-streaming">
-          <p class="mirror-bubble-text" id="mirror-streaming-text"><span class="streaming-cursor"></span></p>
+        <div class="mirror-bubble mirror-bubble-inscript mirror-bubble-typing">
+          <span class="mirror-typing-dots">
+            <span class="mirror-typing-dot"></span>
+            <span class="mirror-typing-dot"></span>
+            <span class="mirror-typing-dot"></span>
+          </span>
           <span class="sr-only">Inscript is thinking...</span>
         </div>
       </div>

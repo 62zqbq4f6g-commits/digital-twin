@@ -21,6 +21,33 @@ const WorkUI = {
   // Initialization flag
   initialized: false,
 
+  // Save-in-progress flags
+  isSavingMeeting: false,
+  isSavingDecision: false,
+
+  /**
+   * Extract timestamp from a note object - handles various formats
+   * @param {Object} note - Note object
+   * @returns {string|null} ISO timestamp string or null
+   */
+  extractTimestamp(note) {
+    if (!note) return null;
+
+    // If timestamps is an object with created_at
+    if (note.timestamps && typeof note.timestamps === 'object') {
+      if (note.timestamps.created_at) return note.timestamps.created_at;
+      if (note.timestamps.input_date) return note.timestamps.input_date;
+    }
+
+    // Direct created_at on note (from Supabase)
+    if (note.created_at) return note.created_at;
+
+    // Check meeting metadata
+    if (note.meeting && note.meeting.date) return note.meeting.date;
+
+    return null;
+  },
+
   /**
    * Initialize Work UI
    */
@@ -38,16 +65,21 @@ const WorkUI = {
   },
 
   /**
-   * Attach sub-tab click listeners
+   * Attach sub-tab click listeners using event delegation
    */
   attachTabListeners() {
-    const tabs = document.querySelectorAll('.work-tab');
-    tabs.forEach(tab => {
-      tab.addEventListener('click', () => {
+    const tabsContainer = document.querySelector('.work-tabs');
+    if (!tabsContainer || tabsContainer._tabsListenerAttached) return;
+
+    tabsContainer.addEventListener('click', (e) => {
+      const tab = e.target.closest('.work-tab');
+      if (tab) {
         const tabName = tab.dataset.workTab;
         this.switchTab(tabName);
-      });
+      }
     });
+
+    tabsContainer._tabsListenerAttached = true;
   },
 
   /**
@@ -492,9 +524,9 @@ const WorkUI = {
         return isMeeting;
       })
       .sort((a, b) => {
-        // Handle both timestamp formats
-        const dateA = new Date(a.timestamps?.created_at || a.created_at);
-        const dateB = new Date(b.timestamps?.created_at || b.created_at);
+        // Handle both timestamp formats using helper
+        const dateA = new Date(this.extractTimestamp(a) || 0);
+        const dateB = new Date(this.extractTimestamp(b) || 0);
         return dateB - dateA;
       });
 
@@ -509,8 +541,8 @@ const WorkUI = {
       if (bHasMeetingData !== aHasMeetingData) return bHasMeetingData - aHasMeetingData;
 
       // Then sort by date (newest first)
-      const dateA = new Date(a.timestamps?.created_at || a.created_at);
-      const dateB = new Date(b.timestamps?.created_at || b.created_at);
+      const dateA = new Date(this.extractTimestamp(a) || 0);
+      const dateB = new Date(this.extractTimestamp(b) || 0);
       return dateB - dateA;
     });
 
@@ -537,15 +569,15 @@ const WorkUI = {
 
     // Re-sort by date after deduplication
     this.meetings.sort((a, b) => {
-      const dateA = new Date(a.timestamps?.created_at || a.created_at);
-      const dateB = new Date(b.timestamps?.created_at || b.created_at);
+      const dateA = new Date(this.extractTimestamp(a) || 0);
+      const dateB = new Date(this.extractTimestamp(b) || 0);
       return dateB - dateA;
     });
 
     console.log('[WorkUI] loadMeetings - After dedup:', this.meetings.length);
 
     if (this.meetings.length === 0) {
-      container.innerHTML = '<p class="meetings-empty">No meetings recorded yet.</p>';
+      container.innerHTML = '<p class="meetings-empty">Record meetings to track attendees and outcomes</p>';
       return;
     }
 
@@ -634,9 +666,9 @@ const WorkUI = {
         firstAction = actionText;
       }
 
-      // Handle timestamp - try multiple formats
+      // Handle timestamp - try multiple formats with robust fallback
       let formattedDate = 'Unknown date';
-      const timestamp = meeting.timestamps?.created_at || meeting.created_at || meeting.timestamps?.input_date;
+      const timestamp = this.extractTimestamp(meeting);
       if (timestamp) {
         try {
           const dateObj = new Date(timestamp);
@@ -720,7 +752,14 @@ const WorkUI = {
    * Delete a meeting (which is a note)
    */
   async deleteMeeting(noteId) {
-    if (!confirm('Delete this meeting?')) return;
+    const confirmed = await UI.confirm('Delete this meeting?', {
+      title: 'Delete Meeting',
+      confirmText: 'Delete',
+      cancelText: 'Keep',
+      danger: true
+    });
+
+    if (!confirmed) return;
 
     console.log('[WorkUI] Deleting meeting:', noteId);
 
@@ -737,13 +776,19 @@ const WorkUI = {
         NotesCache.removeNote(noteId);
       }
 
-      // Refresh meetings list
-      await this.loadMeetings();
+      // Refresh meetings list with error handling
+      try {
+        await this.loadMeetings();
+      } catch (loadError) {
+        console.warn('[WorkUI] Failed to refresh meetings after delete:', loadError);
+        // Still show success since delete worked
+      }
 
       console.log('[WorkUI] Meeting deleted successfully');
+      UI.showToast('Meeting deleted');
     } catch (error) {
       console.error('[WorkUI] Failed to delete meeting:', error);
-      alert('Failed to delete meeting. Please try again.');
+      UI.showToast("Couldn't delete — try again");
     }
   },
 
@@ -784,7 +829,7 @@ const WorkUI = {
     this.commitments.sort((a, b) => new Date(b.noteDate) - new Date(a.noteDate));
 
     if (this.commitments.length === 0) {
-      container.innerHTML = '<p class="commitments-empty">No open commitments.</p>';
+      container.innerHTML = '<p class="commitments-empty">Decisions you\'re tracking will appear here</p>';
       return;
     }
 
@@ -1056,9 +1101,6 @@ const WorkUI = {
     }
   },
 
-  // Flag to prevent double saves
-  isSavingMeeting: false,
-
   /**
    * Save the meeting
    */
@@ -1079,7 +1121,7 @@ const WorkUI = {
 
     const content = document.getElementById('meeting-content').value.trim();
     if (!content) {
-      alert('Please add meeting content');
+      UI.showToast('Please add meeting content');
       this.isSavingMeeting = false;
       if (saveBtn) {
         saveBtn.disabled = false;
@@ -1140,6 +1182,7 @@ const WorkUI = {
 
       // Add meeting metadata to the saved note
       savedNote.type = 'meeting';
+      savedNote.note_type = 'meeting'; // Database column for filtering
       savedNote.meeting = {
         title: `Meeting with ${attendees.join(', ') || 'team'}`,
         attendees: attendees,
@@ -1165,6 +1208,11 @@ const WorkUI = {
       await DB.saveNote(savedNote);
       console.log('[WorkUI] saveMeeting - Meeting metadata saved');
 
+      // Track analytics
+      if (typeof Analytics !== 'undefined') {
+        Analytics.meetingSaved(savedNote.id, attendees.length);
+      }
+
       // Switch to meetings tab after a short delay
       setTimeout(() => {
         console.log('[WorkUI] saveMeeting - Switching to meetings tab');
@@ -1175,7 +1223,7 @@ const WorkUI = {
     } catch (error) {
       console.error('[WorkUI] Failed to save meeting:', error);
       if (typeof UI !== 'undefined' && UI.showToast) {
-        UI.showToast('Failed to save meeting');
+        UI.showToast('Couldn\'t save meeting — try again');
       }
     } finally {
       // Reset save flag and re-enable button
@@ -1201,9 +1249,12 @@ const WorkUI = {
     const modal = document.getElementById('decision-modal');
     if (modal) {
       modal.classList.remove('hidden');
+      // Reset scroll position to top before populating
+      modal.scrollTop = 0;
       document.getElementById('decision-topic').value = '';
       document.getElementById('decision-content').value = '';
-      document.getElementById('decision-topic').focus();
+      // Use preventScroll to avoid jumping
+      document.getElementById('decision-topic').focus({ preventScroll: true });
     }
   },
 
@@ -1299,11 +1350,30 @@ const WorkUI = {
    * Save the decision
    */
   async saveDecision() {
+    // Prevent double submission
+    if (this.isSavingDecision) {
+      console.log('[WorkUI] saveDecision - Already saving, skipping');
+      return;
+    }
+    this.isSavingDecision = true;
+
     const topic = document.getElementById('decision-topic').value.trim();
     const content = document.getElementById('decision-content').value.trim();
 
+    // Disable save button during async operation
+    const saveBtn = document.getElementById('decision-save-btn');
+    if (saveBtn) {
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Saving...';
+    }
+
     if (!topic) {
-      alert('Please add what you\'re deciding');
+      UI.showToast('Please add what you\'re deciding');
+      this.isSavingDecision = false;
+      if (saveBtn) {
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Save';
+      }
       return;
     }
 
@@ -1317,7 +1387,7 @@ const WorkUI = {
 
     // Show loading
     if (typeof UI !== 'undefined' && UI.showToast) {
-      UI.showToast('Saving...');
+      UI.showToast('Saving decision...');
     }
 
     try {
@@ -1327,6 +1397,7 @@ const WorkUI = {
 
       // Add decision metadata to the saved note
       savedNote.type = 'decision';
+      savedNote.note_type = 'decision'; // Database column for filtering
       savedNote.decision = {
         topic: topic,
         content: content,
@@ -1336,6 +1407,11 @@ const WorkUI = {
       // Save the updated note with decision metadata
       await DB.saveNote(savedNote);
       console.log('[WorkUI] saveDecision - Decision metadata saved:', savedNote.id);
+
+      // Track analytics
+      if (typeof Analytics !== 'undefined') {
+        Analytics.decisionSaved(savedNote.id);
+      }
 
       // Switch to actions tab after a short delay
       setTimeout(() => {
@@ -1347,8 +1423,10 @@ const WorkUI = {
     } catch (error) {
       console.error('[WorkUI] Failed to save decision:', error);
       if (typeof UI !== 'undefined' && UI.showToast) {
-        UI.showToast('Failed to save');
+        UI.showToast('Couldn\'t save decision — try again');
       }
+    } finally {
+      this.isSavingDecision = false;
     }
   },
 

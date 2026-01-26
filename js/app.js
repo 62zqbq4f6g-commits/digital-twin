@@ -4,7 +4,7 @@
  */
 
 // App version - displayed in console on load
-const APP_VERSION = '9.1.0';
+const APP_VERSION = '9.2.0';
 window.APP_VERSION = APP_VERSION; // Export for settings.js
 console.log('[App] Inscript v' + APP_VERSION);
 // Phase 15.1: 3-tab restructure (NOTES, YOU, MIRROR)
@@ -85,15 +85,25 @@ const App = {
       const savedNote = await DB.saveNote(note);
       console.log('[App.processNote] Saved note ID:', savedNote.id);
 
+      // Track analytics
+      if (typeof Analytics !== 'undefined') {
+        Analytics.noteCreated(savedNote.id, inputType);
+      }
+
       // Add to notes cache for instant loading
       if (typeof NotesCache !== 'undefined') {
         NotesCache.addNote(savedNote);
       }
 
-      // Phase 12: Show Knowledge Pulse with learning data
+      // Phase 12: Show Knowledge Pulse with learning data + actions
       if (typeof KnowledgePulse !== 'undefined' && window.KnowledgePulse) {
-        console.log('[App] Phase 12 - Showing Knowledge Pulse with learning:', analysis?.learning);
-        window.KnowledgePulse.show(analysis?.learning);
+        // Merge learning data with actions for richer feedback
+        const pulseData = {
+          ...(analysis?.learning || {}),
+          actions: analysis?.actions || []
+        };
+        console.log('[App] Phase 12 - Showing Knowledge Pulse with:', pulseData);
+        window.KnowledgePulse.show(pulseData);
       } else {
         // Fallback to simple toast if KnowledgePulse not available
         UI.showToast('Note saved!');
@@ -103,7 +113,14 @@ const App = {
       this.updateRecentNotes();
 
       // A4: Dispatch note-saved event for TWIN tab data refresh
-      window.dispatchEvent(new CustomEvent('note-saved', { detail: { noteId: savedNote.id } }));
+      // Include raw text for MIRROR context (before encryption)
+      window.dispatchEvent(new CustomEvent('note-saved', {
+        detail: {
+          noteId: savedNote.id,
+          rawText: text,  // Pass raw text for immediate MIRROR context
+          title: refined.title || extracted.title || 'Note'
+        }
+      }));
 
       // 7. PROCESS FOR TWIN - Analyze in background (non-blocking)
       if (typeof TwinEngine !== 'undefined') {
@@ -163,7 +180,7 @@ const App = {
 
     } catch (error) {
       console.error('Error processing note:', error);
-      UI.showToast('Failed to save note');
+      UI.showToast('Couldn\'t save — check your connection');
       throw error;
 
     } finally {

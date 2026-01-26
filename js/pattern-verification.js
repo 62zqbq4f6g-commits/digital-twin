@@ -229,7 +229,7 @@ class PatternVerification {
 
     if (!Sync?.user?.id) {
       console.error('[PatternVerification] No user ID');
-      alert('Please sign in to rebuild patterns.');
+      UI.showToast('Please sign in to rebuild patterns');
       return;
     }
 

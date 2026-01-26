@@ -1550,8 +1550,14 @@ const PIN = {
   },
 
   async handleForgotPIN() {
-    const confirmed = confirm(
-      'This will sign you out and clear local data. You can sign back in and create a new PIN. Continue?'
+    const confirmed = await UI.confirm(
+      'This will sign you out and clear local data. You can sign back in and create a new PIN. Continue?',
+      {
+        title: 'Reset PIN',
+        confirmText: 'Reset',
+        cancelText: 'Cancel',
+        danger: true
+      }
     );
 
     if (!confirmed) return;

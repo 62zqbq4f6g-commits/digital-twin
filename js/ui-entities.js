@@ -104,7 +104,7 @@ const EntityUI = {
         await UI.refreshNoteDetail(UI.currentNote.id);
       }
     } else {
-      UI.showToast('Update failed');
+      UI.showToast('Couldn\'t update — try again');
     }
   },
 
@@ -113,9 +113,14 @@ const EntityUI = {
    * @param {string} entityId - Entity UUID
    */
   async delete(entityId) {
-    if (!confirm('Delete this entity? This cannot be undone.')) {
-      return;
-    }
+    const confirmed = await UI.confirm('Delete this entity? This cannot be undone.', {
+      title: 'Delete Entity',
+      confirmText: 'Delete',
+      cancelText: 'Keep',
+      danger: true
+    });
+
+    if (!confirmed) return;
 
     await EntityMemory.deleteEntity(entityId);
     UI.showToast('Entity deleted');
@@ -238,10 +243,10 @@ const EntityUI = {
           await UI.showNoteDetail(UI.currentNoteId);
         }
       } else {
-        UI.showToast('Failed to save entity');
+        UI.showToast('Couldn\'t save — try again');
       }
     } else {
-      UI.showToast('Could not save entity');
+      UI.showToast('Couldn\'t save — try again');
     }
   },
 

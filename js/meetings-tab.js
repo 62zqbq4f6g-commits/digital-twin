@@ -153,11 +153,53 @@ const MeetingsTab = {
       newMeetingBtn.addEventListener('click', () => this.openNewMeeting());
     }
 
-    // Empty state CTA
+    // Empty state CTA - Start Listening opens AmbientRecorder
     const emptyCta = this.container.querySelector('.meetings-empty-cta');
     if (emptyCta) {
-      emptyCta.addEventListener('click', () => this.openNewMeeting());
+      emptyCta.addEventListener('click', () => this.openAmbientRecorder());
     }
+  },
+
+  /**
+   * Open ambient recorder for capturing meetings
+   */
+  openAmbientRecorder() {
+    console.log('[MeetingsTab] Opening ambient recorder');
+
+    if (typeof AmbientRecorder !== 'undefined') {
+      const userId = this.userId || Sync?.user?.id || 'anonymous';
+
+      AmbientRecorder.open({
+        userId: userId,
+        onComplete: async (result) => {
+          console.log('[MeetingsTab] Ambient recording complete:', result);
+
+          // Refresh the meetings list
+          await this.refresh();
+
+          // Show success feedback
+          if (typeof UI !== 'undefined' && UI.showToast) {
+            UI.showToast('Meeting captured and enhanced');
+          }
+        },
+      });
+    } else {
+      console.warn('[MeetingsTab] AmbientRecorder not available, falling back to MeetingCapture');
+      this.openNewMeeting();
+    }
+  },
+
+  /**
+   * Get skeleton HTML for loading state
+   */
+  getSkeletonHTML() {
+    return `
+      <div class="meetings-skeleton">
+        <div class="meeting-card-skeleton"></div>
+        <div class="meeting-card-skeleton"></div>
+        <div class="meeting-card-skeleton"></div>
+      </div>
+    `;
   },
 
   /**
@@ -170,7 +212,16 @@ const MeetingsTab = {
     }
 
     console.log('[MeetingsTab] Loading meetings...');
-    this.showLoading(true);
+
+    // Show skeleton immediately in the this-week list
+    const thisWeekList = this.container.querySelector('.meetings-list[data-period="this-week"]');
+    if (thisWeekList) {
+      thisWeekList.innerHTML = this.getSkeletonHTML();
+    }
+
+    // Hide empty state during load
+    const emptyState = this.container.querySelector('.meetings-empty-state');
+    if (emptyState) emptyState.style.display = 'none';
 
     try {
       this.meetings = await this.fetchMeetings();
@@ -178,8 +229,6 @@ const MeetingsTab = {
     } catch (error) {
       console.error('[MeetingsTab] Failed to load meetings:', error);
       this.showError('Failed to load meetings');
-    } finally {
-      this.showLoading(false);
     }
   },
 
@@ -268,7 +317,7 @@ const MeetingsTab = {
       const meetings = grouped[period] || [];
 
       if (meetings.length === 0) {
-        list.innerHTML = '<p class="no-meetings">No meetings</p>';
+        list.innerHTML = '<p class="no-meetings">None recorded</p>';
       } else {
         list.innerHTML = meetings.map(m => this.renderMeetingCard(m)).join('');
       }

@@ -1012,5 +1012,289 @@ window.UIProfile = {
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#039;');
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // NOTIFICATION PREFERENCES (Phase 17)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  notificationPrefs: null,
+
+  /**
+   * Load notification preferences from API
+   */
+  async loadNotificationPrefs() {
+    if (!Sync.user?.id) return null;
+
+    try {
+      const response = await fetch(`/api/memory-moments/preferences?user_id=${Sync.user.id}`);
+      if (response.ok) {
+        const data = await response.json();
+        this.notificationPrefs = data.preferences || {};
+        return this.notificationPrefs;
+      }
+    } catch (err) {
+      console.warn('[UIProfile] Failed to load notification prefs:', err);
+    }
+    return null;
+  },
+
+  /**
+   * Save notification preferences
+   */
+  async saveNotificationPrefs(updates) {
+    if (!Sync.user?.id) return false;
+
+    try {
+      const response = await fetch(`/api/memory-moments/preferences?user_id=${Sync.user.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+      });
+
+      if (response.ok) {
+        // Update local cache
+        this.notificationPrefs = { ...this.notificationPrefs, ...updates };
+        return true;
+      }
+    } catch (err) {
+      console.error('[UIProfile] Failed to save notification prefs:', err);
+    }
+    return false;
+  },
+
+  /**
+   * Render notification preferences section for STATS tab
+   */
+  renderNotificationPrefsSection() {
+    const prefs = this.notificationPrefs || {};
+    const momentsEnabled = prefs.memory_moments_enabled !== false;
+    const reportsEnabled = prefs.monthly_report_enabled !== false;
+    const timezone = prefs.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const quietStart = prefs.quiet_hours_start || '22:00';
+    const quietEnd = prefs.quiet_hours_end || '08:00';
+
+    return `
+      <section class="twin-card">
+        <h2 class="twin-card__header">Notifications</h2>
+        <div class="twin-card__content">
+          <div class="profile-field">
+            <div class="profile-field__label">Memory Moments</div>
+            <div class="profile-field__row">
+              <span class="profile-field__value">${momentsEnabled ? 'On' : 'Off'}</span>
+              <button class="profile-field__toggle ${momentsEnabled ? 'profile-field__toggle--on' : ''}"
+                      onclick="UIProfile.toggleMoments()"
+                      aria-label="Toggle Memory Moments">
+                <span class="toggle-track">
+                  <span class="toggle-thumb"></span>
+                </span>
+              </button>
+            </div>
+            <p class="profile-field__hint">Proactive reminders about people and memories</p>
+          </div>
+
+          <div class="profile-field">
+            <div class="profile-field__label">Monthly Reports</div>
+            <div class="profile-field__row">
+              <span class="profile-field__value">${reportsEnabled ? 'On' : 'Off'}</span>
+              <button class="profile-field__toggle ${reportsEnabled ? 'profile-field__toggle--on' : ''}"
+                      onclick="UIProfile.toggleReports()"
+                      aria-label="Toggle Monthly Reports">
+                <span class="toggle-track">
+                  <span class="toggle-thumb"></span>
+                </span>
+              </button>
+            </div>
+            <p class="profile-field__hint">State of You summary on the 1st of each month</p>
+          </div>
+
+          <div class="profile-field">
+            <div class="profile-field__label">Quiet Hours</div>
+            <div class="profile-field__row">
+              <span class="profile-field__value">${quietStart} – ${quietEnd}</span>
+              <button class="profile-field__edit" onclick="UIProfile.showQuietHoursModal()">Edit</button>
+            </div>
+            <p class="profile-field__hint">No moments during these hours</p>
+          </div>
+
+          <div class="profile-field">
+            <div class="profile-field__label">Timezone</div>
+            <div class="profile-field__row">
+              <span class="profile-field__value">${this.formatTimezone(timezone)}</span>
+              <button class="profile-field__edit" onclick="UIProfile.showTimezoneModal()">Edit</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    `;
+  },
+
+  /**
+   * Toggle Memory Moments on/off
+   */
+  async toggleMoments() {
+    const current = this.notificationPrefs?.memory_moments_enabled !== false;
+    const newValue = !current;
+
+    const success = await this.saveNotificationPrefs({ memory_moments_enabled: newValue });
+    if (success) {
+      this.refreshNotificationPrefsDisplay();
+      UI.showToast(newValue ? 'Memory Moments enabled' : 'Memory Moments disabled');
+    }
+  },
+
+  /**
+   * Toggle Monthly Reports on/off
+   */
+  async toggleReports() {
+    const current = this.notificationPrefs?.monthly_report_enabled !== false;
+    const newValue = !current;
+
+    const success = await this.saveNotificationPrefs({ monthly_report_enabled: newValue });
+    if (success) {
+      this.refreshNotificationPrefsDisplay();
+      UI.showToast(newValue ? 'Monthly reports enabled' : 'Monthly reports disabled');
+    }
+  },
+
+  /**
+   * Show quiet hours edit modal
+   */
+  showQuietHoursModal() {
+    const prefs = this.notificationPrefs || {};
+    const quietStart = prefs.quiet_hours_start || '22:00';
+    const quietEnd = prefs.quiet_hours_end || '08:00';
+
+    const body = `
+      <p class="modal-new__subtitle">Your Twin won't surface moments during these hours</p>
+      <div class="field-group" style="margin-bottom: var(--space-4);">
+        <label class="field-label">Start (no moments after)</label>
+        <input type="time" id="quiet-start-input" class="input-new" value="${quietStart}">
+      </div>
+      <div class="field-group">
+        <label class="field-label">End (moments resume)</label>
+        <input type="time" id="quiet-end-input" class="input-new" value="${quietEnd}">
+      </div>
+    `;
+    const footer = `<button class="btn-primary-new" onclick="UIProfile.saveQuietHours()">SAVE</button>`;
+
+    this.showModal('QUIET HOURS', body, footer);
+  },
+
+  /**
+   * Save quiet hours
+   */
+  async saveQuietHours() {
+    const startInput = document.getElementById('quiet-start-input');
+    const endInput = document.getElementById('quiet-end-input');
+
+    const quietStart = startInput?.value || '22:00';
+    const quietEnd = endInput?.value || '08:00';
+
+    const success = await this.saveNotificationPrefs({
+      quiet_hours_start: quietStart,
+      quiet_hours_end: quietEnd
+    });
+
+    if (success) {
+      this.closeModal();
+      this.refreshNotificationPrefsDisplay();
+      UI.showToast('Quiet hours updated');
+    }
+  },
+
+  /**
+   * Show timezone edit modal
+   */
+  showTimezoneModal() {
+    const currentTz = this.notificationPrefs?.timezone ||
+                      Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+    // Common timezones
+    const timezones = [
+      'America/New_York',
+      'America/Chicago',
+      'America/Denver',
+      'America/Los_Angeles',
+      'America/Anchorage',
+      'Pacific/Honolulu',
+      'Europe/London',
+      'Europe/Paris',
+      'Europe/Berlin',
+      'Asia/Tokyo',
+      'Asia/Shanghai',
+      'Asia/Singapore',
+      'Australia/Sydney',
+      'Pacific/Auckland'
+    ];
+
+    const options = timezones.map(tz => {
+      const isSelected = tz === currentTz;
+      return `<option value="${tz}" ${isSelected ? 'selected' : ''}>${this.formatTimezone(tz)}</option>`;
+    }).join('');
+
+    const body = `
+      <p class="modal-new__subtitle">Used for timing moments and reports</p>
+      <div class="field-group">
+        <select id="timezone-select" class="input-new">
+          ${options}
+        </select>
+      </div>
+      <p class="text-caption text-muted" style="margin-top: var(--space-2);">
+        Current: ${this.formatTimezone(currentTz)}
+      </p>
+    `;
+    const footer = `<button class="btn-primary-new" onclick="UIProfile.saveTimezone()">SAVE</button>`;
+
+    this.showModal('TIMEZONE', body, footer);
+  },
+
+  /**
+   * Save timezone
+   */
+  async saveTimezone() {
+    const select = document.getElementById('timezone-select');
+    const timezone = select?.value;
+
+    if (!timezone) return;
+
+    const success = await this.saveNotificationPrefs({ timezone });
+
+    if (success) {
+      this.closeModal();
+      this.refreshNotificationPrefsDisplay();
+      UI.showToast('Timezone updated');
+    }
+  },
+
+  /**
+   * Format timezone for display
+   */
+  formatTimezone(tz) {
+    if (!tz) return 'Not set';
+    // Convert "America/New_York" to "New York (EST)"
+    try {
+      const parts = tz.split('/');
+      const city = parts[parts.length - 1].replace(/_/g, ' ');
+      const now = new Date();
+      const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: tz,
+        timeZoneName: 'short'
+      });
+      const tzAbbr = formatter.formatToParts(now).find(p => p.type === 'timeZoneName')?.value || '';
+      return `${city} (${tzAbbr})`;
+    } catch (e) {
+      return tz;
+    }
+  },
+
+  /**
+   * Refresh notification preferences display
+   */
+  refreshNotificationPrefsDisplay() {
+    const section = document.getElementById('notification-prefs-section');
+    if (section) {
+      section.innerHTML = this.renderNotificationPrefsSection();
+    }
   }
 };

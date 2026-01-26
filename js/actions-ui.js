@@ -617,7 +617,7 @@ const ActionsUI = {
     const groups = this.groupActionsByNote(actions);
 
     if (groups.length === 0) {
-      return `<p class="empty-state">No actions yet</p>`;
+      return `<p class="empty-state">Actions surface from meetings and decisions</p>`;
     }
 
     return groups.map(group => this.renderNoteGroup(group)).join('');
@@ -1124,55 +1124,61 @@ const ActionsUI = {
 
   /**
    * Attach event listeners to action checkboxes
-   * Handles both .action-item (suggested tab) and .action-group-item (grouped tabs)
+   * Uses event delegation to prevent memory leaks on re-renders
    */
   attachActionListeners() {
-    const checkboxes = document.querySelectorAll('#actions-list .action-checkbox');
-    checkboxes.forEach(checkbox => {
-      checkbox.addEventListener('change', async (e) => {
-        // Handle both regular and grouped action items
-        const li = e.target.closest('.action-item, .action-group-item');
-        if (!li) return;
+    const container = document.getElementById('actions-list');
+    if (!container) return;
 
-        const noteId = li.dataset.noteId;
-        const actionIndex = parseInt(li.dataset.actionIndex);
-        const completed = e.target.checked;
+    // Only attach once using event delegation
+    if (container._actionsListenerAttached) return;
 
-        await this.toggleAction(noteId, actionIndex, completed);
+    // Delegated change handler for checkboxes
+    container.addEventListener('change', async (e) => {
+      if (!e.target.classList.contains('action-checkbox')) return;
 
-        // Update UI
-        li.classList.toggle('completed', completed);
+      const li = e.target.closest('.action-item, .action-group-item');
+      if (!li) return;
 
-        // Update group progress if in a group
-        const group = li.closest('.action-note-group');
-        if (group) {
-          this.updateGroupProgress(group);
-        }
-      });
+      const noteId = li.dataset.noteId;
+      const actionIndex = parseInt(li.dataset.actionIndex);
+      const completed = e.target.checked;
+
+      await this.toggleAction(noteId, actionIndex, completed);
+
+      // Update UI
+      li.classList.toggle('completed', completed);
+
+      // Update group progress if in a group
+      const group = li.closest('.action-note-group');
+      if (group) {
+        this.updateGroupProgress(group);
+      }
     });
 
-    // Click on note header to navigate to note (only in grouped view)
-    const noteHeaders = document.querySelectorAll('.action-note-header');
-    noteHeaders.forEach(header => {
-      header.addEventListener('click', (e) => {
-        e.stopPropagation(); // Prevent any bubbling
+    // Delegated click handler for headers and links
+    container.addEventListener('click', (e) => {
+      // Click on note header to navigate to note (grouped view)
+      const header = e.target.closest('.action-note-header');
+      if (header) {
+        e.stopPropagation();
         const group = header.closest('.action-note-group');
-        const noteId = group.dataset.noteId;
-        this.openNoteFromAction(noteId);
-      });
-    });
+        const noteId = group?.dataset.noteId;
+        if (noteId) this.openNoteFromAction(noteId);
+        return;
+      }
 
-    // Click on action source link to navigate to note (in suggested tab)
-    const noteLinks = document.querySelectorAll('.action-note-link');
-    noteLinks.forEach(link => {
-      link.addEventListener('click', (e) => {
+      // Click on action source link to navigate to note (suggested tab)
+      const link = e.target.closest('.action-note-link');
+      if (link) {
         e.stopPropagation();
         const noteId = link.dataset.noteId;
-        if (noteId) {
-          this.openNoteFromAction(noteId);
-        }
-      });
+        if (noteId) this.openNoteFromAction(noteId);
+        return;
+      }
     });
+
+    container._actionsListenerAttached = true;
   },
 
   /**

@@ -60,7 +60,7 @@ const Digest = {
     } catch (error) {
       console.error('Digest generation error:', error);
       UI.hideProcessing();
-      UI.showToast('Failed to generate digest');
+      UI.showToast('Couldn\'t generate digest — try again');
       return null;
     }
   },
@@ -198,7 +198,7 @@ const Digest = {
       UI.showToast('Digest copied!');
     } catch (error) {
       console.error('Copy failed:', error);
-      UI.showToast('Failed to copy');
+      UI.showToast('Couldn\'t copy — try again');
     }
   },
 

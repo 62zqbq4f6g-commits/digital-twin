@@ -1,11 +1,11 @@
 # Inscript Status Report
 
-## Last Audit: January 24, 2026
+## Last Audit: January 25, 2026
 
 **Audited by:** Claude Code via Chrome DevTools MCP + Local Codebase Review
 **Production URL:** https://digital-twin-ecru.vercel.app
 **Build Status:** ✅ Production Ready
-**Version:** 8.5.0
+**Version:** 9.4.0
 
 ---
 
@@ -13,17 +13,130 @@
 
 | Metric | Value |
 |--------|-------|
-| Overall Health | 85% |
+| Overall Health | 90% |
 | Core Features | ✅ Working |
 | Memory System | ✅ Working |
 | Pattern Detection | ✅ Working |
 | MIRROR Tab | ✅ Working |
+| Voice Input | ✅ Real-time transcription |
 | Mobile Responsive | ✅ Verified at 375px |
 | Design System | ✅ SoHo Editorial Applied |
 
 ---
 
-## Latest Session: January 24, 2026 (Evening)
+## Latest Session: January 25, 2026 (Night)
+
+### Ambient Recording Pipeline Fix
+
+**Commits:** Multiple fixes to ambient recording flow
+
+| # | Issue | Fix | Files |
+|---|-------|-----|-------|
+| 1 | **Empty AmbientRecorder modal** | Fixed modal rendering, added v1.2.0 | `js/ambient-recorder.js` |
+| 2 | **Missing "Start Listening" button** | Added button HTML + click handler | `js/meeting-capture.js` |
+| 3 | **"this.close is not a function"** | Changed to `UI.closeMeetingCapture()` | `js/meeting-capture.js:201-234` |
+| 4 | **500 error on chunk upload** | Added detailed logging + table check | `api/upload-audio-chunk.js` |
+| 5 | **Session fetch failing** | Added env validation + logging | `api/process-ambient.js` |
+| 6 | **Missing database table** | Ran Phase 17 migration in Supabase | SQL Editor |
+| 7 | **Video Call on mobile** | Added `isMobile()` detection | `js/ambient-recorder.js` |
+| 8 | **RLS policy blocking API** | Fixed service role policy checks | Migration SQL |
+
+### Technical Details
+
+**Root Cause:** The `ambient_recordings` table didn't exist in the database - the Phase 17 migration had never been run.
+
+**Migration Applied:**
+```sql
+CREATE TABLE IF NOT EXISTS ambient_recordings (
+  id UUID PRIMARY KEY,
+  user_id UUID NOT NULL,
+  mode VARCHAR(20) DEFAULT 'room',
+  status VARCHAR(20) DEFAULT 'recording',
+  total_chunks INTEGER DEFAULT 1,
+  chunks_received INTEGER DEFAULT 0,
+  transcripts JSONB DEFAULT '{}',
+  -- ... plus indexes and RLS policies
+);
+```
+
+**Mobile Detection:**
+```javascript
+isMobile() {
+  return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+}
+// Video Call (tab_audio) mode hidden on mobile devices
+```
+
+### Verification
+
+| Test | Result |
+|------|--------|
+| ambient_recordings table exists | ✅ Verified in Supabase |
+| AmbientRecorder modal opens | ✅ Working |
+| Start Listening button works | ✅ Opens recorder |
+| Mobile: no Video Call option | ✅ Only Room mode shown |
+
+---
+
+## Previous Session: January 25, 2026 (Evening)
+
+### Voice & Modal Polish Sprint
+
+**Commits:** Multiple deploys via `vercel --prod`
+
+| # | Feature | Description | Files |
+|---|---------|-------------|-------|
+| 1 | **Modal Consistency** | Aligned Whisper/Decisions/Meetings modals | `js/whisper-ui.js`, `css/whisper.css`, `js/work-ui.js` |
+| 2 | **Decisions Scroll Fix** | Reset scrollTop + preventScroll on focus | `js/work-ui.js:1242-1250` |
+| 3 | **Whisper Voice Input** | Added mic button with MediaRecorder | `js/whisper-ui.js`, `css/whisper.css` |
+| 4 | **Real-time Transcription** | Web Speech API for live preview | `js/whisper-ui.js:37-91` |
+| 5 | **Start Listening Debug** | Added logging to ambient button | `js/meeting-capture.js:201-234` |
+
+### Technical Details
+
+**Whisper Voice Input:**
+- Mic button at bottom-right of textarea (40x40px circular)
+- MediaRecorder with 1s chunks for Whisper fallback
+- Red pulsing animation during recording
+- Transcription via `/api/transcribe-voice`
+
+**Real-time Transcription (Web Speech API):**
+- `continuous: true` for ongoing listening
+- `interimResults: true` for live word preview
+- Auto-restart on silence (recognition.onend)
+- Whisper API fallback if speech recognition fails
+- Visual indicator: subtle background pulse during recording
+
+**Modal Consistency:**
+- All modals now share: header with title + SVG close button
+- Same border-bottom separator (1px #E5E5E5)
+- Same button styling (gray disabled → black active)
+- Same overlay (rgba(0,0,0,0.5))
+
+### Verification
+
+| Test | Result |
+|------|--------|
+| Whisper: Voice recording | ✅ Mic button works, transcribes |
+| Whisper: Live transcription | ✅ Words appear as spoken |
+| Decisions: Modal scroll | ✅ Opens at top, not scrolled |
+| Modal styling: Consistency | ✅ All three modals match |
+
+---
+
+## Earlier Session: January 25, 2026 (Morning/Afternoon)
+
+### Phase 17 Polish Sprint
+
+| Fix | Description | Status |
+|-----|-------------|--------|
+| Skeleton loading | Shimmer animation for Meetings/Patterns tabs | ✅ Deployed |
+| Staggered fade-in | Meeting cards animate in sequence | ✅ Deployed |
+| Reduced motion | `prefers-reduced-motion` support | ✅ Deployed |
+
+---
+
+## Session: January 24, 2026 (Evening)
 
 ### Four Critical Quality Fixes
 
@@ -221,7 +334,11 @@ Key People from `user_key_people` have **HIGHEST** priority in memory retrieval:
 
 | Version | Date | Changes |
 |---------|------|---------|
-| **8.5.0** | Jan 24, 2026 | Key People constraint, stats fallback, SoHo editorial CSS, mobile audit |
+| **9.4.0** | Jan 25, 2026 | Ambient recording pipeline fixed: database migration, RLS policy, mobile detection, error logging |
+| 9.3.0 | Jan 25, 2026 | Whisper voice input, real-time transcription (Web Speech API), modal consistency fixes |
+| 9.2.1 | Jan 25, 2026 | Skeleton loading, staggered animations, reduced motion support |
+| 9.2.0 | Jan 25, 2026 | Phase 17 polish sprint, streaming cursor, upload progress |
+| 8.5.0 | Jan 24, 2026 | Key People constraint, stats fallback, SoHo editorial CSS, mobile audit |
 | 8.3.0 | Jan 23, 2026 | Knowledge Pulse simplification, dark mode support |
 | 8.2.1 | Jan 23, 2026 | Fix 406/500 errors, parallel terminal setup |
 | 8.2.0 | Jan 23, 2026 | Pre-beta testing (93%), Key People fix |
@@ -230,6 +347,6 @@ Key People from `user_key_people` have **HIGHEST** priority in memory retrieval:
 
 ---
 
-*Status Report Generated: January 24, 2026*
-*Version: 8.5.0 — Inscript*
+*Status Report Generated: January 25, 2026 (Night)*
+*Version: 9.4.0 — Inscript*
 *Production: https://digital-twin-ecru.vercel.app*

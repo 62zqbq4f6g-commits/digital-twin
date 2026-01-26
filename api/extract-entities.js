@@ -200,30 +200,56 @@ Rules:
 
     // Job title filter - remove any entities that look like job titles
     const JOB_TITLES = new Set([
-      'ceo', 'cto', 'cfo', 'coo', 'cmo', 'cpo', 'vp', 'svp', 'evp',
-      'director', 'manager', 'lead', 'head', 'chief', 'president', 'founder',
-      'engineer', 'developer', 'designer', 'analyst', 'consultant', 'specialist',
-      'coordinator', 'associate', 'assistant', 'intern', 'executive', 'officer',
+      'ceo', 'cto', 'cfo', 'coo', 'cmo', 'cpo', 'cio', 'cso', 'vp', 'svp', 'evp', 'avp',
+      'director', 'manager', 'lead', 'head', 'chief', 'president', 'founder', 'cofounder',
+      'engineer', 'developer', 'designer', 'analyst', 'consultant', 'specialist', 'strategist',
+      'coordinator', 'associate', 'assistant', 'intern', 'executive', 'officer', 'administrator',
+      'supervisor', 'recruiter', 'accountant', 'controller', 'planner', 'buyer', 'trader',
       'senior engineer', 'staff engineer', 'principal engineer', 'senior developer',
-      'product manager', 'project manager', 'engineering manager', 'design lead',
-      'software engineer', 'data scientist', 'data analyst', 'ux designer',
-      'frontend developer', 'backend developer', 'fullstack developer',
-      'devops engineer', 'qa engineer', 'test engineer', 'security engineer',
-      'tech lead', 'team lead', 'architect', 'solutions architect'
+      'product manager', 'project manager', 'engineering manager', 'design lead', 'program manager',
+      'software engineer', 'data scientist', 'data analyst', 'ux designer', 'ui designer',
+      'frontend developer', 'backend developer', 'fullstack developer', 'full stack developer',
+      'devops engineer', 'qa engineer', 'test engineer', 'security engineer', 'sre',
+      'tech lead', 'team lead', 'architect', 'solutions architect', 'technical architect',
+      'head of product', 'head of engineering', 'head of design', 'head of sales', 'head of marketing',
+      'vp of engineering', 'vp of product', 'vp of sales', 'vp of marketing', 'vp of operations',
+      'growth manager', 'marketing manager', 'sales manager', 'account manager', 'customer success',
+      'hr manager', 'people manager', 'operations manager', 'general manager', 'regional manager',
+      'scrum master', 'agile coach', 'product owner', 'business analyst', 'systems analyst'
+    ]);
+
+    // Words that indicate job titles when found anywhere in the name
+    const JOB_TITLE_KEYWORDS = new Set([
+      'manager', 'director', 'engineer', 'developer', 'designer', 'analyst', 'consultant',
+      'coordinator', 'specialist', 'lead', 'head', 'chief', 'officer', 'executive', 'vp',
+      'president', 'founder', 'architect', 'administrator', 'supervisor', 'recruiter'
     ]);
 
     const isJobTitle = (name) => {
       if (!name) return false;
       const normalized = name.toLowerCase().trim();
+
       // Check exact match
       if (JOB_TITLES.has(normalized)) return true;
+
+      // Check if ANY word in the name is a job title keyword
+      const words = normalized.split(/\s+/);
+      for (const word of words) {
+        if (JOB_TITLE_KEYWORDS.has(word)) return true;
+      }
+
       // Check if starts with common title prefixes
-      if (/^(senior|junior|lead|staff|principal|associate|assistant)\s/i.test(name)) {
-        const withoutPrefix = name.replace(/^(senior|junior|lead|staff|principal|associate|assistant)\s+/i, '').toLowerCase();
+      if (/^(senior|junior|lead|staff|principal|associate|assistant|chief|head)\s/i.test(name)) {
+        const withoutPrefix = name.replace(/^(senior|junior|lead|staff|principal|associate|assistant|chief|head)\s+/i, '').toLowerCase();
         if (JOB_TITLES.has(withoutPrefix)) return true;
       }
+
+      // Check patterns: "X of Y" structure common in titles
+      if (/^(head|director|vp|chief|manager)\s+of\s+/i.test(name)) return true;
+
       // Check if ends with common suffixes
-      if (/\s(manager|engineer|developer|designer|analyst|lead|director|vp|head)$/i.test(name)) return true;
+      if (/\s(manager|engineer|developer|designer|analyst|lead|director|vp|head|officer|executive)$/i.test(name)) return true;
+
       return false;
     };
 

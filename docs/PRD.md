@@ -2,10 +2,45 @@
 
 ## Your Mirror in Code.
 
-**Version:** 8.5.0
-**Date:** January 24, 2026
+**Version:** 9.3.0
+**Date:** January 25, 2026
 **Author:** Rox
-**Status:** Phase 15 — Experience Transformation (Quality Fixes Complete)
+**Status:** Phase 17 Complete — Building toward PAMP
+
+---
+
+# THE VISION: PAMP
+
+## Portable AI Memory Protocol
+
+**Inscript is building PAMP — the Portable AI Memory Protocol.**
+
+> Your memory. Your data. Portable across any AI.
+
+### What is PAMP?
+
+PAMP is the user-owned memory layer for the AI age. Instead of every AI app building siloed memory systems, PAMP provides a universal, encrypted, portable memory that:
+
+1. **You own** — Your memories are encrypted with your keys, stored in your cloud
+2. **Any AI can access (with permission)** — ChatGPT, Claude, Gemini, your company's internal tools
+3. **Follows you everywhere** — Switch apps, keep your memory
+4. **Gets smarter over time** — The more you use AI, the better all AI knows you
+
+### Why PAMP Matters
+
+**Today:** Every AI app starts from zero. You repeat yourself constantly. Your context is fragmented across ChatGPT, Claude, Notion, and a dozen other tools.
+
+**With PAMP:** Every AI already knows your world — the people, patterns, preferences — with your permission. One memory layer. Universal access.
+
+### Strategic Phases
+
+| Phase | Focus | Status |
+|-------|-------|--------|
+| **Phase 1: Consumer Love** | Build an app people can't live without | ✅ Current |
+| **Phase 2: Platform APIs** | Let developers build on PAMP | Next |
+| **Phase 3: Protocol** | Open standard for portable AI memory | Future |
+
+**Inscript's role:** The first consumer app built on PAMP. We prove the value, build the user base, then open the protocol.
 
 ---
 
@@ -15,6 +50,8 @@
 
 Inscript is the first **Personal AI Memory** — an AI that actually remembers you. Unlike traditional note apps that store text, or AI assistants that forget between conversations, Inscript builds a living model of your life: the people you care about, the patterns you can't see, the thoughts that shape who you are.
 
+Inscript is also the first app built on PAMP (Portable AI Memory Protocol), pioneering user-owned portable memory that will work across all AI systems.
+
 ## The One-Liner
 
 > "Inscript is the first AI that actually remembers you.
@@ -22,19 +59,20 @@ Inscript is the first **Personal AI Memory** — an AI that actually remembers y
 
 ## Category
 
-**Personal AI Memory** — We created this category.
+**Personal AI Memory (PAMP Protocol)** — We created this category.
 
 ## Current State
 
 | Metric | Value |
 |--------|-------|
 | Production URL | https://digital-twin-ecru.vercel.app |
-| Version | 8.5.0 |
+| Version | 9.3.0 |
 | Memory System | ~95% Mem0 Parity |
-| Beta Status | Ready (Quality fixes deployed) |
+| PAMP Phase | Phase 1 (Consumer Love) |
+| Beta Status | Production (Phase 17 complete) |
 | Design System | SoHo Editorial Aesthetic ✅ |
 | Mobile Responsive | Verified at 375px ✅ |
-| Phases Complete | 8, 9, 10, 11, 13A-E, 14 |
+| Phases Complete | 8, 9, 10, 11, 13A-E, 14, 15, 16, 17 |
 
 ---
 
@@ -660,6 +698,15 @@ Every day a user spends with Inscript:
 
 **A user at 6 months cannot switch without losing 6 months of learning.**
 
+### The PAMP Advantage
+
+With PAMP, the moat becomes a gift:
+- **Users never lose their memory** — It's portable, owned by them
+- **Lock-in becomes lock-with** — They stay because Inscript is the best experience
+- **Network effects** — As more apps support PAMP, Inscript becomes more valuable as the source of truth
+
+**The real moat:** Being the primary place where personal AI memory is created and curated.
+
 ---
 
 # ROADMAP
@@ -781,6 +828,117 @@ Every day a user spends with Inscript:
 
 ---
 
+# PAMP TECHNICAL SPECIFICATION
+
+## The 5-Layer Memory Architecture
+
+PAMP mirrors human cognitive architecture:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  LAYER 1: CORE IDENTITY                                      │
+│  Profile, communication style, values, goals                 │
+├─────────────────────────────────────────────────────────────┤
+│  LAYER 2: SEMANTIC MEMORY                                    │
+│  Entities (people, places, projects), Facts, Relationships   │
+├─────────────────────────────────────────────────────────────┤
+│  LAYER 3: EPISODIC MEMORY                                    │
+│  Notes, Conversations, Meetings, Events                      │
+├─────────────────────────────────────────────────────────────┤
+│  LAYER 4: PROCEDURAL MEMORY                                  │
+│  Patterns, Preferences, Habits                               │
+├─────────────────────────────────────────────────────────────┤
+│  LAYER 5: EMBEDDINGS & RETRIEVAL                             │
+│  Vector representations for semantic search                  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## Design Principles
+
+1. **User Ownership First** — All data belongs to the user. Export is first-class.
+2. **Rich Over Shallow** — Not just "likes coffee" but WHO, WHAT, WHEN, WHY, confidence, relationships
+3. **Interface Agnostic** — Same data powers notes app, voice assistant, AR glasses, teddy bear
+4. **Privacy by Design** — Granular controls per-entity, per-memory
+
+## PAMP Export Format (JSON-LD)
+
+```json
+{
+  "@context": "https://pamp.inscript.ai/schema/v1",
+  "@type": "PAMPExport",
+  "version": "1.0.0",
+  "exportedAt": "2026-01-25T12:00:00Z",
+  "exportedBy": "Inscript v9.3.0",
+
+  "data": {
+    "profile": {
+      "name": { "display": "User Name" },
+      "communicationStyle": { "tone": "warm", "verbosity": "concise" }
+    },
+    "entities": [
+      {
+        "@type": "Entity",
+        "entityType": "person",
+        "name": "Marcus",
+        "description": "Close friend, career advisor",
+        "scores": { "importance": 0.85, "confidence": 0.9 },
+        "relationships": [
+          { "targetEntityId": "sarah-id", "relationshipType": "mutual_friend" }
+        ],
+        "facts": [
+          { "predicate": "advises_on", "object": "career decisions", "confidence": 0.9 }
+        ]
+      }
+    ],
+    "episodes": {
+      "notes": [ /* Note objects */ ],
+      "conversations": [ /* Conversation objects */ ]
+    },
+    "patterns": [
+      {
+        "@type": "Pattern",
+        "patternType": "behavioral",
+        "description": "Mentions Marcus when processing big decisions",
+        "confidence": 0.85,
+        "status": "confirmed"
+      }
+    ]
+  },
+
+  "integrity": {
+    "checksum": "sha256:...",
+    "entityCount": 150,
+    "noteCount": 500,
+    "patternCount": 45
+  }
+}
+```
+
+## Privacy Levels
+
+| Level | Meaning | Example |
+|-------|---------|---------|
+| `private` | Never shared outside Inscript | Medical info, intimate thoughts |
+| `internal` | Shared within user's own apps | Work notes, project details |
+| `shared` | Accessible by authorized third-party apps | General preferences |
+
+## PAMP API Endpoints (Phase 2)
+
+| Endpoint | Purpose |
+|----------|---------|
+| `GET /api/pamp/export` | Export full memory in PAMP format |
+| `GET /api/pamp/context` | Get context for current query (third-party) |
+| `POST /api/pamp/authorize` | Grant app access to memory |
+| `DELETE /api/pamp/revoke` | Revoke app access |
+| `GET /api/pamp/query` | Semantic search across memory |
+
+## Full Schema Documentation
+
+See `/docs/PAMP-SCHEMA.md` for complete technical specification.
+
+---
+
 *Inscript — Your mirror in code.*
-*PRD Version 2.2 | January 24, 2026*
+*PRD Version 3.0 | January 25, 2026*
+*Vision: PAMP — Portable AI Memory Protocol*
 *Production: https://digital-twin-ecru.vercel.app*

@@ -3,7 +3,7 @@
  * Phase 15: Experience Transformation
  *
  * Provides frictionless note capture without triggering full reflection.
- * V1 is TEXT-ONLY (no voice support per FIX 3).
+ * Supports text and voice input.
  * All whispers are E2E encrypted using the same key as notes.
  */
 
@@ -14,6 +14,17 @@ const WhisperUI = {
   selectedWhispers: new Set(),
   whisperHistory: [],
 
+  // Voice recording state
+  isRecording: false,
+  mediaRecorder: null,
+  audioChunks: [],
+  audioStream: null,
+
+  // Speech recognition state (for real-time preview)
+  recognition: null,
+  useSpeechRecognition: false,
+  baseTranscript: '',
+
   /**
    * Initialize Whisper UI
    */
@@ -21,7 +32,72 @@ const WhisperUI = {
     console.log('[WhisperUI] Initializing...');
     this.injectHTML();
     this.attachListeners();
+    this.initSpeechRecognition();
     console.log('[WhisperUI] Initialized');
+  },
+
+  /**
+   * Initialize Web Speech API for real-time transcription preview
+   */
+  initSpeechRecognition() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      console.log('[WhisperUI] Speech recognition not supported, using Whisper only');
+      this.useSpeechRecognition = false;
+      return;
+    }
+
+    this.recognition = new SpeechRecognition();
+    this.recognition.continuous = true;
+    this.recognition.interimResults = true;
+    this.recognition.lang = 'en-US';
+
+    this.recognition.onresult = (event) => {
+      const textarea = document.getElementById('whisper-input');
+      if (!textarea) return;
+
+      let interimTranscript = '';
+      let finalTranscript = this.baseTranscript || '';
+
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalTranscript += transcript + ' ';
+          this.baseTranscript = finalTranscript;
+        } else {
+          interimTranscript += transcript;
+        }
+      }
+
+      // Show final + interim text
+      textarea.value = finalTranscript + interimTranscript;
+
+      // Enable submit button if we have content
+      const submitBtn = document.getElementById('whisper-submit');
+      if (submitBtn) {
+        submitBtn.disabled = !textarea.value.trim();
+      }
+    };
+
+    this.recognition.onerror = (event) => {
+      console.log('[WhisperUI] Speech recognition error:', event.error);
+      // Continue with Whisper-only mode on error
+    };
+
+    this.recognition.onend = () => {
+      // Restart if still recording (recognition auto-stops after silence)
+      if (this.isRecording && this.useSpeechRecognition) {
+        try {
+          this.recognition.start();
+        } catch (e) {
+          console.log('[WhisperUI] Could not restart recognition');
+        }
+      }
+    };
+
+    this.useSpeechRecognition = true;
+    console.log('[WhisperUI] Speech recognition initialized');
   },
 
   /**
@@ -36,22 +112,41 @@ const WhisperUI = {
       overlay.innerHTML = `
         <div class="whisper-modal">
           <div class="whisper-header">
-            <h3 class="whisper-title">Whisper Mode</h3>
-            <button class="whisper-close" aria-label="Close">&times;</button>
+            <h2 class="whisper-title">Whisper</h2>
+            <button class="whisper-close" aria-label="Close">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
           </div>
-          <div class="whisper-input-container">
-            <textarea
-              id="whisper-input"
-              class="whisper-input"
-              placeholder="Quick thought..."
-              rows="3"
-              maxlength="500"
-            ></textarea>
+          <div class="whisper-form">
+            <div class="whisper-input-container">
+              <textarea
+                id="whisper-input"
+                class="whisper-input"
+                placeholder="Quick thought..."
+                rows="3"
+                maxlength="500"
+                aria-label="Whisper content"
+              ></textarea>
+              <button type="button" class="whisper-mic-btn" id="whisper-mic-btn" aria-label="Record voice">
+                <svg class="mic-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                  <line x1="12" y1="19" x2="12" y2="23"/>
+                  <line x1="8" y1="23" x2="16" y2="23"/>
+                </svg>
+                <svg class="stop-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="display: none;">
+                  <rect x="6" y="6" width="12" height="12" rx="2"/>
+                </svg>
+              </button>
+            </div>
+            <p class="whisper-hint">No reflection. Just captured.</p>
+            <button id="whisper-submit" class="whisper-submit" disabled>
+              Save
+            </button>
           </div>
-          <button id="whisper-submit" class="whisper-submit" disabled>
-            Heard
-          </button>
-          <p class="whisper-hint">No reflection. Just captured.</p>
         </div>
       `;
       document.body.appendChild(overlay);
@@ -134,6 +229,13 @@ const WhisperUI = {
         this.clearSelection();
         return;
       }
+
+      // Mic button for voice recording
+      if (e.target.closest('#whisper-mic-btn')) {
+        e.preventDefault();
+        this.toggleVoiceRecording();
+        return;
+      }
     });
 
     // Input change handler
@@ -171,16 +273,22 @@ const WhisperUI = {
   open() {
     const overlay = document.getElementById('whisper-overlay');
     const input = document.getElementById('whisper-input');
+    const modal = overlay?.querySelector('.whisper-modal');
 
     if (overlay) {
       overlay.classList.add('whisper-overlay--visible');
       this.isOpen = true;
 
-      // Focus input after animation
+      // Reset scroll position
+      if (modal) {
+        modal.scrollTop = 0;
+      }
+
+      // Focus input after animation, prevent scroll jump
       setTimeout(() => {
         if (input) {
           input.value = '';
-          input.focus();
+          input.focus({ preventScroll: true });
         }
       }, 100);
     }
@@ -195,6 +303,266 @@ const WhisperUI = {
       overlay.classList.remove('whisper-overlay--visible');
       this.isOpen = false;
     }
+
+    // Stop any active recording
+    if (this.isRecording) {
+      this.stopVoiceRecording(false); // Don't transcribe on close
+    }
+  },
+
+  // ===== VOICE RECORDING =====
+
+  /**
+   * Toggle voice recording on/off
+   */
+  toggleVoiceRecording() {
+    if (this.isRecording) {
+      this.stopVoiceRecording(true);
+    } else {
+      this.startVoiceRecording();
+    }
+  },
+
+  /**
+   * Start voice recording with real-time transcription preview
+   */
+  async startVoiceRecording() {
+    console.log('[WhisperUI] Starting voice recording...');
+
+    const textarea = document.getElementById('whisper-input');
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        }
+      });
+
+      this.audioStream = stream;
+      this.audioChunks = [];
+
+      // Determine best audio format
+      const mimeType = this.getSupportedMimeType();
+      this.mediaRecorder = new MediaRecorder(stream, { mimeType });
+
+      this.mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          this.audioChunks.push(e.data);
+        }
+      };
+
+      this.mediaRecorder.onstop = () => {
+        console.log('[WhisperUI] MediaRecorder stopped');
+      };
+
+      // Collect chunks every second for better Whisper fallback
+      this.mediaRecorder.start(1000);
+
+      // Start speech recognition for real-time preview
+      if (this.useSpeechRecognition && this.recognition) {
+        // Store current text as base
+        this.baseTranscript = textarea ? textarea.value : '';
+        try {
+          this.recognition.start();
+          console.log('[WhisperUI] Speech recognition started');
+        } catch (e) {
+          console.log('[WhisperUI] Recognition already running');
+        }
+      }
+
+      this.isRecording = true;
+      this.updateMicButtonState();
+
+      // Add visual indicator for live transcription
+      if (textarea) {
+        textarea.classList.add('transcribing');
+      }
+
+      console.log('[WhisperUI] Recording started');
+
+    } catch (error) {
+      console.error('[WhisperUI] Mic access error:', error);
+      if (typeof UI !== 'undefined' && UI.showToast) {
+        UI.showToast('Could not access microphone');
+      }
+    }
+  },
+
+  /**
+   * Stop voice recording and optionally transcribe
+   * @param {boolean} shouldTranscribe - Whether to send for transcription
+   */
+  async stopVoiceRecording(shouldTranscribe = true) {
+    console.log('[WhisperUI] Stopping voice recording...');
+
+    const textarea = document.getElementById('whisper-input');
+
+    // Stop speech recognition first
+    if (this.recognition) {
+      try {
+        this.recognition.stop();
+        console.log('[WhisperUI] Speech recognition stopped');
+      } catch (e) {
+        // Already stopped
+      }
+    }
+
+    // Remove visual indicator
+    if (textarea) {
+      textarea.classList.remove('transcribing');
+    }
+
+    if (!this.mediaRecorder || this.mediaRecorder.state === 'inactive') {
+      this.isRecording = false;
+      this.updateMicButtonState();
+      return;
+    }
+
+    // Create a promise to wait for the recorder to stop
+    const stopPromise = new Promise((resolve) => {
+      this.mediaRecorder.onstop = () => {
+        resolve();
+      };
+    });
+
+    this.mediaRecorder.stop();
+    await stopPromise;
+
+    // Stop audio stream
+    if (this.audioStream) {
+      this.audioStream.getTracks().forEach(track => track.stop());
+      this.audioStream = null;
+    }
+
+    this.isRecording = false;
+    this.updateMicButtonState();
+
+    // Only use Whisper fallback if speech recognition didn't capture anything
+    // This saves API calls when live transcription worked
+    if (shouldTranscribe && this.audioChunks.length > 0) {
+      const hasContent = textarea && textarea.value.trim().length > 0;
+      const hadContentBefore = this.baseTranscript && this.baseTranscript.trim().length > 0;
+      const speechRecognitionWorked = hasContent && !hadContentBefore;
+
+      if (!hasContent || !this.useSpeechRecognition) {
+        // No content or speech recognition not available - use Whisper
+        console.log('[WhisperUI] Using Whisper for transcription');
+        const audioBlob = new Blob(this.audioChunks, { type: this.getSupportedMimeType() });
+        await this.transcribeAudio(audioBlob);
+      } else {
+        console.log('[WhisperUI] Speech recognition captured content, skipping Whisper');
+      }
+    }
+
+    // Reset base transcript
+    this.baseTranscript = '';
+
+    this.audioChunks = [];
+  },
+
+  /**
+   * Transcribe audio blob and append to textarea
+   * @param {Blob} audioBlob - The recorded audio
+   */
+  async transcribeAudio(audioBlob) {
+    const input = document.getElementById('whisper-input');
+    const submitBtn = document.getElementById('whisper-submit');
+
+    if (!input) return;
+
+    // Show transcribing state
+    const originalPlaceholder = input.placeholder;
+    input.placeholder = 'Transcribing...';
+    if (submitBtn) submitBtn.disabled = true;
+
+    try {
+      const formData = new FormData();
+      formData.append('audio', audioBlob, 'whisper-recording.webm');
+
+      // Get user ID if available
+      const userId = await this.getUserId();
+      if (userId) {
+        formData.append('userId', userId);
+      }
+
+      const response = await fetch('/api/transcribe-voice', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (result.success && result.text) {
+        // Append transcribed text
+        const currentText = input.value.trim();
+        const separator = currentText ? ' ' : '';
+        input.value = currentText + separator + result.text;
+
+        // Enable submit if we have content
+        if (submitBtn) {
+          submitBtn.disabled = !input.value.trim();
+        }
+
+        console.log('[WhisperUI] Transcription complete:', result.text.length, 'chars');
+      } else {
+        throw new Error(result.error?.message || 'Transcription failed');
+      }
+
+    } catch (error) {
+      console.error('[WhisperUI] Transcription error:', error);
+      if (typeof UI !== 'undefined' && UI.showToast) {
+        UI.showToast('Could not transcribe audio');
+      }
+    } finally {
+      input.placeholder = originalPlaceholder;
+      if (submitBtn) {
+        submitBtn.disabled = !input.value.trim();
+      }
+    }
+  },
+
+  /**
+   * Update mic button visual state
+   */
+  updateMicButtonState() {
+    const micBtn = document.getElementById('whisper-mic-btn');
+    if (!micBtn) return;
+
+    const micIcon = micBtn.querySelector('.mic-icon');
+    const stopIcon = micBtn.querySelector('.stop-icon');
+
+    if (this.isRecording) {
+      micBtn.classList.add('recording');
+      if (micIcon) micIcon.style.display = 'none';
+      if (stopIcon) stopIcon.style.display = 'block';
+    } else {
+      micBtn.classList.remove('recording');
+      if (micIcon) micIcon.style.display = 'block';
+      if (stopIcon) stopIcon.style.display = 'none';
+    }
+  },
+
+  /**
+   * Get supported mime type for audio recording
+   * @returns {string} Supported mime type
+   */
+  getSupportedMimeType() {
+    const types = [
+      'audio/webm;codecs=opus',
+      'audio/webm',
+      'audio/ogg;codecs=opus',
+      'audio/mp4',
+    ];
+
+    for (const type of types) {
+      if (MediaRecorder.isTypeSupported(type)) {
+        return type;
+      }
+    }
+
+    return 'audio/webm'; // Fallback
   },
 
   /**
@@ -253,7 +621,7 @@ const WhisperUI = {
 
     } catch (error) {
       console.error('[WhisperUI] Save error:', error);
-      alert('Failed to save whisper. Please try again.');
+      UI.showToast('Couldn\'t save whisper — try again');
     } finally {
       this.isSaving = false;
       if (submitBtn) {
@@ -506,7 +874,7 @@ const WhisperUI = {
 
     } catch (error) {
       console.error('[WhisperUI] Batch reflect error:', error);
-      alert('Failed to generate reflection. Please try again.');
+      UI.showToast('Couldn\'t generate reflection — try again');
     } finally {
       if (reflectBtn) {
         reflectBtn.disabled = false;

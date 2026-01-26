@@ -172,7 +172,7 @@ const UI = {
       this.showToast('Note saved!');
     } catch (error) {
       console.error('Failed to save note:', error);
-      this.showToast('Failed to save note');
+      this.showToast('Couldn\'t save — check your connection');
     } finally {
       this.setProcessing(false);
     }
@@ -777,16 +777,16 @@ const UI = {
   renderEmptyState(type, searchQuery = '') {
     const states = {
       notes: {
-        title: 'No notes yet',
-        description: 'Capture your first thought',
+        title: 'Start capturing',
+        description: 'Write what\'s on your mind — I\'ll remember it for you',
         action: {
           label: 'Create Note',
           onclick: 'UI.focusNoteInput()'
         }
       },
       actions: {
-        title: 'No actions yet',
-        description: 'Actions will appear when you capture tasks and commitments in your notes',
+        title: 'Actions surface from notes',
+        description: 'When you capture meetings or decisions, action items will appear here',
         action: null
       },
       twin: {
@@ -795,8 +795,8 @@ const UI = {
         action: null
       },
       search: {
-        title: `No results for "${searchQuery}"`,
-        description: 'Try a different search term',
+        title: `Nothing found for "${searchQuery}"`,
+        description: 'Try different keywords or create a new note',
         action: null
       }
     };
@@ -1616,7 +1616,7 @@ const UI = {
       }
     } catch (error) {
       console.error('Failed to save edit:', error);
-      this.showToast('Failed to save');
+      this.showToast('Couldn\'t save — try again');
     }
   },
 
@@ -1726,7 +1726,7 @@ const UI = {
 
     } catch (error) {
       console.error('Failed to save summary edit:', error);
-      this.showToast('Failed to save');
+      this.showToast('Couldn\'t save — try again');
     }
   },
 
@@ -1827,7 +1827,7 @@ const UI = {
 
     } catch (error) {
       console.error('Failed to save insight edit:', error);
-      this.showToast('Failed to save');
+      this.showToast('Couldn\'t save — try again');
     }
   },
 
@@ -1991,7 +1991,7 @@ const UI = {
 
     } catch (error) {
       console.error('Failed to open note detail:', error);
-      this.showToast('Failed to open note');
+      this.showToast('Couldn\'t open note — try again');
     }
   },
 
@@ -2886,7 +2886,7 @@ const UI = {
 
     } catch (error) {
       console.error('Failed to save feedback:', error);
-      this.showToast('Failed to save feedback');
+      this.showToast('Couldn\'t save feedback — try again');
     }
   },
 
@@ -2947,7 +2947,7 @@ const UI = {
 
     } catch (error) {
       console.error('Failed to save comment:', error);
-      this.showToast('Failed to save comment');
+      this.showToast('Couldn\'t save comment — try again');
     }
   },
 
@@ -3326,7 +3326,7 @@ const UI = {
       }
     } catch (error) {
       console.error('Failed to track decision:', error);
-      this.showToast('Failed to track decision');
+      this.showToast('Couldn\'t track decision — try again');
     }
   },
 
@@ -3434,7 +3434,7 @@ const UI = {
       this.showToast('Copied!');
     } catch (error) {
       console.error('Failed to copy:', error);
-      this.showToast('Failed to copy');
+      this.showToast('Couldn\'t copy — try again');
     }
   },
 
@@ -3517,7 +3517,7 @@ const UI = {
         this.showToast('Note deleted');
       } catch (error) {
         console.error('[UI] Failed to delete note:', error);
-        this.showToast('Failed to delete');
+        this.showToast('Couldn\'t delete — try again');
       }
     }
   },
@@ -4219,7 +4219,7 @@ const UI = {
       this.showToast('Backup exported!');
     } catch (error) {
       console.error('Failed to export:', error);
-      this.showToast('Failed to export');
+      this.showToast('Couldn\'t export — try again');
     }
   },
 
