@@ -2,45 +2,104 @@
 
 ## Your Mirror in Code.
 
-**Version:** 9.3.0
-**Date:** January 25, 2026
+**Version:** 9.5.0
+**Date:** January 27, 2026
 **Author:** Rox
-**Status:** Phase 17 Complete — Building toward PAMP
+**Status:** Phase 18 — Portable Memory Export
 
 ---
 
-# THE VISION: PAMP
+# THE VISION
 
-## Portable AI Memory Protocol
+## Your Data. Your Ownership. Portable Anywhere.
 
-**Inscript is building PAMP — the Portable AI Memory Protocol.**
+**Inscript is building the most trusted personal AI memory.**
 
-> Your memory. Your data. Portable across any AI.
+> Your memory. Your data. Exportable anywhere. Owned by you.
 
-### What is PAMP?
+### What Inscript Provides
 
-PAMP is the user-owned memory layer for the AI age. Instead of every AI app building siloed memory systems, PAMP provides a universal, encrypted, portable memory that:
+1. **You own it** — Your memories, encrypted with your keys
+2. **You can leave** — Export everything, take it anywhere
+3. **We can't see it** — True E2E encryption means Inscript cannot read your data
+4. **Any AI can use it** — Export works with ChatGPT, Claude, any AI
 
-1. **You own** — Your memories are encrypted with your keys, stored in your cloud
-2. **Any AI can access (with permission)** — ChatGPT, Claude, Gemini, your company's internal tools
-3. **Follows you everywhere** — Switch apps, keep your memory
-4. **Gets smarter over time** — The more you use AI, the better all AI knows you
+### Why This Matters
 
-### Why PAMP Matters
+**Today:** AI apps lock in your data. You lose everything if you leave. Your context is fragmented across ChatGPT, Claude, Notion, and a dozen other tools.
 
-**Today:** Every AI app starts from zero. You repeat yourself constantly. Your context is fragmented across ChatGPT, Claude, Notion, and a dozen other tools.
-
-**With PAMP:** Every AI already knows your world — the people, patterns, preferences — with your permission. One memory layer. Universal access.
+**With Inscript:** Your memory is portable. Export it. Take it anywhere. We earn your loyalty through experience, not lock-in.
 
 ### Strategic Phases
 
 | Phase | Focus | Status |
 |-------|-------|--------|
-| **Phase 1: Consumer Love** | Build an app people can't live without | ✅ Current |
-| **Phase 2: Platform APIs** | Let developers build on PAMP | Next |
-| **Phase 3: Protocol** | Open standard for portable AI memory | Future |
+| **Phase 1: Consumer Love** | Build an app people can't live without | ✅ Complete |
+| **Phase 2: Portable Export** | Full data export with structured facts | 🔄 Current |
+| **Phase 3: Platform APIs** | Let developers build on Inscript data | Next |
+| **Phase 4: Protocol** | Open standard for portable AI memory | Future |
 
-**Inscript's role:** The first consumer app built on PAMP. We prove the value, build the user base, then open the protocol.
+**Inscript's moat:** Being the best place to create and curate personal AI memory — not the only place you can use it.
+
+---
+
+# PRIVACY PHILOSOPHY (NON-NEGOTIABLE)
+
+> **Core Principle:** Users own their data completely. Inscript CANNOT access user data — not "won't", but "cannot".
+
+## The Four Pillars
+
+### 1. User Ownership is Absolute
+- **Export everything by default** — No paternalistic filtering
+- User's exported file = user's responsibility to safeguard
+- We don't decide what's "too sensitive" to export — users decide
+- Privacy toggles are USER CHOICE, not app decisions
+
+### 2. Inscript Cannot Read User Data
+- **True E2E encryption** — Data encrypted client-side with user's keys
+- Server stores ciphertext only — Inscript cannot decrypt
+- Even if compelled, we cannot produce plaintext
+- This is architectural, not policy — we literally cannot access the data
+
+### 3. Zero-Retention AI Providers Only
+- LLM API calls must use providers that don't train on inputs
+- **Approved:** Anthropic API, OpenAI API (both have zero-retention policies)
+- Never use consumer-facing AI (ChatGPT web, Claude web) for user data
+- All LLM touchpoints documented and audited
+
+### 4. No Logging of Content
+- Log IDs, timestamps, error codes — never content
+- No user notes, messages, or entity names in logs
+- Logging is for debugging, not surveillance
+
+## Privacy vs. Paternalism
+
+| Paternalistic (Wrong) | User-First (Right) |
+|----------------------|-------------------|
+| "We detected sensitive content, excluding from export" | "Export includes everything. You decide what to do with it." |
+| "Private conversations can't be exported" | "All conversations export. Mark private if YOU want to exclude." |
+| "We filter potentially harmful data" | "Your data. Your responsibility." |
+
+## Trust Model
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    USER'S DEVICE                             │
+│  ┌─────────────┐                                             │
+│  │ Plaintext   │ ──encrypted with user's keys──┐             │
+│  │ (readable)  │                               │             │
+│  └─────────────┘                               ▼             │
+└────────────────────────────────────────────────┼─────────────┘
+                                                 │
+┌────────────────────────────────────────────────┼─────────────┐
+│                   INSCRIPT SERVERS                           │
+│                                                ▼             │
+│  ┌─────────────┐                                             │
+│  │ Ciphertext  │  (Inscript cannot decrypt)                  │
+│  │ (unreadable)│                                             │
+│  └─────────────┘                                             │
+└─────────────────────────────────────────────────────────────┘
+```
 
 ---
 
@@ -50,29 +109,28 @@ PAMP is the user-owned memory layer for the AI age. Instead of every AI app buil
 
 Inscript is the first **Personal AI Memory** — an AI that actually remembers you. Unlike traditional note apps that store text, or AI assistants that forget between conversations, Inscript builds a living model of your life: the people you care about, the patterns you can't see, the thoughts that shape who you are.
 
-Inscript is also the first app built on PAMP (Portable AI Memory Protocol), pioneering user-owned portable memory that will work across all AI systems.
+**And you can take it all with you.**
 
 ## The One-Liner
 
 > "Inscript is the first AI that actually remembers you.
-> Not just your notes — your world."
+> And the first that lets you leave with everything."
 
 ## Category
 
-**Personal AI Memory (PAMP Protocol)** — We created this category.
+**Personal AI Memory** — We created this category.
 
 ## Current State
 
 | Metric | Value |
 |--------|-------|
 | Production URL | https://digital-twin-ecru.vercel.app |
-| Version | 9.3.0 |
-| Memory System | ~95% Mem0 Parity |
-| PAMP Phase | Phase 1 (Consumer Love) |
-| Beta Status | Production (Phase 17 complete) |
+| Version | 9.5.0 |
+| Memory System | ~95% Complete |
+| Export System | Sprint 1 ✅, Sprint 2 🔄 |
+| Beta Status | Production (Phase 18 in progress) |
 | Design System | SoHo Editorial Aesthetic ✅ |
 | Mobile Responsive | Verified at 375px ✅ |
-| Phases Complete | 8, 9, 10, 11, 13A-E, 14, 15, 16, 17 |
 
 ---
 
@@ -80,25 +138,26 @@ Inscript is also the first app built on PAMP (Portable AI Memory Protocol), pion
 
 ## The Landscape Today
 
-Every tool that captures your thoughts treats them as isolated fragments:
+Every tool that captures your thoughts treats them as isolated fragments — and locks them in:
 
 | Tool Type | What It Does | What It Misses |
 |-----------|--------------|----------------|
-| **Note apps** (Notion, Apple Notes) | Store text | Don't understand it |
-| **AI assistants** (ChatGPT, Claude) | Brilliant analysis | Forget you between sessions |
-| **Journals** (Day One) | Help you reflect | Don't reflect *back* |
-| **Second brains** (Roam, Obsidian) | Link information | Require manual connections |
+| **Note apps** (Notion, Apple Notes) | Store text | Don't understand it. Can't export context. |
+| **AI assistants** (ChatGPT, Claude) | Brilliant analysis | Forget you between sessions. Memory locked in. |
+| **Journals** (Day One) | Help you reflect | Don't reflect *back*. Export is raw text only. |
+| **Second brains** (Roam, Obsidian) | Link information | Require manual connections. No AI understanding. |
 
-**The result:** You're left connecting the dots yourself. Your tools don't know who Marcus is. They don't notice that you write about work stress on Sundays. They can't tell you when you started feeling overwhelmed.
+**The result:** Your tools don't know who Marcus is. They don't notice patterns. And when you leave, you lose everything you taught them.
 
 ## The Opportunity
 
-**What if an AI actually learned your world?**
+**What if an AI actually learned your world — and let you take that learning anywhere?**
 
 - Knew who the people in your life are
 - Noticed patterns you couldn't see
 - Remembered context from months ago
 - Reflected insights back to you
+- **Exported everything so you're never locked in**
 
 This is Inscript.
 
@@ -114,6 +173,7 @@ No special syntax. No tags. Just write about your day.
 ### Inscript Learns
 The AI extracts and remembers:
 - **People** mentioned (Marcus, Mom, Dr. Lee)
+- **Facts** about them (works_at, role, relationship)
 - **Themes** and patterns (work stress, health goals)
 - **Context** accumulating over time
 - **Connections** between entities
@@ -125,8 +185,12 @@ Every note gets a thoughtful reflection that:
 - Connects to your world (NOTICED)
 - Offers a question or insight (OFFERED)
 
-### Inscript Grows
-The more you use it, the smarter it gets. The memory system uses tiered retrieval — starting with high-level summaries, drilling down only when needed.
+### Inscript Exports
+When you want to leave, or use your memory elsewhere:
+- **Export everything** — One click, full JSON
+- **Structured facts** — Not just prose, but queryable data
+- **Full conversations** — Every MIRROR message
+- **Works anywhere** — ChatGPT, Claude, any AI that accepts text
 
 ---
 
@@ -134,43 +198,35 @@ The more you use it, the smarter it gets. The memory system uses tiered retrieva
 
 ## 1. Living Memory System
 
-Inscript maintains a **three-layer memory hierarchy**:
+Inscript maintains a **five-layer memory hierarchy**:
 
-### Layer 1: Category Summaries
-Pre-computed summaries of your world by category (work, relationships, health, etc.). Updated automatically as you write.
-
-```
-WORK LIFE: Building Anthropic project with Sarah. Marcus advising
-on launch strategy. Focused on product-market fit.
-```
-
-### Layer 2: Entity Knowledge
-Detailed knowledge about specific people, places, and projects:
-
-| Entity | Type | Relationship | Mentions | Sentiment |
-|--------|------|--------------|----------|-----------|
-| Marcus | person | close friend | 6 | +0.58 |
-| Sarah | person | cofounder | 3 | +0.42 |
-| Anthropic | project | - | 4 | +0.35 |
+| Layer | Name | What It Stores |
+|-------|------|----------------|
+| **1** | Core Identity | Profile, communication style, values |
+| **2** | Semantic Memory | Entities, facts, relationships |
+| **3** | Episodic Memory | Notes, conversations, events |
+| **4** | Procedural Memory | Patterns, preferences, habits |
+| **5** | Embeddings | Vector representations for search |
 
 ### Key People System (Priority Override)
 
-Explicitly added people have HIGHEST priority in memory retrieval:
+Explicitly added people have HIGHEST priority in memory retrieval.
 
-| Source | Priority | Example |
-|--------|----------|---------|
-| `user_key_people` | HIGHEST | "Seri: dog" (explicitly added) |
-| `user_entities` | Normal | "Jamie" (auto-extracted) |
+### Structured Facts (NEW — Phase 18)
 
-**Key insight:** The relationship field can include pets ("dog", "cat"), not just human relationships.
+Not just prose descriptions, but queryable facts:
 
-**Database constraint (8.5.0):** Added unique constraint on `(user_id, name)` for proper upsert operations.
-
-### Layer 3: Full Memory Retrieval
-When summaries aren't enough, Inscript performs hybrid retrieval:
-- **Vector search** for semantic similarity
-- **Keyword search** for proper nouns
-- **Graph traversal** for relationships
+```json
+{
+  "name": "Marcus",
+  "type": "person",
+  "facts": [
+    { "predicate": "works_at", "object": "Anthropic", "confidence": 0.95 },
+    { "predicate": "role", "object": "Engineer", "confidence": 0.9 },
+    { "predicate": "relationship", "object": "close_friend", "confidence": 1.0 }
+  ]
+}
+```
 
 ## 2. Intelligent Reflection
 
@@ -182,530 +238,64 @@ Every note receives a reflection with three layers:
 | **NOTICED** | Connect to memory | "This is the third time the launch has slipped this month" |
 | **OFFERED** | Question or insight | "What made the conversation with Jamie feel different this time?" |
 
-## 3. Memory Operations
-
-The system performs four operations on every note:
-
-| Operation | When | Example |
-|-----------|------|---------|
-| **ADD** | New entity discovered | "Jake" mentioned for first time |
-| **UPDATE** | Known entity, new context | Marcus mentioned again with new info |
-| **DELETE** | Entity explicitly removed | "Marcus and I are no longer friends" |
-| **NOOP** | No memory changes needed | Generic note with no entities |
-
-## 4. Pattern Recognition
-
-Inscript detects patterns you might miss:
-
-- **Frequency patterns:** "You mention Marcus when making decisions"
-- **Temporal patterns:** "Work stress spikes on Sunday evenings"
-- **Sentiment trends:** "Your feelings about the project have improved"
-- **Behavioral patterns:** "You start projects but lose momentum at week 3"
-
-## 5. MIRROR Tab
+## 3. MIRROR Tab
 
 A conversational interface for deeper exploration:
 
 - Ask questions about your patterns
 - Explore what Inscript knows about you
-- Verify or correct detected patterns
 - Have Socratic dialogue about your thoughts
+- **Full message history exported** (NEW — Phase 18)
 
-## 6. TWIN Tab
+## 4. Portable Memory Export
 
-Your AI profile showing:
+**One click. Everything you've taught Inscript. Downloadable.**
 
-- Known entities with importance scores
-- Detected patterns (verified and unverified)
-- Sentiment trends over time
-- Memory statistics
+Export includes:
+- **Identity** — Name, goals, communication preferences
+- **Entities** — People, projects, places with structured facts
+- **Notes** — All entries with categories and sentiment
+- **Conversations** — Full MIRROR message history
+- **Patterns** — Detected habits and preferences
 
-## 7. Knowledge Pulse
+Works with:
+- ChatGPT (upload or paste)
+- Claude (upload or paste)
+- Any AI that accepts text/JSON
 
-After every note, Inscript shows what it learned:
+## 5. User-Controlled Privacy
 
-```
-✓ Saved
+**Privacy toggles are USER CHOICE, not app decisions.**
 
-◆ Learned: Marcus is advising on the project
-○ Updated: Work life summary
-○ Sentiment: +0.7 toward Anthropic
-```
-
-## 8. Entity Cards
-
-Click any name to see accumulated knowledge:
-
-```
-┌─────────────────────────────┐
-│ [M]  MARCUS                 │
-│      Close friend           │
-│ ─────────────────────────── │
-│ CONTEXT                     │
-│ Career advisor, mentioned   │
-│ when processing decisions.  │
-│ ─────────────────────────── │
-│ SENTIMENT                   │
-│ ████████░░ +0.58            │
-│ ─────────────────────────── │
-│ 6 mentions · Since Jan '26  │
-└─────────────────────────────┘
-```
-
-## 9. Privacy-First Architecture
-
-- Notes encrypted at rest and in transit
-- Data never reviewed by our team
-- Data never sold or shared
-- Content never used to train AI (enterprise LLM tier)
-- Delete means delete (hard delete within 24 hours)
+- Mark any entity as private → excluded from export
+- Mark any note as private → excluded from export
+- Default: everything exports (user decides what to exclude)
+- Inscript doesn't decide what's "too sensitive"
 
 ---
 
-# PHASE 15 FEATURES (Experience Transformation)
+# THE MOAT (Refined)
 
-## 10. State of You (Monthly Report)
-
-Auto-generated monthly digest that synthesizes patterns, trends, and insights.
-
-**Report Structure:**
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-JANUARY 2026 — STATE OF YOU
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-TOP THEMES THIS MONTH
-1. Work transition (mentioned 12 times)
-2. Health focus (8 times)
-3. Family (6 times)
-
-PEOPLE YOU ENGAGED WITH
-◆ Marcus — 9 mentions (+2 vs December)
-◆ Sarah — 4 mentions
-◆ Mom — 3 mentions
-
-SENTIMENT TRAJECTORY
-Work: +0.42 → +0.61 ↑
-Health: +0.35 → +0.55 ↑
-
-PATTERNS DETECTED
-• You write about work decisions on Sundays
-• Marcus appears when you're processing uncertainty
-
-A QUESTION TO SIT WITH
-"You mentioned 'should' 23 times this month.
-Whose expectations are you carrying?"
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
-
-**Value:** Creates ritual, makes long-term value visible, generates shareable moments.
-
-**Access:** TWIN tab → Reports section
-
-## 11. Whispers (Quick Capture)
-
-Frictionless capture mode without triggering full reflection.
-
-**UX Flow:**
-1. Swipe left on input OR tap whisper icon
-2. Minimal UI (just input + send)
-3. Content saved, entities extracted in background
-4. Simple "✓ Heard" confirmation
-5. Optional: "Reflect on this later" queue
-
-**Value:** Reduces friction dramatically. Users capture 3x more moments. Memory gets richer.
-
-**Access:** NOTES tab → Whisper mode toggle
-
-## 12. Memory Moments (Proactive Surfacing)
-
-Transforms Inscript from reactive to proactive companion.
-
-**Moment Types:**
-
-| Type | Trigger | Example |
-|------|---------|---------|
-| `anniversary` | Date + 1 year | "This time last year, you were stressed about the reorg" |
-| `dormant_entity` | Key person not mentioned 21+ days | "It's been 3 weeks since you mentioned Marcus" |
-| `progress` | Sentiment improvement | "You mentioned imposter syndrome 8x in Oct, only 1x in Nov" |
-| `pattern` | Pattern threshold | "Sunday stress is becoming a pattern — 4 weeks in a row" |
-| `callback` | Related to recent note | "This connects to what you shared about [X] last week" |
-
-**Value:** Creates "holy shit" moments without user effort. Changes relationship from journaling tool to active companion.
-
-**Access:** NOTES tab → Memory Moments surface (daily notification opt-in)
-
----
-
-# MEMORY SYSTEM ARCHITECTURE
-
-## Overview
-
-Inscript achieves **100% feature parity with Mem0**, the industry-leading memory layer for AI applications.
-
-## Three-Tier Retrieval
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    TIER 1: CATEGORY SUMMARIES                │
-│                    (Fastest, ~50 tokens, 45ms)               │
-└──────────────────────────┬──────────────────────────────────┘
-                           │ If insufficient
-                           ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    TIER 2: TOP ENTITIES                      │
-│                    (Medium, ~200 tokens, 78ms)               │
-└──────────────────────────┬──────────────────────────────────┘
-                           │ If insufficient
-                           ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    TIER 3: FULL HYBRID RETRIEVAL             │
-│                    (Complete, ~500-2000 tokens, 245ms)       │
-└─────────────────────────────────────────────────────────────┘
-```
-
-## Memory Pipeline Components
-
-| Component | File | Purpose |
-|-----------|------|---------|
-| Query Synthesis | `api/synthesize-query.js` | Entity detection, query expansion |
-| Summary Evolution | `api/evolve-summary.js` | LLM-powered rewriting (not append) |
-| Hybrid Retrieval | `api/hybrid-retrieval.js` | Vector + keyword + graph search |
-| Tiered Retrieval | `api/tiered-retrieval.js` | Tier 1 → 2 → 3 escalation |
-| Context Assembly | `api/assemble-context.js` | Token-limited with time decay |
-| Unified Pipeline | `api/memory-retrieve.js` | Orchestrates all components |
-
-## Time Decay Scoring
-
-Memories fade naturally based on importance:
-
-| Importance | Decay Starts | Rate |
-|------------|--------------|------|
-| trivial | 7 days | -20%/week |
-| low | 14 days | -15%/week |
-| medium | 30 days | -10%/week |
-| high | 90 days | -5%/week |
-| critical | Never | 0% |
-
-## Automated Maintenance
-
-Four cron jobs maintain memory health:
-
-| Job | Schedule | Purpose |
-|-----|----------|---------|
-| Cleanup | Daily 3 AM | Archive expired memories |
-| Decay | Sunday 4 AM | Apply importance decay |
-| Consolidation | Daily 2 AM | Flag duplicates |
-| Re-index | Monthly | Archive stale memories |
-
----
-
-# USER JOURNEY
-
-## The Aha Moment Ladder
-
-| Timeframe | Experience | Aha Moment |
-|-----------|------------|------------|
-| **Session 1** | First note uses onboarding data | "It already knows something about me" |
-| **Day 2-3** | AI references previous note | "It remembered what I said" |
-| **Day 3-7** | Entity card appears | "It figured out who Marcus is" |
-| **Day 7-14** | Pattern surfaced | "It noticed I stress on Sundays" |
-| **Day 14-30** | Cross-memory connection | "It knows me better than I do" |
-| **Day 30+** | Can't imagine not having it | "This is part of how I think" |
-
-## The Big Aha
-
-> The user asks a question about themselves, and Inscript answers accurately —
-> using information they shared but forgot they shared.
-
-**Example:**
-> User: "When did I start feeling stressed about work?"
->
-> Inscript: "Looking at your notes, the work stress started around October 15th —
-> right after the reorg announcement. Before that, your work notes were mostly
-> positive. Since then, you've mentioned 'pressure' or 'stress' in 8 of 12
-> work-related notes."
-
----
-
-# ONBOARDING
-
-## The 8-Screen Flow
-
-### Screen 0: Welcome
-```
-INSCRIPT
-Your mirror in code.
-
-I'm an AI that learns your world — the people,
-patterns, and thoughts that make you who you are.
-
-[Begin →]
-```
-
-### Screen 1: Name
-Simple text input for personalization.
-
-### Screen 2: Season of Life
-Select all that resonate:
-- Building something new
-- Leading others
-- Learning / Growing
-- In transition
-- Caring for others
-- Creating
-- Healing / Recovering
-- Exploring
-- Settling in
-- Starting fresh
-
-### Screen 3: What's On Your Mind
-Pick up to 3:
-- Work, Relationships, Health, Money, Family
-- A decision, The future, Myself, A project, Something I lost
-
-### Screen 4: Depth Question
-Dynamic based on selections:
-- IF "Building" → "What are you building?"
-- IF "In transition" → "What's changing for you right now?"
-- IF "Healing" → "What are you working through?"
-- FALLBACK → "What's one thing you'd want me to understand about your life?"
-
-### Screen 5: Your People
-```
-Who might you mention when you write?
-
-Name at least one person I should recognize.
-
-┌─────────────────────────────────┐
-│ e.g., Marcus — close friend     │
-└─────────────────────────────────┘
-
-[+ Add someone else]
-```
-
-### Screen 6: Privacy Promise
-```
-Before we begin, a promise:
-
-Your thoughts stay private.
-
-────────────────────────
-
-✓ Your notes are never reviewed by our team.
-✓ We don't sell or share your data.
-✓ We don't use your content to train AI.
-
-Your world is yours alone.
-
-────────────────────────
-
-[I'm ready →]
-```
-
-### Screen 7: The WOW Screen
-Visual world forming with personalized insight, then first note prompt.
-
----
-
-# DESIGN SPECIFICATION
-
-## Visual Identity
-
-**Philosophy:** "The love child of Linear's precision and Vogue's editorial elegance."
-
-### Colors
-- **Paper:** #FFFFFF (primary), #FAFAFA (warm), #F7F7F5 (cream)
-- **Ink:** #000000 (primary), #1A1A1A (rich), #333333 (soft)
-- **Silver:** Full scale from #F9F9F9 to #171717
-- **Color is earned:** Only errors use red (#8B0000)
-
-### Typography
-| Use | Font | Example |
-|-----|------|---------|
-| Display | Playfair Display | "INSCRIPT" |
-| Editorial | Cormorant Garamond | AI reflections |
-| Body | Inter | UI elements |
-| Mono | JetBrains Mono | Timestamps |
-
-### Principles
-1. Black and white dominance
-2. Typography-first (no decorative elements)
-3. Thin 1px borders, no shadows
-4. Generous whitespace
-5. Subtle, purposeful motion
-
----
-
-# TECHNICAL ARCHITECTURE
-
-## Stack
-
-| Layer | Technology |
-|-------|------------|
-| Frontend | Vanilla JS, mobile-responsive PWA |
-| Backend | Vercel serverless functions (Node.js) |
-| Database | Supabase (Postgres + pgvector) |
-| AI | Anthropic Claude (Sonnet) + OpenAI embeddings |
-| Auth | Supabase Auth + PIN encryption |
-
-## System Architecture
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         USER                                    │
-└────────────────────────────────┬────────────────────────────────┘
-                                 │
-                                 ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    index.html + js/*.js                         │
-│    (Notes Tab | Actions Tab | TWIN Tab | MIRROR Tab)            │
-└────────────────────────────────┬────────────────────────────────┘
-                                 │
-         ┌───────────────────────┼───────────────────────┐
-         ▼                       ▼                       ▼
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│  js/app.js      │    │  js/sync.js     │    │  js/pin.js      │
-│  (Pipeline)     │    │  (Cloud E2E)    │    │  (Encryption)   │
-└────────┬────────┘    └────────┬────────┘    └─────────────────┘
-         │                      │
-         ▼                      ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    api/*.js (Vercel Serverless)                 │
-│  analyze | chat | memory-retrieve | tiered-retrieval | mirror   │
-└────────────────────────────────┬────────────────────────────────┘
-                                 │
-         ┌───────────────────────┼───────────────────────┐
-         ▼                       ▼                       ▼
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│  Supabase       │    │  Anthropic      │    │  OpenAI         │
-│  PostgreSQL     │    │  Claude API     │    │  Embeddings     │
-│  + pgvector     │    │  (Enterprise)   │    │  (ada-002)      │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-```
-
-## Database Schema
-
-### Core Tables
-| Table | Purpose |
-|-------|---------|
-| `notes` | Encrypted note storage |
-| `onboarding_data` | User onboarding responses |
-| `user_entities` | Extracted entities with importance/sentiment |
-| `category_summaries` | Pre-computed category summaries |
-| `note_embeddings` | pgvector embeddings for semantic search |
-| `entity_relationships` | Relationship graph between entities |
-| `user_feedback` | Thumbs up/down on reflections |
-
-### Memory Tables
-| Table | Purpose |
-|-------|---------|
-| `memory_inferences` | Cross-memory reasoning results |
-| `entity_sentiment_history` | Sentiment tracking over time |
-| `memory_jobs` | Async processing queue |
-| `detected_patterns` | Pattern detection results |
-
-### Phase 13 Tables
-| Table | Purpose |
-|-------|---------|
-| `user_patterns` | User behavioral patterns |
-| `mirror_conversations` | MIRROR chat history |
-| `mirror_sessions` | MIRROR session tracking |
-
-## API Endpoints
-
-| Endpoint | Purpose |
-|----------|---------|
-| `/api/analyze` | Main reflection + memory pipeline |
-| `/api/chat` | Socratic dialogue with memory context |
-| `/api/mirror` | MIRROR tab conversations |
-| `/api/memory-retrieve` | Unified memory retrieval |
-| `/api/tiered-retrieval` | Tier 1/2/3 retrieval |
-| `/api/memory-update` | Memory CRUD operations |
-| `/api/extract-entities` | LLM entity extraction |
-| `/api/embed` | OpenAI embeddings |
-| `/api/patterns` | Pattern detection |
-| `/api/vision` | Image analysis (Claude Vision) |
-
-## Privacy Requirements
-
-| Requirement | Implementation |
-|-------------|----------------|
-| No human review | No access to note content in operations |
-| No data selling | Revenue from subscriptions only |
-| No AI training | Enterprise LLM tier with training opt-out |
-| Delete = delete | Hard delete within 24 hours |
-| Encryption | E2E with user PIN, at rest via Supabase |
-
----
-
-# SUCCESS METRICS
-
-## Activation Metrics
-
-| Metric | Definition | Target |
-|--------|------------|--------|
-| Time to First Callback | Days until AI references previous note | < 3 days |
-| Entity Recognition | % users who see entity card | > 60% by Day 7 |
-| Pattern Surface | % users who receive pattern insight | > 40% by Day 14 |
-| Memory Query | % users who ask about themselves | > 20% by Day 30 |
-
-## Retention Metrics
-
-| Metric | Target |
-|--------|--------|
-| D7 Retention | > 50% |
-| D30 Retention | > 30% |
-| "Very Disappointed" (Sean Ellis) | > 40% |
-
-## Memory System Metrics
-
-| Metric | Value |
-|--------|-------|
-| Retrieval Accuracy | +26% vs baseline |
-| Response Latency | 91% lower vs loading all memories |
-| Token Usage | 90% reduction vs full context |
-| Memory Relevance | 94% user-rated relevance |
-
-## North Star
-
-> Users who receive a "callback" (AI references previous note) within
-> their first 5 notes retain at 3x the rate of users who don't.
-
----
-
-# COMPETITIVE POSITIONING
-
-## Competitive Landscape
-
-| Competitor | Approach | Our Advantage |
-|------------|----------|---------------|
-| **ChatGPT** | General AI with basic memory | Deep structured memory, entity graph, tiered retrieval |
-| **Notion AI** | Document-first with AI assist | Person-first, automatic learning, no manual linking |
-| **Day One** | Journaling with basic AI | Pattern recognition, entity tracking, sentiment |
-| **Mem** | Similar vision | Execution speed, design quality, Mem0 parity |
-| **Reflect** | Manual note-linking | Automatic intelligent connections |
-
-## The Moat
-
-**Competitors can copy features. They can't copy accumulated understanding.**
+## Compounding Memory + Trust
 
 Every day a user spends with Inscript:
 - More entities learned
+- More facts extracted
 - More patterns detected
 - More context accumulated
-- More switching cost
 
-**A user at 6 months cannot switch without losing 6 months of learning.**
+**A user at 6 months has 6 months of learning.**
 
-### The PAMP Advantage
+## But No Lock-In
 
-With PAMP, the moat becomes a gift:
-- **Users never lose their memory** — It's portable, owned by them
-- **Lock-in becomes lock-with** — They stay because Inscript is the best experience
-- **Network effects** — As more apps support PAMP, Inscript becomes more valuable as the source of truth
+The traditional moat is lock-in. We reject that.
 
-**The real moat:** Being the primary place where personal AI memory is created and curated.
+**Inscript's moat:**
+- **Trust** — We cannot see your data. Verifiable by architecture.
+- **Experience** — The best place to create and curate memory.
+- **Portability** — You can leave anytime. You stay because we're best.
+
+**The real moat:** Being the primary place where personal AI memory is created and curated — not the only place you can use it.
 
 ---
 
@@ -713,78 +303,88 @@ With PAMP, the moat becomes a gift:
 
 ## Completed Phases
 
-### Phase 8: Intelligent Twin ✅
-- Twin profile and learning
-- Entity extraction pipeline
-- Basic memory operations
+### Phase 1-17: Consumer Love ✅
+- Intelligent Twin, Personalization
+- Entity Extraction & Relationships
+- Pattern Detection, MIRROR Conversations
+- Mem0 Parity (vector search, tiered retrieval)
+- Voice input, Ambient recording
+- SoHo Editorial Design
 
-### Phase 9: Personalization ✅
-- 8-screen onboarding flow
-- Seeded people recognition
-- Life season context
+## Current Phase
 
-### Phase 10: Entity Extraction & Relationships ✅
-- LLM-powered extraction
-- Importance classification
-- Relationship graph
-- Semantic search (pgvector)
-- Cross-memory reasoning
+### Phase 18: Portable Memory Export 🔄
 
-### Phase 11: Inscript Rebrand ✅
-- Digital Twin → Inscript rebrand
-- Editorial design system
-- Privacy promise
-- Production deployment
+**Sprint 1 (Complete):**
+- Export API endpoint
+- Data layer (queries, transforms, privacy)
+- Export UI in Settings
+- JSON download working
 
-### Phase 13: Patterns & MIRROR ✅
-- Pattern detection
-- Pattern verification UI
-- MIRROR conversational tab
-- Signal tracking
-
-### Mem0 Parity ✅
-- Query synthesis
-- Summary evolution (LLM rewrite)
-- Hybrid retrieval (vector + keyword)
-- Tiered retrieval (3 tiers)
-- Context assembly with time decay
-- Automated maintenance crons
+**Sprint 2 (In Progress):**
+- Structured facts table (`entity_facts`)
+- Privacy columns (user choice)
+- MIRROR messages in export
+- Updated extraction for facts
 
 ## Upcoming Phases
 
-### Phase 14: Production Hardening
-| Priority | Feature |
-|----------|---------|
-| P0 | Production testing of memory system |
-| P0 | Fix any integration bugs |
-| P1 | Error tracking (Sentry) |
-| P1 | Performance monitoring |
-| P2 | Analytics dashboard |
+### Phase 19: Privacy Architecture Audit
+| Priority | Task |
+|----------|------|
+| P0 | Verify E2E encryption is client-side |
+| P0 | Document all LLM touchpoints |
+| P1 | Audit logging for content leaks |
+| P1 | Document data flow end-to-end |
 
-### Phase 15: Experience Transformation
+### Phase 20: Platform APIs
 | Priority | Feature |
 |----------|---------|
-| P0 | Vogue minimalist redesign |
-| P1 | Split ui.js into modules |
-| P1 | Improved loading states |
-| P2 | Dark mode |
+| P0 | `GET /api/export` — Full memory export |
+| P1 | `GET /api/context` — Context for queries |
+| P2 | Third-party app authorization |
 
-### Phase 16: Advanced Memory
-| Priority | Feature |
-|----------|---------|
-| P0 | Memory milestones (30/90/365 days) |
-| P0 | "What does Inscript know?" query |
-| P1 | Memory visualization |
-| P1 | Monthly memory summaries |
-| P2 | Memory export |
+---
 
-### Phase 17: Growth
-| Priority | Feature |
-|----------|---------|
-| P1 | Push notifications |
-| P1 | Weekly digest emails |
-| P2 | Sharing (privacy-preserving) |
-| P2 | Community features |
+# PRIVACY TECHNICAL SPECIFICATION
+
+## Encryption Model
+
+```
+User Device                    Inscript Servers
+┌──────────────┐              ┌──────────────┐
+│ User's Key   │              │ Ciphertext   │
+│ (never sent) │              │ (unreadable) │
+└──────┬───────┘              └──────────────┘
+       │                             ▲
+       │ encrypt()                   │
+       ▼                             │
+┌──────────────┐                     │
+│ Ciphertext   │─────────────────────┘
+└──────────────┘      (transmitted)
+```
+
+**Key principle:** User's encryption key never leaves their device. Server only stores ciphertext.
+
+## LLM Provider Requirements
+
+| Requirement | Anthropic API | OpenAI API | Consumer ChatGPT |
+|-------------|---------------|------------|------------------|
+| Zero data retention | ✅ Yes | ✅ Yes | ❌ No |
+| No training on inputs | ✅ Yes | ✅ Yes | ❌ No |
+| Approved for Inscript | ✅ Yes | ✅ Yes | ❌ No |
+
+## Logging Policy
+
+| Log Type | Allowed | Example |
+|----------|---------|---------|
+| Request IDs | ✅ | `req_abc123` |
+| Timestamps | ✅ | `2026-01-27T10:30:00Z` |
+| User IDs | ✅ | `user_xyz789` |
+| Error codes | ✅ | `AUTH_FAILED` |
+| Note content | ❌ | Never |
+| Entity names | ❌ | Never |
+| Message text | ❌ | Never |
 
 ---
 
@@ -795,15 +395,11 @@ With PAMP, the moat becomes a gift:
 | Term | Definition |
 |------|------------|
 | **Entity** | A person, place, project, or theme extracted from notes |
-| **Callback** | When AI references a previous note |
-| **Knowledge Pulse** | UI showing what Inscript learned from a note |
-| **Entity Card** | Popup showing accumulated knowledge about an entity |
-| **Pattern** | A behavioral or temporal trend detected across notes |
-| **Reflection** | AI's response to a user note (HEARD/NOTICED/OFFERED) |
-| **Category Summary** | Pre-computed summary of a life category |
-| **Tiered Retrieval** | Progressive memory lookup (summaries → entities → full) |
-| **Time Decay** | Gradual reduction of memory importance over time |
-| **Hybrid Retrieval** | Combining vector and keyword search |
+| **Fact** | A structured predicate/object pair about an entity |
+| **Export** | JSON file containing all user's memory data |
+| **Privacy Toggle** | User control to exclude items from export |
+| **E2E Encryption** | Client-side encryption where server cannot decrypt |
+| **Zero Retention** | LLM provider policy of not storing/training on inputs |
 
 ## Key Documents
 
@@ -812,133 +408,11 @@ With PAMP, the moat becomes a gift:
 | `CLAUDE.md` | Developer guide |
 | `docs/PRD.md` | This document |
 | `docs/STATUS.md` | Current project status |
-| `docs/MEMORY-SYSTEM.md` | Memory architecture deep dive |
-| `docs/INSCRIPT-STRATEGIC-FRAMEWORK.md` | Brand strategy |
-
-## Environment Variables
-
-| Variable | Purpose |
-|----------|---------|
-| `ANTHROPIC_API_KEY` | Claude API |
-| `OPENAI_API_KEY` | Embeddings |
-| `SUPABASE_URL` | Database URL |
-| `SUPABASE_ANON_KEY` | Frontend key |
-| `SUPABASE_SERVICE_KEY` | API-only key |
-| `RESEND_API_KEY` | PIN recovery emails |
-
----
-
-# PAMP TECHNICAL SPECIFICATION
-
-## The 5-Layer Memory Architecture
-
-PAMP mirrors human cognitive architecture:
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│  LAYER 1: CORE IDENTITY                                      │
-│  Profile, communication style, values, goals                 │
-├─────────────────────────────────────────────────────────────┤
-│  LAYER 2: SEMANTIC MEMORY                                    │
-│  Entities (people, places, projects), Facts, Relationships   │
-├─────────────────────────────────────────────────────────────┤
-│  LAYER 3: EPISODIC MEMORY                                    │
-│  Notes, Conversations, Meetings, Events                      │
-├─────────────────────────────────────────────────────────────┤
-│  LAYER 4: PROCEDURAL MEMORY                                  │
-│  Patterns, Preferences, Habits                               │
-├─────────────────────────────────────────────────────────────┤
-│  LAYER 5: EMBEDDINGS & RETRIEVAL                             │
-│  Vector representations for semantic search                  │
-└─────────────────────────────────────────────────────────────┘
-```
-
-## Design Principles
-
-1. **User Ownership First** — All data belongs to the user. Export is first-class.
-2. **Rich Over Shallow** — Not just "likes coffee" but WHO, WHAT, WHEN, WHY, confidence, relationships
-3. **Interface Agnostic** — Same data powers notes app, voice assistant, AR glasses, teddy bear
-4. **Privacy by Design** — Granular controls per-entity, per-memory
-
-## PAMP Export Format (JSON-LD)
-
-```json
-{
-  "@context": "https://pamp.inscript.ai/schema/v1",
-  "@type": "PAMPExport",
-  "version": "1.0.0",
-  "exportedAt": "2026-01-25T12:00:00Z",
-  "exportedBy": "Inscript v9.3.0",
-
-  "data": {
-    "profile": {
-      "name": { "display": "User Name" },
-      "communicationStyle": { "tone": "warm", "verbosity": "concise" }
-    },
-    "entities": [
-      {
-        "@type": "Entity",
-        "entityType": "person",
-        "name": "Marcus",
-        "description": "Close friend, career advisor",
-        "scores": { "importance": 0.85, "confidence": 0.9 },
-        "relationships": [
-          { "targetEntityId": "sarah-id", "relationshipType": "mutual_friend" }
-        ],
-        "facts": [
-          { "predicate": "advises_on", "object": "career decisions", "confidence": 0.9 }
-        ]
-      }
-    ],
-    "episodes": {
-      "notes": [ /* Note objects */ ],
-      "conversations": [ /* Conversation objects */ ]
-    },
-    "patterns": [
-      {
-        "@type": "Pattern",
-        "patternType": "behavioral",
-        "description": "Mentions Marcus when processing big decisions",
-        "confidence": 0.85,
-        "status": "confirmed"
-      }
-    ]
-  },
-
-  "integrity": {
-    "checksum": "sha256:...",
-    "entityCount": 150,
-    "noteCount": 500,
-    "patternCount": 45
-  }
-}
-```
-
-## Privacy Levels
-
-| Level | Meaning | Example |
-|-------|---------|---------|
-| `private` | Never shared outside Inscript | Medical info, intimate thoughts |
-| `internal` | Shared within user's own apps | Work notes, project details |
-| `shared` | Accessible by authorized third-party apps | General preferences |
-
-## PAMP API Endpoints (Phase 2)
-
-| Endpoint | Purpose |
-|----------|---------|
-| `GET /api/pamp/export` | Export full memory in PAMP format |
-| `GET /api/pamp/context` | Get context for current query (third-party) |
-| `POST /api/pamp/authorize` | Grant app access to memory |
-| `DELETE /api/pamp/revoke` | Revoke app access |
-| `GET /api/pamp/query` | Semantic search across memory |
-
-## Full Schema Documentation
-
-See `/docs/PAMP-SCHEMA.md` for complete technical specification.
+| `docs/EXPORT.md` | Export feature documentation |
 
 ---
 
 *Inscript — Your mirror in code.*
-*PRD Version 3.0 | January 25, 2026*
-*Vision: PAMP — Portable AI Memory Protocol*
+*PRD Version 4.0 | January 27, 2026*
+*Vision: Your data. Your ownership. Portable anywhere.*
 *Production: https://digital-twin-ecru.vercel.app*

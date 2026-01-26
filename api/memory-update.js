@@ -593,3 +593,153 @@ function getImportanceScore(importance) {
   };
   return scores[importance] || 0.5;
 }
+
+// ============================================
+// SPRINT 2: Structured Facts Storage
+// ============================================
+
+/**
+ * Save structured facts to entity_facts table
+ * Called after entity extraction with facts array
+ *
+ * @param {Object} supabase - Supabase client
+ * @param {string} userId - User ID
+ * @param {Array} facts - Array of facts from extraction
+ * @param {Object} entityMap - Map of entity names to entity IDs
+ * @param {string} sourceNoteId - Source note ID (optional)
+ */
+export async function saveFacts(supabase, userId, facts, entityMap, sourceNoteId = null) {
+  if (!facts || facts.length === 0) {
+    return { saved: 0, skipped: 0, errors: [] };
+  }
+
+  const results = { saved: 0, skipped: 0, errors: [] };
+
+  for (const fact of facts) {
+    try {
+      // Find entity ID for this fact
+      const entityId = entityMap[fact.entity_name] || entityMap[fact.entity_name?.toLowerCase()];
+
+      if (!entityId) {
+        console.warn(`[SaveFacts] No entity found for fact: ${fact.entity_name}`);
+        results.skipped++;
+        continue;
+      }
+
+      // Check if fact already exists (avoid duplicates)
+      const { data: existing } = await supabase
+        .from('entity_facts')
+        .select('id, confidence')
+        .eq('entity_id', entityId)
+        .eq('predicate', fact.predicate)
+        .eq('object_text', fact.object)
+        .maybeSingle();
+
+      if (existing) {
+        // Update confidence if new confidence is higher
+        if (fact.confidence > existing.confidence) {
+          await supabase
+            .from('entity_facts')
+            .update({
+              confidence: fact.confidence,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', existing.id);
+
+          console.log(`[SaveFacts] Updated confidence for existing fact: ${fact.entity_name} ${fact.predicate} ${fact.object}`);
+        }
+        results.skipped++;
+        continue;
+      }
+
+      // Check if object is another entity
+      let objectEntityId = null;
+      if (fact.object_is_entity && fact.object) {
+        objectEntityId = entityMap[fact.object] || entityMap[fact.object?.toLowerCase()];
+      }
+
+      // Insert new fact
+      const { error: insertError } = await supabase
+        .from('entity_facts')
+        .insert({
+          user_id: userId,
+          entity_id: entityId,
+          predicate: fact.predicate,
+          object_text: fact.object,
+          object_entity_id: objectEntityId,
+          confidence: fact.confidence || 0.8,
+          source_note_id: sourceNoteId
+        });
+
+      if (insertError) {
+        console.error(`[SaveFacts] Error inserting fact:`, insertError);
+        results.errors.push({ fact, error: insertError.message });
+        continue;
+      }
+
+      results.saved++;
+      console.log(`[SaveFacts] Saved fact: ${fact.entity_name} ${fact.predicate} ${fact.object}`);
+
+    } catch (error) {
+      console.error(`[SaveFacts] Error processing fact:`, error);
+      results.errors.push({ fact, error: error.message });
+    }
+  }
+
+  console.log(`[SaveFacts] Complete: ${results.saved} saved, ${results.skipped} skipped, ${results.errors.length} errors`);
+  return results;
+}
+
+/**
+ * Get all facts for an entity
+ */
+export async function getEntityFacts(supabase, entityId) {
+  const { data, error } = await supabase
+    .from('entity_facts')
+    .select(`
+      id,
+      predicate,
+      object_text,
+      object_entity_id,
+      confidence,
+      created_at,
+      updated_at
+    `)
+    .eq('entity_id', entityId)
+    .order('confidence', { ascending: false });
+
+  if (error) {
+    console.error('[GetEntityFacts] Error:', error);
+    return [];
+  }
+
+  return data || [];
+}
+
+/**
+ * Get all facts for a user (for export)
+ */
+export async function getUserFacts(supabase, userId) {
+  const { data, error } = await supabase
+    .from('entity_facts')
+    .select(`
+      id,
+      entity_id,
+      predicate,
+      object_text,
+      object_entity_id,
+      confidence,
+      source_note_id,
+      created_at,
+      updated_at
+    `)
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('[GetUserFacts] Error:', error);
+    return [];
+  }
+
+  return data || [];
+}

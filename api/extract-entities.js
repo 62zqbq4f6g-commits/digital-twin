@@ -8,6 +8,7 @@ import Anthropic from '@anthropic-ai/sdk';
 const client = new Anthropic();
 
 // Enhanced extraction system prompt with memory types and temporal detection
+// SPRINT 2: Updated to extract structured facts for entity_facts table
 const EXTRACTION_SYSTEM_PROMPT = `You are a Personal Information Organizer extracting memories from notes.
 
 Your job is to extract CRUCIAL, NEW, ACTIONABLE information for memory storage.
@@ -26,6 +27,34 @@ For each piece of information, classify its memory_type:
 | procedure | Step-by-step knowledge or processes | "Deploy process: commit, push, verify" |
 | decision | A decision the user made | "Decided to take the job", "Chose React over Vue" |
 | action | An action completed or outcome | "Shipped the feature", "Closed the deal" |
+
+## STRUCTURED FACTS (Sprint 2)
+
+For each entity, extract specific FACTS as Subject-Predicate-Object triples.
+These are queryable pieces of knowledge about entities.
+
+PREDICATE TYPES:
+| Predicate | Use For | Example |
+|-----------|---------|---------|
+| works_at | Employment | "Sarah works_at Anthropic" |
+| role | Job title/position | "Sarah role Product Manager" |
+| relationship | Relation to user | "Marcus relationship close_friend" |
+| location | Where they are | "Marcus location San Francisco" |
+| likes | Preferences | "Sarah likes data-driven presentations" |
+| dislikes | Anti-preferences | "Sarah dislikes last-minute changes" |
+| status | Current state | "Project Phoenix status active" |
+| expertise | Skills/knowledge | "Marcus expertise machine learning" |
+| studied_at | Education | "Sarah studied_at MIT" |
+| owns | Possessions | "Marcus owns Tesla Model 3" |
+| member_of | Group membership | "Sarah member_of Platform Team" |
+| reports_to | Reporting structure | "Jamie reports_to Sarah" |
+
+FACT EXTRACTION RULES:
+- Only extract facts explicitly stated or strongly implied
+- confidence > 0.9 for explicitly stated facts
+- confidence 0.7-0.9 for strongly implied facts
+- confidence < 0.7 for inferred facts
+- Don't invent facts that aren't in the note
 
 ## TEMPORAL DETECTION
 
@@ -119,6 +148,15 @@ Return JSON:
       "expires_at": null or "ISO date string",
       "recurrence_pattern": null or {"type": "daily|weekly|monthly|yearly", "day"?: "string", "time"?: "HH:MM", "month"?: number},
       "sensitivity_level": "normal|sensitive|private",
+      "confidence": 0.0 to 1.0
+    }
+  ],
+  "facts": [
+    {
+      "entity_name": "name of the entity this fact is about",
+      "predicate": "works_at|role|relationship|location|likes|dislikes|status|expertise|studied_at|owns|member_of|reports_to",
+      "object": "the fact value (text or entity name)",
+      "object_is_entity": false,
       "confidence": 0.0 to 1.0
     }
   ],
@@ -289,10 +327,14 @@ Rules:
     const decisions = result.decisions || [];
     const actions = result.actions || [];
 
+    // SPRINT 2: Extract structured facts for entity_facts table
+    const facts = result.facts || [];
+
     console.log('[Extract API] Extracted:', {
       memories: filteredMemories.length,
       filtered: memories.length - filteredMemories.length,
       entities: entities.length,
+      facts: facts.length,
       relationships: relationships.length,
       changes: changes_detected.length,
       decisions: decisions.length,
@@ -302,6 +344,7 @@ Rules:
     return res.status(200).json({
       // New format
       memories: filteredMemories,
+      facts,  // SPRINT 2: Structured facts for entity_facts table
       decisions,
       actions,
       // Backward compatible format
