@@ -265,12 +265,15 @@ const ExportUI = {
 
       if (!response.ok) {
         // Fallback to mock preview if API doesn't support preview yet
-        this.renderPreview(this.getMockPreview(), previewContent);
+        const mockPreview = await this.getLocalPreview();
+        this.renderPreview(mockPreview, previewContent);
       } else {
         const data = await response.json();
         // Cache the full export data for download
         this.cachedExportData = data;
-        this.renderPreview(this.extractPreviewFromExport(data), previewContent);
+        // extractPreviewFromExport is now async to get local notes count
+        const preview = await this.extractPreviewFromExport(data);
+        this.renderPreview(preview, previewContent);
       }
 
       // Show preview panel
@@ -279,8 +282,9 @@ const ExportUI = {
 
     } catch (error) {
       console.error('[ExportUI] Preview failed:', error);
-      // Show mock preview on error
-      this.renderPreview(this.getMockPreview(), previewContent);
+      // Show local preview on error (includes local notes count)
+      const localPreview = await this.getLocalPreview();
+      this.renderPreview(localPreview, previewContent);
       preview.removeAttribute('hidden');
       preview.style.display = 'block';
     } finally {
@@ -347,15 +351,39 @@ const ExportUI = {
 
   /**
    * Extract preview summary from full export data
+   * Includes local notes and patterns count from client-side storage
    */
-  extractPreviewFromExport(data) {
+  async extractPreviewFromExport(data) {
     const exp = data?.inscript_export || data;
+
+    // Get local notes count (notes are E2E encrypted, only available client-side)
+    let localNotesCount = 0;
+    try {
+      if (typeof DB !== 'undefined' && DB.getAllNotes) {
+        const localNotes = await DB.getAllNotes();
+        localNotesCount = localNotes.length;
+      }
+    } catch (e) {
+      console.warn('[ExportUI] Could not get local notes count:', e);
+    }
+
+    // Get local patterns count (patterns stored in TwinProfile)
+    let localPatternsCount = 0;
+    try {
+      if (typeof TwinProfile !== 'undefined' && TwinProfile.load) {
+        const profile = await TwinProfile.load();
+        localPatternsCount = profile?.patterns?.length || 0;
+      }
+    } catch (e) {
+      console.warn('[ExportUI] Could not get local patterns count:', e);
+    }
+
     return {
       entities: exp?.entities?.length || exp?.meta?.total_entities || 0,
       facts: exp?.meta?.counts?.facts || 0,
-      notes: exp?.episodes?.notes?.length || exp?.meta?.total_notes || 0,
+      notes: localNotesCount,  // Use local count, not server count
       conversations: exp?.episodes?.conversations?.length || 0,
-      patterns: exp?.patterns?.length || exp?.meta?.total_patterns || 0,
+      patterns: localPatternsCount,  // Use local count from TwinProfile
       private_entities: 0,
       private_notes: 0,
       private_patterns: 0
@@ -372,6 +400,43 @@ const ExportUI = {
       notes: 0,
       conversations: 0,
       patterns: 0,
+      private_entities: 0,
+      private_notes: 0,
+      private_patterns: 0
+    };
+  },
+
+  /**
+   * Get preview from local data when API is unavailable
+   */
+  async getLocalPreview() {
+    let localNotesCount = 0;
+    let localPatternsCount = 0;
+
+    try {
+      if (typeof DB !== 'undefined' && DB.getAllNotes) {
+        const localNotes = await DB.getAllNotes();
+        localNotesCount = localNotes.length;
+      }
+    } catch (e) {
+      console.warn('[ExportUI] Could not get local notes count:', e);
+    }
+
+    try {
+      if (typeof TwinProfile !== 'undefined' && TwinProfile.load) {
+        const profile = await TwinProfile.load();
+        localPatternsCount = profile?.patterns?.length || 0;
+      }
+    } catch (e) {
+      console.warn('[ExportUI] Could not get local patterns count:', e);
+    }
+
+    return {
+      entities: 0,
+      facts: 0,
+      notes: localNotesCount,
+      conversations: 0,
+      patterns: localPatternsCount,
       private_entities: 0,
       private_notes: 0,
       private_patterns: 0
@@ -430,6 +495,12 @@ const ExportUI = {
         exportData = await response.json();
       }
 
+      // CRITICAL: Inject local data that server can't access
+      // Notes are E2E encrypted - server can't decrypt them
+      // Patterns are stored in local TwinProfile
+      exportData = await this.injectLocalNotes(exportData);
+      exportData = await this.injectLocalPatterns(exportData);
+
       // Download the export
       this.downloadExport(exportData);
 
@@ -446,6 +517,117 @@ const ExportUI = {
         confirmBtn.disabled = false;
         confirmBtn.textContent = 'Download';
       }
+    }
+  },
+
+  /**
+   * Inject notes from local IndexedDB into export data
+   * Notes are E2E encrypted and can only be read client-side
+   * @param {Object} exportData - Export data from API
+   * @returns {Object} Export data with notes injected
+   */
+  async injectLocalNotes(exportData) {
+    try {
+      // Get all notes from IndexedDB (already decrypted)
+      if (typeof DB === 'undefined' || !DB.getAllNotes) {
+        console.warn('[ExportUI] DB module not available, skipping note injection');
+        return exportData;
+      }
+
+      const localNotes = await DB.getAllNotes();
+      console.log('[ExportUI] Injecting', localNotes.length, 'notes from IndexedDB');
+
+      // Transform notes to export format
+      const transformedNotes = localNotes.map(note => ({
+        id: note.id,
+        content: note.raw_text || note.content || '',
+        timestamp: note.timestamps?.created_at || note.created_at,
+        category: note.classification?.category || 'uncategorized',
+        type: note.note_type || 'standard',
+        extracted: {
+          title: note.extracted?.title || null,
+          summary: note.refined?.summary || null,
+          sentiment: note.extracted?.sentiment || 0,
+          action_items: note.extracted?.action_items || [],
+          entities: note.entities || []
+        }
+      }));
+
+      // Inject into export data
+      const exp = exportData?.inscript_export || exportData;
+      if (exp?.episodes) {
+        exp.episodes.notes = transformedNotes;
+      }
+
+      // Update meta counts
+      if (exp?.meta?.counts) {
+        exp.meta.counts.notes = transformedNotes.length;
+      }
+
+      console.log('[ExportUI] Notes injected successfully');
+      return exportData;
+
+    } catch (error) {
+      console.error('[ExportUI] Failed to inject local notes:', error);
+      // Return original data without notes rather than failing
+      return exportData;
+    }
+  },
+
+  /**
+   * Inject patterns from local TwinProfile into export data
+   * Patterns are stored in local IndexedDB TwinProfile
+   * @param {Object} exportData - Export data from API
+   * @returns {Object} Export data with patterns injected
+   */
+  async injectLocalPatterns(exportData) {
+    try {
+      // Get patterns from TwinProfile
+      if (typeof TwinProfile === 'undefined' || !TwinProfile.load) {
+        console.warn('[ExportUI] TwinProfile not available, skipping pattern injection');
+        return exportData;
+      }
+
+      const profile = await TwinProfile.load();
+      const localPatterns = profile?.patterns || [];
+
+      if (localPatterns.length === 0) {
+        console.log('[ExportUI] No local patterns to inject');
+        return exportData;
+      }
+
+      console.log('[ExportUI] Injecting', localPatterns.length, 'patterns from TwinProfile');
+
+      // Transform patterns to export format
+      const transformedPatterns = localPatterns.map(pattern => ({
+        type: pattern.type || pattern.pattern_type || 'behavioral',
+        description: pattern.description || pattern.text || '',
+        confidence: pattern.confidence || 0.5,
+        structured: null,
+        evidence: {
+          supporting_notes: 0,
+          first_detected: pattern.detectedAt || profile.patternsDetectedAt || null,
+          last_confirmed: profile.patternsDetectedAt || null
+        }
+      }));
+
+      // Inject into export data
+      const exp = exportData?.inscript_export || exportData;
+      if (exp) {
+        exp.patterns = transformedPatterns;
+      }
+
+      // Update meta counts
+      if (exp?.meta?.counts) {
+        exp.meta.counts.patterns = transformedPatterns.length;
+      }
+
+      console.log('[ExportUI] Patterns injected successfully');
+      return exportData;
+
+    } catch (error) {
+      console.error('[ExportUI] Failed to inject local patterns:', error);
+      return exportData;
     }
   },
 
