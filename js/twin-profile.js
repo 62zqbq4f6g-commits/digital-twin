@@ -357,7 +357,7 @@ const TwinProfile = {
 
       // Use safe access for meta properties with defaults
       const meta = profile.meta || {};
-      await Sync.supabase
+      const { error: upsertError } = await Sync.supabase
         .from('twin_profiles')
         .upsert({
           user_id: Sync.user.id,
@@ -368,9 +368,14 @@ const TwinProfile = {
           updated_at: new Date().toISOString()
         }, { onConflict: 'user_id' });
 
+      if (upsertError) {
+        console.warn('[TwinProfile] Cloud sync upsert failed:', upsertError.message);
+        return;
+      }
+
       console.log('[TwinProfile] Synced to cloud');
     } catch (error) {
-      console.error('[TwinProfile] Cloud sync error:', error);
+      console.error('[TwinProfile] Cloud sync error:', error.message || error);
     }
   },
 

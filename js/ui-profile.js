@@ -314,6 +314,7 @@ window.UIProfile = {
   showNameModal() {
     const body = `
       <div class="field-group">
+        <label for="modal-name-input" class="sr-only">Your name</label>
         <input
           type="text"
           id="modal-name-input"
@@ -321,6 +322,7 @@ window.UIProfile = {
           value="${this.escapeHtml(this.profile?.name || '')}"
           placeholder="Your name"
           autofocus
+          aria-label="Your name"
         >
       </div>
     `;
@@ -615,11 +617,13 @@ window.UIProfile = {
     const body = `
       <p class="modal-new__subtitle">A sentence about what you're navigating right now</p>
       <div class="field-group">
+        <label for="modal-context-input" class="sr-only">Life context</label>
         <textarea
           id="modal-context-input"
           class="textarea-new"
           placeholder="Raising a seed round while trying to be present for my family..."
           maxlength="200"
+          aria-label="Life context"
         >${this.escapeHtml(currentValue)}</textarea>
         <div class="char-count"><span id="context-char-count">${currentValue.length}</span> / 200</div>
       </div>
@@ -694,10 +698,12 @@ window.UIProfile = {
         <button class="btn-text-new" onclick="UIProfile.showAddPersonForm()">+ Add person</button>
         <div id="add-person-form" style="display: none; margin-top: var(--space-3);">
           <div class="field-group">
-            <input type="text" id="new-person-name" class="input-new" placeholder="Name">
+            <label for="new-person-name" class="sr-only">Person's name</label>
+            <input type="text" id="new-person-name" class="input-new" placeholder="Name" aria-label="Person's name">
           </div>
           <div class="field-group">
-            <input type="text" id="new-person-relationship" class="input-new" placeholder="Relationship (e.g., cofounder, friend)">
+            <label for="new-person-relationship" class="sr-only">Relationship</label>
+            <input type="text" id="new-person-relationship" class="input-new" placeholder="Relationship (e.g., cofounder, friend)" aria-label="Relationship">
           </div>
           <div style="display: flex; gap: var(--space-2);">
             <button class="btn-secondary-new" onclick="UIProfile.hideAddPersonForm()">Cancel</button>
@@ -796,7 +802,8 @@ window.UIProfile = {
         ${tags || '<span class="text-caption text-muted">No topics added</span>'}
       </div>
       <div style="display: flex; gap: var(--space-2);">
-        <input type="text" id="new-boundary-input" class="input-new" placeholder="Add topic..." style="flex: 1;">
+        <label for="new-boundary-input" class="sr-only">Add boundary topic</label>
+        <input type="text" id="new-boundary-input" class="input-new" placeholder="Add topic..." style="flex: 1;" aria-label="Add boundary topic">
         <button class="btn-secondary-new" onclick="UIProfile.addBoundary()">+</button>
       </div>
     `;
@@ -1175,11 +1182,11 @@ window.UIProfile = {
     const body = `
       <p class="modal-new__subtitle">Your Twin won't surface moments during these hours</p>
       <div class="field-group" style="margin-bottom: var(--space-4);">
-        <label class="field-label">Start (no moments after)</label>
+        <label for="quiet-start-input" class="field-label">Start (no moments after)</label>
         <input type="time" id="quiet-start-input" class="input-new" value="${quietStart}">
       </div>
       <div class="field-group">
-        <label class="field-label">End (moments resume)</label>
+        <label for="quiet-end-input" class="field-label">End (moments resume)</label>
         <input type="time" id="quiet-end-input" class="input-new" value="${quietEnd}">
       </div>
     `;

@@ -243,12 +243,13 @@ window.UserProfile = {
       try {
         return await PIN.decrypt(ciphertext);
       } catch (e) {
-        console.warn('[UserProfile] Decryption failed:', e);
+        // Decryption can fail if key changed or data is corrupted - graceful fallback
+        console.warn('[UserProfile] Decryption failed (key mismatch or corrupted data):', e.message || e);
         return null;
       }
     }
 
-    // Fallback: return as-is
+    // Fallback: return as-is (unencrypted data)
     return ciphertext;
   },
 
