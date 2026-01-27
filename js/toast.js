@@ -197,7 +197,7 @@ async function deleteNoteWithUndo(noteId, options = {}) {
 
   try {
     // Get note data for potential restore
-    const note = await DB.getNote(noteId);
+    const note = await DB.getNoteById(noteId);
     if (!note) {
       console.error('[deleteNoteWithUndo] Note not found:', noteId);
       return;
