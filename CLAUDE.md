@@ -1,9 +1,9 @@
 # CLAUDE.md — Inscript Developer Guide
 
-## Version 9.5.0 | January 27, 2026
+## Version 9.6.0 | January 27, 2026
 
-> **Phase:** 18 — Portable Memory Export (In Progress)
-> **Status:** Sprint 2 — Structured facts, MIRROR messages, privacy controls
+> **Phase:** 18 — Portable Memory Export (Sprint 3 Complete)
+> **Status:** Sprint 3 COMPLETE — MIRROR facts integration, Privacy audit verified
 > **Last Updated:** January 27, 2026
 
 ---
@@ -16,7 +16,7 @@
 | **Tagline** | Your mirror in code |
 | **Category** | Personal AI Memory |
 | **Vision** | Your data. Your ownership. Portable anywhere. |
-| **Version** | 9.5.0 |
+| **Version** | 9.6.0 |
 | **Production URL** | https://digital-twin-ecru.vercel.app |
 | **Working Directory** | `/Users/airoxthebox/Projects/digital-twin` |
 | **Beta Status** | Production (Phase 18 in progress) |
@@ -143,17 +143,29 @@
 | Privacy filtering (user choice) | ✅ Done |
 | JSON download working | ✅ Done |
 
-## Sprint 2 (In Progress) 🔄
+## Sprint 2 ✅ COMPLETE
 
 | Feature | Owner | Status |
 |---------|-------|--------|
-| `entity_facts` table | T1 | 🔄 Migration ready |
-| `privacy_level` columns | T1 | 🔄 Migration ready |
-| Structured facts extraction | T1 | Pending |
+| `entity_facts` table | T1 | ✅ Done |
+| `privacy_level` columns | T1 | ✅ Done |
+| Structured facts extraction | T1 | ✅ Done |
 | MIRROR messages in export | T2 | ✅ Done |
-| Entity facts in export | T2 | Pending T1 |
+| Entity facts in export | T2 | ✅ Done |
 | Privacy UI (user choice) | T3 | ✅ Done |
-| Updated tests | T4 | 🔄 Pending |
+| Updated tests | T4 | ✅ Done |
+
+## Sprint 3 ✅ COMPLETE
+
+| Feature | Owner | Status |
+|---------|-------|--------|
+| MIRROR facts integration | T1/T2 | ✅ Done (commit 54b77ed) |
+| Fact retrieval layer | T2 | ✅ Done |
+| Privacy audit | T3 | ✅ Done (see /docs/PRIVACY-AUDIT.md) |
+| RLS verification | T4 | ✅ Verified (37/37 tables) |
+| MIRROR testing | T4 | ✅ PASS (commit 08fabba fixed entity detection) |
+
+**Fix Applied:** Added message-based entity detection using `getRelevantFacts` from `lib/mirror/fact-retrieval.js`. Facts now detected from user messages + conversation history.
 
 ## Terminal Ownership (Phase 18)
 
@@ -283,7 +295,8 @@
 
 | Version | Phase | Key Changes |
 |---------|-------|-------------|
-| **9.5.0** | 18 | Portable Memory Export: Sprint 2 complete. Structured facts, entity_facts table, export with facts + conversations. |
+| **9.6.0** | 18 | Sprint 3 complete. MIRROR facts integration, Privacy audit verified (see /docs/PRIVACY-AUDIT.md), RLS 37/37 tables verified. |
+| 9.5.0 | 18 | Portable Memory Export: Sprint 2 complete. Structured facts, entity_facts table, export with facts + conversations. |
 | 9.4.0 | 17 | Ambient recording pipeline fixed: table migration, RLS policy, mobile detection, error logging |
 | 9.3.0 | 17 | Voice features: Whisper input, real-time transcription, modal consistency |
 | 9.2.0 | 17 | Perf optimization, Query Meetings API, delete undo toast, sync indicator |

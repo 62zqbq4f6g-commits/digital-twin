@@ -1,6 +1,6 @@
 # Inscript — Project Status
 
-## January 25, 2026 | Version 9.3.0
+## January 27, 2026 | Version 9.6.0
 
 ---
 
@@ -37,16 +37,48 @@
 
 ## CURRENT STATE
 
-**Status:** Phase 17 Complete — Consumer experience polished
+**Status:** Phase 18 Sprint 3 COMPLETE — MIRROR facts integration, Privacy audit verified
 **Production URL:** https://digital-twin-ecru.vercel.app
 **Brand:** Inscript — "Your mirror in code"
 **Category:** Personal AI Memory (PAMP Protocol)
-**Next Phase:** Phase 18 — PAMP Foundation (export, API design)
+**Current Phase:** Phase 18 — Portable Memory Export
 **Design System:** SoHo Editorial Aesthetic ✅
 
 ---
 
-## LATEST SESSION: January 25, 2026 (Night)
+## LATEST SESSION: January 27, 2026
+
+### Sprint 3 Complete: MIRROR Facts + Privacy Audit
+
+**What Shipped:**
+- MIRROR facts integration (commit 54b77ed)
+- Privacy audit complete and verified (/docs/PRIVACY-AUDIT.md)
+- RLS verification: 37/37 tables protected
+- entity_facts table with test data
+
+| Task | Owner | Status |
+|------|-------|--------|
+| MIRROR facts integration | T1/T2 | ✅ Complete |
+| Fact retrieval layer | T2 | ✅ Complete |
+| Privacy audit | T3 | ✅ Complete |
+| RLS verification | T4 | ✅ Verified |
+| MIRROR testing | T4 | ✅ PASS |
+
+**Privacy Audit Summary:**
+- Encryption: PARTIAL (E2E for storage, plaintext for AI features)
+- LLM Providers: VERIFIED (Anthropic + OpenAI zero-retention)
+- Logging: ISSUES FOUND (7 files need cleanup, P2)
+- RLS: VERIFIED (37/37 tables protected)
+
+**Fix Applied (commit 08fabba):**
+- Added message-based entity detection using `getRelevantFacts`
+- Converted `lib/mirror/fact-retrieval.js` to CommonJS
+- Facts now dynamically detected from user messages + conversation history
+- Test verified: "What do you know about Daniel?" → Response includes "Senior Engineer at Google" ✅
+
+---
+
+## PREVIOUS SESSION: January 25, 2026 (Night)
 
 ### Polish Sprint: UX Improvements (Terminal 1)
 
