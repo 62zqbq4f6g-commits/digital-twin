@@ -411,6 +411,7 @@ const MeetingsTab = {
 
   /**
    * Get summary from meeting - shows valuable at-a-glance info
+   * Prioritizes: Key insights > Decisions > Summary > Discussed topics
    */
   getSummary(meeting) {
     // Support both flat and nested metadata structures
@@ -431,48 +432,89 @@ const MeetingsTab = {
                     meeting.input?.raw_text ||
                     '';
 
-    // Try to extract SUMMARY section first (v2.0 format)
-    const summaryMatch = content.match(/(?:^|\n)##?\s*SUMMARY\s*\n+([\s\S]*?)(?=\n##|$)/i);
+    // Helper to extract first items from a section
+    const extractItems = (text, count = 2) => {
+      const items = text.match(/^[-•✓→]\s+.+$|^\*\s+.+$/gm);
+      if (items?.length > 0) {
+        return items.slice(0, count).map(i =>
+          this.stripMarkdown(i.replace(/^[-•✓→]\s+/, '').replace(/^\*\s+/, ''))
+        ).join(', ');
+      }
+      // If no list items, take first line of content
+      const firstLine = text.split('\n').find(l => l.trim() && !l.match(/^[#*-]/));
+      return firstLine ? this.stripMarkdown(firstLine).substring(0, 100) : null;
+    };
+
+    // Try SUMMARY or OPPORTUNITY SUMMARY (sales calls)
+    const summaryMatch = content.match(/(?:^|\n)##?\s*(?:OPPORTUNITY\s+)?SUMMARY\s*\n+([\s\S]*?)(?=\n##|$)/i);
     if (summaryMatch) {
-      const summary = this.stripMarkdown(summaryMatch[1]).trim();
-      if (summary) return summary.substring(0, 120);
+      const result = extractItems(summaryMatch[1], 2);
+      if (result) return result;
     }
 
-    // Try DECISIONS section - these are high value
-    const decisionsMatch = content.match(/(?:^|\n)##?\s*DECISIONS?\s*\n+([\s\S]*?)(?=\n##|$)/i);
-    if (decisionsMatch) {
-      // Match list items with various markers
-      const items = decisionsMatch[1].match(/^[-•✓→]\s+.+$/gm);
-      if (items?.length > 0) {
-        const decisions = items.slice(0, 2).map(i => this.stripMarkdown(i.replace(/^[-•✓→]\s+/, '')));
-        return decisions.join(', ');
-      }
-    }
-
-    // Try to extract DISCUSSED section
-    const discussedMatch = content.match(/(?:^|\n)##?\s*DISCUSSED\s*\n+([\s\S]*?)(?=\n##|$)/i);
-    if (discussedMatch) {
-      // Match list items but don't confuse ** bold markers with * list markers
-      const items = discussedMatch[1].match(/^[-•]\s+.+$|^\*\s+.+$/gm);
-      if (items?.length > 0) {
-        const topics = items.slice(0, 3).map(i => this.stripMarkdown(i.replace(/^[-•]\s+/, '').replace(/^\*\s+/, '')));
-        return topics.join(', ');
-      }
-    }
-
-    // Try KEY INSIGHTS (interview format)
+    // Try KEY INSIGHTS (interview format) - high value
     const insightsMatch = content.match(/(?:^|\n)##?\s*KEY INSIGHTS?\s*\n+([\s\S]*?)(?=\n##|$)/i);
     if (insightsMatch) {
-      const items = insightsMatch[1].match(/^[-•]\s+.+$/gm);
-      if (items?.length > 0) {
-        return this.stripMarkdown(items[0].replace(/^[-•]\s+/, '')).substring(0, 100);
+      const result = extractItems(insightsMatch[1], 2);
+      if (result) return result;
+    }
+
+    // Try DECISIONS section - high value
+    const decisionsMatch = content.match(/(?:^|\n)##?\s*DECISIONS?\s*\n+([\s\S]*?)(?=\n##|$)/i);
+    if (decisionsMatch) {
+      const result = extractItems(decisionsMatch[1], 2);
+      if (result) return result;
+    }
+
+    // Try DISCUSSED section
+    const discussedMatch = content.match(/(?:^|\n)##?\s*DISCUSSED\s*\n+([\s\S]*?)(?=\n##|$)/i);
+    if (discussedMatch) {
+      const result = extractItems(discussedMatch[1], 3);
+      if (result) return result;
+    }
+
+    // Try PULSE (1:1 meetings)
+    const pulseMatch = content.match(/(?:^|\n)##?\s*PULSE\s*\n+([\s\S]*?)(?=\n##|$)/i);
+    if (pulseMatch) {
+      const result = extractItems(pulseMatch[1], 1);
+      if (result) return result;
+    }
+
+    // Try BY PERSON (standup format)
+    const byPersonMatch = content.match(/(?:^|\n)##?\s*BY PERSON\s*\n+([\s\S]*?)(?=\n##|$)/i);
+    if (byPersonMatch) {
+      // Extract names and their status
+      const names = byPersonMatch[1].match(/\*\*([^*]+)\*\*/g);
+      if (names?.length) {
+        return names.slice(0, 3).map(n => n.replace(/\*\*/g, '')).join(', ') + ' updates';
       }
     }
 
-    // Final fallback - clean content preview, no markdown
-    const clean = this.stripMarkdown(content);
-    if (clean.length > 10) {
-      return clean.substring(0, 100) + (clean.length > 100 ? '...' : '');
+    // Try DEAL SIGNALS (sales calls)
+    const signalsMatch = content.match(/(?:^|\n)##?\s*DEAL SIGNALS?\s*\n+([\s\S]*?)(?=\n##|$)/i);
+    if (signalsMatch) {
+      const result = extractItems(signalsMatch[1], 2);
+      if (result) return result;
+    }
+
+    // Final fallback - skip metadata and find first meaningful content
+    // Skip lines that start with Date:, Attendees:, etc.
+    const lines = content.split('\n');
+    const meaningfulLines = lines.filter(line => {
+      const trimmed = line.trim();
+      // Skip empty lines, headers, and metadata
+      if (!trimmed) return false;
+      if (trimmed.match(/^#+\s/)) return false;
+      if (trimmed.match(/^\*\*?(Date|Attendees|Meeting Type|Title):/i)) return false;
+      if (trimmed.match(/^(Date|Attendees|Meeting Type|Title):/i)) return false;
+      return true;
+    });
+
+    if (meaningfulLines.length > 0) {
+      const clean = this.stripMarkdown(meaningfulLines.slice(0, 2).join(' '));
+      if (clean.length > 10) {
+        return clean.substring(0, 100) + (clean.length > 100 ? '...' : '');
+      }
     }
 
     return 'No summary available';
