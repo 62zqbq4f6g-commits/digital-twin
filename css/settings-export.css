@@ -408,3 +408,399 @@
 [data-theme="dark"] .privacy-indicator-link {
   color: #FFFFFF;
 }
+
+/* =====================================================
+   EXPORT PREVIEW PANEL
+   ===================================================== */
+
+.export-preview {
+  margin-top: 1rem;
+  padding: 1.25rem;
+  background: #FAFAFA;
+  border: 1px solid #E5E5E5;
+  border-radius: 2px;
+}
+
+[data-theme="dark"] .export-preview {
+  background: #1A1A1A;
+  border-color: #333333;
+}
+
+.export-preview[hidden] {
+  display: none;
+}
+
+.export-preview-header {
+  margin-bottom: 1rem;
+}
+
+.export-preview-title {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #6B6B6B;
+}
+
+[data-theme="dark"] .export-preview-title {
+  color: #A3A3A3;
+}
+
+.export-preview-content {
+  margin-bottom: 1.25rem;
+}
+
+.export-preview-loading {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 0.875rem;
+  color: #6B6B6B;
+  padding: 1rem 0;
+}
+
+.export-preview-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+  gap: 1rem;
+}
+
+.export-preview-stat {
+  text-align: center;
+  padding: 0.75rem 0.5rem;
+  background: #FFFFFF;
+  border: 1px solid #E5E5E5;
+  border-radius: 2px;
+}
+
+[data-theme="dark"] .export-preview-stat {
+  background: #0A0A0A;
+  border-color: #333333;
+}
+
+.export-preview-stat-value {
+  display: block;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #1A1A1A;
+  line-height: 1.2;
+}
+
+[data-theme="dark"] .export-preview-stat-value {
+  color: #FFFFFF;
+}
+
+.export-preview-stat-label {
+  display: block;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #6B6B6B;
+  margin-top: 0.25rem;
+}
+
+[data-theme="dark"] .export-preview-stat-label {
+  color: #737373;
+}
+
+.export-preview-private {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding: 0.75rem;
+  background: #FFFFFF;
+  border: 1px solid #E5E5E5;
+  border-radius: 2px;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 0.8125rem;
+  color: #525252;
+}
+
+[data-theme="dark"] .export-preview-private {
+  background: #0A0A0A;
+  border-color: #333333;
+  color: #A3A3A3;
+}
+
+.export-preview-private-icon {
+  font-size: 1rem;
+}
+
+.export-preview-note {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 0.75rem;
+  color: #6B6B6B;
+  margin: 1rem 0 0 0;
+}
+
+.export-preview-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.export-cancel-btn,
+.export-confirm-btn {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 200ms ease-out;
+}
+
+.export-cancel-btn {
+  background: transparent;
+  color: #525252;
+  border: 1px solid #E5E5E5;
+}
+
+.export-cancel-btn:hover {
+  border-color: #1A1A1A;
+  color: #1A1A1A;
+}
+
+[data-theme="dark"] .export-cancel-btn {
+  color: #A3A3A3;
+  border-color: #333333;
+}
+
+[data-theme="dark"] .export-cancel-btn:hover {
+  border-color: #FFFFFF;
+  color: #FFFFFF;
+}
+
+.export-confirm-btn {
+  background: #000000;
+  color: #FFFFFF;
+  border: 1px solid #000000;
+}
+
+.export-confirm-btn:hover:not(:disabled) {
+  background: #1A1A1A;
+}
+
+.export-confirm-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+[data-theme="dark"] .export-confirm-btn {
+  background: #FFFFFF;
+  color: #000000;
+  border-color: #FFFFFF;
+}
+
+[data-theme="dark"] .export-confirm-btn:hover:not(:disabled) {
+  background: #E5E5E5;
+}
+
+/* =====================================================
+   ENCRYPTION DISCLOSURE SECTION
+   ===================================================== */
+
+.encryption-disclosure-section {
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid #E5E5E5;
+}
+
+[data-theme="dark"] .encryption-disclosure-section {
+  border-top-color: #333333;
+}
+
+.encryption-disclosure {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.encryption-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  background: #FAFAFA;
+  border: 1px solid #E5E5E5;
+  border-radius: 2px;
+}
+
+[data-theme="dark"] .encryption-item {
+  background: #1A1A1A;
+  border-color: #333333;
+}
+
+.encryption-icon {
+  flex-shrink: 0;
+  width: 1.25rem;
+  height: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem;
+}
+
+.encryption-good .encryption-icon {
+  color: #065F46;
+}
+
+[data-theme="dark"] .encryption-good .encryption-icon {
+  color: #34D399;
+}
+
+.encryption-info .encryption-icon {
+  color: #6B6B6B;
+}
+
+[data-theme="dark"] .encryption-info .encryption-icon {
+  color: #A3A3A3;
+}
+
+.encryption-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.encryption-title {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #1A1A1A;
+}
+
+[data-theme="dark"] .encryption-title {
+  color: #FFFFFF;
+}
+
+.encryption-desc {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: #6B6B6B;
+}
+
+[data-theme="dark"] .encryption-desc {
+  color: #A3A3A3;
+}
+
+.encryption-details {
+  margin-top: 0.5rem;
+}
+
+.encryption-details-summary {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: #525252;
+  cursor: pointer;
+  padding: 8px 0;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.encryption-details-summary::-webkit-details-marker {
+  display: none;
+}
+
+.encryption-details-summary::before {
+  content: '+';
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  font-size: 14px;
+  font-weight: 400;
+  color: #737373;
+  transition: transform 200ms ease-out;
+}
+
+.encryption-details[open] .encryption-details-summary::before {
+  content: '-';
+}
+
+[data-theme="dark"] .encryption-details-summary {
+  color: #A3A3A3;
+}
+
+.encryption-details-summary:hover {
+  color: #171717;
+}
+
+[data-theme="dark"] .encryption-details-summary:hover {
+  color: #E5E5E5;
+}
+
+.encryption-details-content {
+  padding: 12px 0 0 22px;
+}
+
+.encryption-details-content p {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 0.8125rem;
+  color: #525252;
+  margin: 0 0 0.75rem 0;
+}
+
+[data-theme="dark"] .encryption-details-content p {
+  color: #A3A3A3;
+}
+
+.encryption-pillars {
+  margin: 0;
+  padding: 0 0 0 1.25rem;
+  list-style: decimal;
+}
+
+.encryption-pillars li {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  color: #525252;
+  padding: 4px 0;
+}
+
+.encryption-pillars li strong {
+  color: #171717;
+  font-weight: 500;
+}
+
+[data-theme="dark"] .encryption-pillars li {
+  color: #A3A3A3;
+}
+
+[data-theme="dark"] .encryption-pillars li strong {
+  color: #E5E5E5;
+}
+
+/* Mobile responsive */
+@media (max-width: 480px) {
+  .export-preview-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .export-preview-actions {
+    flex-direction: column;
+  }
+
+  .encryption-item {
+    padding: 0.75rem;
+  }
+
+  .encryption-title {
+    font-size: 0.8125rem;
+  }
+
+  .encryption-desc {
+    font-size: 0.75rem;
+  }
+}

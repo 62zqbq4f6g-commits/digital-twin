@@ -77,8 +77,22 @@ const ExportUI = {
             <path d="M3 14H13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
           </svg>
         </span>
-        <span class="export-button-label">Export My Memory</span>
+        <span class="export-button-label">Preview Export</span>
       </button>
+
+      <!-- Export Preview Panel (hidden initially) -->
+      <div id="export-preview" class="export-preview" hidden>
+        <div class="export-preview-header">
+          <span class="export-preview-title">EXPORT PREVIEW</span>
+        </div>
+        <div id="export-preview-content" class="export-preview-content">
+          <div class="export-preview-loading">Loading preview...</div>
+        </div>
+        <div class="export-preview-actions">
+          <button id="export-cancel-btn" class="export-cancel-btn" type="button">Cancel</button>
+          <button id="export-confirm-btn" class="export-confirm-btn" type="button">Download</button>
+        </div>
+      </div>
 
       <div id="export-status" class="export-status" hidden>
         <span class="export-status-icon"></span>
@@ -112,8 +126,78 @@ const ExportUI = {
 
     console.log('[ExportUI] Export section injected');
 
+    // Inject encryption disclosure section
+    this.injectEncryptionDisclosure(settingsScreen, dangerZone);
+
     // PRIVACY - T3: Fetch privacy summary after injection
     this.fetchPrivacySummary();
+  },
+
+  /**
+   * Inject encryption disclosure section
+   */
+  injectEncryptionDisclosure(settingsScreen, dangerZone) {
+    // Check if already injected
+    if (document.querySelector('.encryption-disclosure-section')) {
+      return;
+    }
+
+    const disclosure = document.createElement('section');
+    disclosure.className = 'settings-section encryption-disclosure-section';
+    disclosure.innerHTML = `
+      <h2 class="settings-heading">DATA PROTECTION</h2>
+
+      <div class="encryption-disclosure">
+        <div class="encryption-item encryption-good">
+          <span class="encryption-icon">✓</span>
+          <div class="encryption-text">
+            <span class="encryption-title">Your notes are encrypted</span>
+            <span class="encryption-desc">Notes are encrypted on your device before upload. Only you can read them — we cannot.</span>
+          </div>
+        </div>
+
+        <div class="encryption-item encryption-info">
+          <span class="encryption-icon">ℹ</span>
+          <div class="encryption-text">
+            <span class="encryption-title">AI features need temporary access</span>
+            <span class="encryption-desc">To generate reflections and detect patterns, note content is processed by our AI provider (Anthropic). They don't store or train on your data.</span>
+          </div>
+        </div>
+
+        <div class="encryption-item encryption-good">
+          <span class="encryption-icon">✓</span>
+          <div class="encryption-text">
+            <span class="encryption-title">Zero-retention AI providers</span>
+            <span class="encryption-desc">We only use AI APIs that don't retain or train on your data (Anthropic, OpenAI API).</span>
+          </div>
+        </div>
+      </div>
+
+      <details class="encryption-details">
+        <summary class="encryption-details-summary">Learn more about our privacy architecture</summary>
+        <div class="encryption-details-content">
+          <p>Inscript is built on four privacy pillars:</p>
+          <ol class="encryption-pillars">
+            <li><strong>User ownership is absolute</strong> — You can export everything, anytime</li>
+            <li><strong>We cannot read your data</strong> — Notes are encrypted with your PIN before upload</li>
+            <li><strong>Zero-retention AI only</strong> — All AI calls use APIs that don't train on inputs</li>
+            <li><strong>No content logging</strong> — We log IDs and timestamps, never content</li>
+          </ol>
+        </div>
+      </details>
+    `;
+
+    // Insert before export section
+    const exportSection = settingsScreen.querySelector('.export-section');
+    if (exportSection) {
+      settingsScreen.insertBefore(disclosure, exportSection);
+    } else if (dangerZone) {
+      settingsScreen.insertBefore(disclosure, dangerZone);
+    } else {
+      settingsScreen.appendChild(disclosure);
+    }
+
+    console.log('[ExportUI] Encryption disclosure section injected');
   },
 
   /**
@@ -123,37 +207,201 @@ const ExportUI = {
     const btn = document.getElementById('export-btn');
     if (!btn) return;
 
-    btn.addEventListener('click', () => this.handleExport());
+    btn.addEventListener('click', () => this.showPreview());
 
     // Keyboard accessibility
     btn.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
-        this.handleExport();
+        this.showPreview();
       }
     });
+
+    // Preview panel buttons (bound after injection)
+    setTimeout(() => {
+      const cancelBtn = document.getElementById('export-cancel-btn');
+      const confirmBtn = document.getElementById('export-confirm-btn');
+
+      if (cancelBtn) {
+        cancelBtn.addEventListener('click', () => this.hidePreview());
+      }
+      if (confirmBtn) {
+        confirmBtn.addEventListener('click', () => this.handleExport());
+      }
+    }, 0);
   },
 
   /**
-   * Handle export button click
+   * Show export preview
    */
-  async handleExport() {
+  async showPreview() {
     const btn = document.getElementById('export-btn');
-    const label = btn?.querySelector('.export-button-label');
+    const preview = document.getElementById('export-preview');
+    const previewContent = document.getElementById('export-preview-content');
 
-    // Prevent double-click
-    if (!btn || btn.disabled) return;
+    if (!btn || !preview) return;
 
     // Set loading state
     btn.disabled = true;
     btn.classList.add('loading');
-    if (label) label.textContent = 'Preparing export...';
+    const label = btn.querySelector('.export-button-label');
+    if (label) label.textContent = 'Loading preview...';
+
+    try {
+      const token = await this.getAuthToken();
+      if (!token) {
+        throw new Error('Not authenticated');
+      }
+
+      // Fetch preview data
+      const response = await fetch(`${this.API_ENDPOINT}?preview=true`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        // Fallback to mock preview if API doesn't support preview yet
+        this.renderPreview(this.getMockPreview(), previewContent);
+      } else {
+        const data = await response.json();
+        // Cache the full export data for download
+        this.cachedExportData = data;
+        this.renderPreview(this.extractPreviewFromExport(data), previewContent);
+      }
+
+      // Show preview panel
+      preview.removeAttribute('hidden');
+      preview.style.display = 'block';
+
+    } catch (error) {
+      console.error('[ExportUI] Preview failed:', error);
+      // Show mock preview on error
+      this.renderPreview(this.getMockPreview(), previewContent);
+      preview.removeAttribute('hidden');
+      preview.style.display = 'block';
+    } finally {
+      btn.disabled = false;
+      btn.classList.remove('loading');
+      if (label) label.textContent = 'Preview Export';
+    }
+  },
+
+  /**
+   * Hide export preview
+   */
+  hidePreview() {
+    const preview = document.getElementById('export-preview');
+    if (preview) {
+      preview.setAttribute('hidden', '');
+      preview.style.display = 'none';
+    }
+    this.cachedExportData = null;
+  },
+
+  /**
+   * Render preview content
+   */
+  renderPreview(summary, container) {
+    if (!container) return;
+
+    const privateCount = (summary.private_entities || 0) + (summary.private_notes || 0) + (summary.private_patterns || 0);
+
+    container.innerHTML = `
+      <div class="export-preview-stats">
+        <div class="export-preview-stat">
+          <span class="export-preview-stat-value">${summary.entities || 0}</span>
+          <span class="export-preview-stat-label">PEOPLE & PROJECTS</span>
+        </div>
+        <div class="export-preview-stat">
+          <span class="export-preview-stat-value">${summary.facts || 0}</span>
+          <span class="export-preview-stat-label">FACTS</span>
+        </div>
+        <div class="export-preview-stat">
+          <span class="export-preview-stat-value">${summary.notes || 0}</span>
+          <span class="export-preview-stat-label">NOTES</span>
+        </div>
+        <div class="export-preview-stat">
+          <span class="export-preview-stat-value">${summary.conversations || 0}</span>
+          <span class="export-preview-stat-label">CONVERSATIONS</span>
+        </div>
+        <div class="export-preview-stat">
+          <span class="export-preview-stat-value">${summary.patterns || 0}</span>
+          <span class="export-preview-stat-label">PATTERNS</span>
+        </div>
+      </div>
+      ${privateCount > 0 ? `
+        <div class="export-preview-private">
+          <span class="export-preview-private-icon">⚑</span>
+          <span>${privateCount} private item${privateCount !== 1 ? 's' : ''} will be excluded</span>
+        </div>
+      ` : ''}
+      <p class="export-preview-note">
+        This file will be saved as JSON. Store it securely — it contains personal information.
+      </p>
+    `;
+  },
+
+  /**
+   * Extract preview summary from full export data
+   */
+  extractPreviewFromExport(data) {
+    const exp = data?.inscript_export || data;
+    return {
+      entities: exp?.entities?.length || exp?.meta?.total_entities || 0,
+      facts: exp?.meta?.counts?.facts || 0,
+      notes: exp?.episodes?.notes?.length || exp?.meta?.total_notes || 0,
+      conversations: exp?.episodes?.conversations?.length || 0,
+      patterns: exp?.patterns?.length || exp?.meta?.total_patterns || 0,
+      private_entities: 0,
+      private_notes: 0,
+      private_patterns: 0
+    };
+  },
+
+  /**
+   * Get mock preview data
+   */
+  getMockPreview() {
+    return {
+      entities: 0,
+      facts: 0,
+      notes: 0,
+      conversations: 0,
+      patterns: 0,
+      private_entities: 0,
+      private_notes: 0,
+      private_patterns: 0
+    };
+  },
+
+  /**
+   * Handle export button click (download)
+   */
+  async handleExport() {
+    const confirmBtn = document.getElementById('export-confirm-btn');
+
+    // Prevent double-click
+    if (confirmBtn?.disabled) return;
+
+    // Set loading state
+    if (confirmBtn) {
+      confirmBtn.disabled = true;
+      confirmBtn.textContent = 'Downloading...';
+    }
     this.hideStatus();
 
     try {
       let exportData;
 
-      if (this.USE_MOCK) {
+      // Use cached data from preview if available
+      if (this.cachedExportData) {
+        console.log('[ExportUI] Using cached export data from preview');
+        exportData = this.cachedExportData;
+      } else if (this.USE_MOCK) {
         // Use mock data until T1 API is ready
         console.log('[ExportUI] Using mock export data');
         exportData = await this.generateMockExport();
@@ -185,7 +433,8 @@ const ExportUI = {
       // Download the export
       this.downloadExport(exportData);
 
-      // Show success
+      // Hide preview and show success
+      this.hidePreview();
       this.showStatus('success', 'Export complete! Check your downloads.');
 
     } catch (error) {
@@ -193,9 +442,10 @@ const ExportUI = {
       this.showStatus('error', error.message || 'Export failed. Please try again.');
     } finally {
       // Reset button
-      btn.disabled = false;
-      btn.classList.remove('loading');
-      if (label) label.textContent = 'Export My Memory';
+      if (confirmBtn) {
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = 'Download';
+      }
     }
   },
 

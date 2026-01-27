@@ -235,6 +235,7 @@
           <!-- Text input area -->
           <div class="capture-input-area">
             <div class="text-input-container">
+              <label for="text-input" class="sr-only">Note content</label>
               <textarea
                 id="text-input"
                 class="text-input"
@@ -253,6 +254,7 @@
             </div>
 
             <!-- Image Input (hidden file input) -->
+            <label for="image-input" class="sr-only">Upload image</label>
             <input type="file" id="image-input" accept="image/*" class="hidden">
 
             <!-- Add Media Button -->
@@ -285,7 +287,7 @@
           <!-- Context input with voice option -->
           <div class="image-context-area">
             <div class="image-context-header">
-              <span class="image-context-label">Add context (optional)</span>
+              <label class="image-context-label" for="image-context">Add context (optional)</label>
             </div>
             <div class="image-context-input-row">
               <button id="image-voice-btn" class="image-voice-btn" aria-label="Add context via voice">
@@ -318,6 +320,7 @@
               <span class="mic-icon">🎤</span>
               <div class="stop-icon"></div>
             </button>
+            <label for="notes-quick-input" class="sr-only">Quick note</label>
             <input
               type="text"
               id="notes-quick-input"
@@ -349,6 +352,7 @@
 
         <!-- Search Box -->
         <div class="notes-search">
+          <label for="notes-search-input" class="sr-only">Search notes</label>
           <input
             type="text"
             id="notes-search-input"
@@ -724,7 +728,7 @@
 
         <div class="meeting-form">
           <div class="meeting-field">
-            <label class="meeting-label">Who was there?</label>
+            <label class="meeting-label" for="meeting-attendees-input">Who was there?</label>
             <div class="meeting-attendees">
               <input type="text" id="meeting-attendees-input" class="meeting-input" placeholder="Add people...">
               <div id="meeting-attendees-list" class="meeting-attendees-chips"></div>
@@ -733,7 +737,7 @@
           </div>
 
           <div class="meeting-field">
-            <label class="meeting-label">What happened?</label>
+            <label class="meeting-label" for="meeting-content">What happened?</label>
             <div class="meeting-capture-row">
               <button id="meeting-voice-btn" class="meeting-voice-btn" aria-label="Voice input">
                 <span class="mic-icon">🎤</span>
@@ -775,12 +779,12 @@
 
         <div class="decision-form">
           <div class="decision-field">
-            <label class="decision-label">What are you deciding?</label>
+            <label class="decision-label" for="decision-topic">What are you deciding?</label>
             <input type="text" id="decision-topic" class="decision-input" placeholder="e.g., Whether to push the launch">
           </div>
 
           <div class="decision-field">
-            <label class="decision-label">What's on your mind?</label>
+            <label class="decision-label" for="decision-content">What's on your mind?</label>
             <div class="decision-capture-row">
               <button id="decision-voice-btn" class="decision-voice-btn" aria-label="Voice input">
                 <span class="mic-icon">🎤</span>
