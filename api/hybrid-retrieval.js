@@ -361,7 +361,7 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('[hybrid-retrieval] Handler error:', error);
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: 'Retrieval failed' });
   }
 }
 

@@ -104,12 +104,21 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const action = req.query.action || req.body?.action;
-  const user_id = req.body?.user_id;
-
-  if (!user_id) {
-    return res.status(400).json({ error: 'user_id required' });
+  // Verify auth token and extract user_id
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Authorization header required' });
   }
+
+  const token = authHeader.replace('Bearer ', '');
+  const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+
+  if (authError || !user) {
+    return res.status(401).json({ error: 'Invalid or expired token' });
+  }
+
+  const action = req.query.action || req.body?.action;
+  const user_id = user.id;
 
   try {
     switch (action) {

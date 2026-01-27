@@ -132,8 +132,7 @@ export default async function handler(req, res) {
   } catch (error) {
     console.error('[Pulse] Error:', error);
     return res.status(500).json({
-      error: 'Failed to generate pulse',
-      details: error.message
+      error: 'Failed to generate pulse'
     });
   }
 }

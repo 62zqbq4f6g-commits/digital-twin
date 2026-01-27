@@ -353,9 +353,8 @@ export default async function handler(req) {
     return new Response(
       JSON.stringify({
         success: false,
-        error: error.message || 'Internal server error',
-        code: 'SERVER_ERROR',
-        details: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+        error: 'Internal server error',
+        code: 'SERVER_ERROR'
       }),
       { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
     );

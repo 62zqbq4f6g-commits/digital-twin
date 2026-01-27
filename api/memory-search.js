@@ -49,7 +49,7 @@ export default async function handler(req, res) {
     return res.json(result);
   } catch (error) {
     console.error('Memory search error:', error);
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: 'Search failed' });
   }
 }
 

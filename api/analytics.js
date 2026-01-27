@@ -67,7 +67,18 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const user_id = req.query.user_id || req.body?.user_id;
+  // Verify auth token if provided, otherwise allow anonymous tracking
+  let user_id = null;
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (!authError && user) {
+      user_id = user.id;
+    }
+    // If token is invalid, still allow anonymous tracking (don't return 401)
+  }
+
   const { event, properties } = req.body;
 
   if (!event) {

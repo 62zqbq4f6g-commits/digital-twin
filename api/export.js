@@ -177,6 +177,6 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('[Export] Failed:', error);
-    return res.status(500).json({ error: 'Export failed', details: error.message });
+    return res.status(500).json({ error: 'Export failed' });
   }
 }

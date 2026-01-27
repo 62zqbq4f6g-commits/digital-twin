@@ -173,7 +173,7 @@ Write a single merged summary that preserves all unique information. Keep it con
 
   } catch (error) {
     console.error('Consolidation error:', error);
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: 'Consolidation failed' });
   }
 }
 

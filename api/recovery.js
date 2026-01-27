@@ -3,11 +3,19 @@
  * Sends PIN recovery emails via Resend
  */
 
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  supabaseKey
+);
+
 export default async function handler(req, res) {
   // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
@@ -18,12 +26,26 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { email, recoveryKey, action } = req.body;
+    // Verify auth token
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Authorization header required' });
+    }
 
-    // Verify it's the authorized email
-    const AUTHORIZED_EMAIL = 'elroycheo@me.com';
-    if (email !== AUTHORIZED_EMAIL) {
-      return res.status(403).json({ error: 'Unauthorized email' });
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+
+    if (authError || !user) {
+      return res.status(401).json({ error: 'Invalid or expired token' });
+    }
+
+    const { recoveryKey, action } = req.body;
+
+    // Use the authenticated user's email, not a request body email
+    const email = user.email;
+
+    if (!email) {
+      return res.status(400).json({ error: 'User email not available' });
     }
 
     const RESEND_API_KEY = process.env.RESEND_API_KEY;

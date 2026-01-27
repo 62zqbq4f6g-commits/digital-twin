@@ -159,7 +159,7 @@ export default async function handler(req, ctx) {
   } catch (error) {
     console.error('[Analyze-Edge] Critical path error:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: 'Analysis failed' }),
       { status: 500, headers: corsHeaders }
     );
   }
