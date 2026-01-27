@@ -16,6 +16,8 @@ const { detectResearchMode, conductResearch, buildResearchPrompt, formatResearch
 const { detectKnowledgeQuery, getKnowledgeAbout, buildKnowledgePrompt, formatKnowledgeForContextUI } = require('../lib/mirror/knowledge-about.js');
 // SPRINT 3: Fact retrieval with message-based entity detection
 const { getRelevantFacts } = require('../lib/mirror/fact-retrieval.js');
+// Contradiction detection for evolution awareness
+const { getContradictionsForEntity, formatForContext: formatContradictionsForContext } = require('../lib/contradiction-detection.js');
 
 const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = createClient(
@@ -1097,12 +1099,33 @@ async function generateResponse(user_id, userMessage, history, context, addition
 
   console.log('[mirror] Facts loaded:', relevantFacts.length, 'facts for', relevantEntities.length, 'entities (message-based detection)');
 
-  // Merge enhanced context with existing context + facts
+  // Fetch contradictions/evolutions for detected entities
+  let evolutionsContext = null;
+  if (relevantEntities.length > 0) {
+    try {
+      // Get contradictions for the first mentioned entity (most relevant)
+      const primaryEntity = relevantEntities[0];
+      const contradictions = await getContradictionsForEntity(user_id, primaryEntity.name);
+      evolutionsContext = formatContradictionsForContext({
+        contradictions: contradictions.contradictions,
+        sentimentShifts: contradictions.evolutions,
+        evolutions: []
+      });
+      if (evolutionsContext) {
+        console.log('[mirror] Evolutions found for', primaryEntity.name);
+      }
+    } catch (err) {
+      console.warn('[mirror] Contradiction detection failed:', err.message);
+    }
+  }
+
+  // Merge enhanced context with existing context + facts + evolutions
   const enhancedContext = {
     ...context,
     mem0Context: mirrorContext.context,
     mem0Stats: mirrorContext.stats,
-    entityFacts: factsContext  // SPRINT 3: Structured facts
+    entityFacts: factsContext,  // SPRINT 3: Structured facts
+    evolutionsContext  // Contradiction/evolution awareness
   };
 
   // Analyze the conversation to determine best insight type
@@ -1181,6 +1204,14 @@ async function generateResponse(user_id, userMessage, history, context, addition
           date: n.created_at ? new Date(n.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'Recent',
           preview: (n.content || '').slice(0, 50) + '...'
         });
+      });
+    }
+
+    // Add evolutions to context used
+    if (enhancedContext.evolutionsContext) {
+      contextUsed.push({
+        type: 'evolution',
+        value: 'Changes in thinking detected'
       });
     }
 
@@ -1353,7 +1384,7 @@ function findReferencedEntities(content, entities) {
  * Session notes are passed from client-side for immediate context
  */
 function buildSystemPrompt(context, insightType = 'reflection_prompt') {
-  const { noteCount, entities, patterns, userName, onboarding, recentSessionNotes, profile, depthQuestion, depthAnswer, summaries, entityFacts, researchContext, knowledgeContext } = context;
+  const { noteCount, entities, patterns, userName, onboarding, recentSessionNotes, profile, depthQuestion, depthAnswer, summaries, entityFacts, researchContext, knowledgeContext, evolutionsContext } = context;
 
   // Note: Notes are E2E encrypted - we can't read content server-side
   // Instead, we use extracted entities which capture key people/topics from notes
@@ -1499,6 +1530,8 @@ ${entitiesContext}
 ${patternsContext ? `\nObserved patterns:\n${patternsContext}` : ''}
 ${entityFacts ? `\n📋 SPECIFIC FACTS YOU KNOW (reference naturally, never robotically):
 ${entityFacts}` : ''}
+${evolutionsContext ? `\n🔄 EVOLUTIONS DETECTED (changes in their thinking/sentiment - surface naturally if relevant):
+${evolutionsContext}` : ''}
 </user_context>
 ${mem0Context ? `\n<enhanced_memory_context>\n${mem0Context}</enhanced_memory_context>` : ''}`;
 

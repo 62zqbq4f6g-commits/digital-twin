@@ -15,6 +15,7 @@
 
 const { createClient } = require('@supabase/supabase-js');
 const Anthropic = require('@anthropic-ai/sdk');
+const { detectContradictions, formatForContext } = require('../lib/contradiction-detection');
 
 const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = createClient(
@@ -177,20 +178,37 @@ async function handleGenerateReport(req, res, user_id) {
   // ===== STEP 5c: PATTERN DETECTION FOR REPORTS =====
   const monthPatterns = await detectMonthPatterns(user_id, targetMonth, aggregatedData);
 
+  // ===== STEP 5c.5: CONTRADICTION/EVOLUTION DETECTION =====
+  let evolutions = { contradictions: [], sentimentShifts: [], evolutions: [] };
+  try {
+    evolutions = await detectContradictions(user_id, { scope: 'monthly' });
+  } catch (err) {
+    console.warn('[state-of-you] Contradiction detection failed:', err.message);
+  }
+
   // ===== STEP 5d: LLM REFLECTION QUESTION =====
   const reflectionQuestion = await generateReflectionQuestion(
     aggregatedData,
     sentimentTrajectory,
-    monthPatterns
+    monthPatterns,
+    evolutions
   );
 
   // ===== STEP 5e: BUILD AND STORE REPORT =====
+  // Format evolutions for display
+  const evolutionSummaries = [
+    ...evolutions.contradictions.map(c => c.summary),
+    ...evolutions.sentimentShifts.map(s => s.summary),
+    ...evolutions.evolutions.map(e => e.summary)
+  ].slice(0, 5); // Limit to 5 most relevant
+
   const report = {
     month: targetMonth,
     themes: aggregatedData.themes,
     people: aggregatedData.people,
     sentiment_trajectory: sentimentTrajectory,
     patterns_detected: monthPatterns,
+    evolutions_detected: evolutionSummaries,
     reflection_question: reflectionQuestion,
     stats: aggregatedData.stats
   };
@@ -444,7 +462,7 @@ async function detectMonthPatterns(user_id, month, aggregatedData) {
 /**
  * STEP 5d: LLM reflection question generation
  */
-async function generateReflectionQuestion(aggregatedData, sentimentTrajectory, patterns) {
+async function generateReflectionQuestion(aggregatedData, sentimentTrajectory, patterns, evolutions = {}) {
   // Build context for LLM
   const topThemes = aggregatedData.themes.slice(0, 5).map(t => t.name).join(', ');
   const topPeople = aggregatedData.people.slice(0, 3).map(p => p.name).join(', ');
@@ -453,6 +471,15 @@ async function generateReflectionQuestion(aggregatedData, sentimentTrajectory, p
     .join(', ');
   const patternList = patterns.slice(0, 3).join('; ');
 
+  // Format evolutions for context
+  const evolutionContext = formatForContext(evolutions);
+  const evolutionSummary = evolutionContext
+    ? `\n- Evolutions detected: ${[
+        ...evolutions.contradictions.map(c => c.summary),
+        ...evolutions.sentimentShifts.map(s => s.summary)
+      ].slice(0, 3).join('; ')}`
+    : '';
+
   const prompt = `Based on someone's monthly journal reflection data, generate ONE thought-provoking question.
 
 DATA:
@@ -460,7 +487,7 @@ DATA:
 - Key people mentioned: ${topPeople || 'various people'}
 - Sentiment changes: ${sentimentSummary || 'stable'}
 - Patterns observed: ${patternList || 'none yet'}
-- Total notes: ${aggregatedData.stats.notes_count}
+- Total notes: ${aggregatedData.stats.notes_count}${evolutionSummary}
 
 REQUIREMENTS:
 - Ask something that connects dots or reveals blind spots

@@ -1,5 +1,7 @@
 // api/digest.js — Vercel Serverless Function for Weekly Digest
-// Generates AI-powered weekly summary of notes
+// Generates AI-powered weekly summary of notes with contradiction detection
+
+const { detectContradictions, formatForContext } = require('../lib/contradiction-detection');
 
 module.exports = async function handler(req, res) {
   // CORS headers
@@ -16,7 +18,7 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const { notes, weekStart, weekEnd } = req.body;
+    const { notes, weekStart, weekEnd, user_id } = req.body;
 
     if (!notes || notes.length === 0) {
       return res.status(400).json({ error: 'No notes provided' });
@@ -24,16 +26,32 @@ module.exports = async function handler(req, res) {
 
     const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 
+    // Detect weekly contradictions/evolutions if user_id provided
+    let contradictions = { contradictions: [], sentimentShifts: [], evolutions: [] };
+    if (user_id) {
+      try {
+        contradictions = await detectContradictions(user_id, { scope: 'weekly' });
+      } catch (err) {
+        console.warn('[Digest] Contradiction detection failed:', err.message);
+      }
+    }
+
     if (!ANTHROPIC_API_KEY) {
       console.error('ANTHROPIC_API_KEY not configured');
       return res.status(500).json({ error: 'API not configured' });
     }
 
+    // Build evolution context if any detected
+    const evolutionContext = formatForContext(contradictions);
+    const evolutionPrompt = evolutionContext
+      ? `\n\nEVOLUTIONS DETECTED THIS WEEK:\n${evolutionContext}\nInclude relevant evolutions in the "evolutions" field.`
+      : '';
+
     const prompt = `Generate a weekly digest from these notes. Be concise and insightful.
 
 Notes from ${weekStart} to ${weekEnd}:
 
-${JSON.stringify(notes, null, 2)}
+${JSON.stringify(notes, null, 2)}${evolutionPrompt}
 
 Respond with ONLY valid JSON (no markdown, no code blocks):
 
@@ -63,7 +81,8 @@ Respond with ONLY valid JSON (no markdown, no code blocks):
     }
   ],
   "action_items": ["All open action items from the week"],
-  "insights": "Optional: Any patterns or insights noticed (1-2 sentences)"
+  "insights": "Optional: Any patterns or insights noticed (1-2 sentences)",
+  "evolutions": ["Optional: Any changes in opinion, sentiment shifts, or contradictions noticed this week vs last week"]
 }
 
 Only include categories that have notes. Be specific to the actual content.`;

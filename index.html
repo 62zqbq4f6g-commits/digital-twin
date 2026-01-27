@@ -436,6 +436,16 @@
             </div>
           </div>
 
+          <!-- Weekly Digest (moved from Settings) -->
+          <div class="you-section">
+            <h3 class="you-section-title">Weekly Digest</h3>
+            <div id="you-digest-container">
+              <button id="digest-btn" class="digest-trigger-btn" onclick="Digest.generate()">
+                <span>Generate This Week's Digest</span>
+              </button>
+            </div>
+          </div>
+
           <!-- State of You Report (moved from REPORT tab) -->
           <div class="you-section">
             <h3 class="you-section-title">State of You</h3>
@@ -556,13 +566,6 @@
           <p class="encryption-statement">Your thoughts are encrypted.</p>
           <p class="encryption-subtext">Only you hold the key.</p>
           <div class="encryption-spec">AES-256-GCM · Zero-knowledge</div>
-        </div>
-
-        <div class="settings-section">
-          <h2 class="settings-heading">Insights</h2>
-          <button id="digest-btn" class="digest-trigger-btn" onclick="Digest.generate()">
-            <span>Weekly Digest</span>
-          </button>
         </div>
 
         <div class="settings-section">

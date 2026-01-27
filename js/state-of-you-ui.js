@@ -237,6 +237,11 @@ const StateOfYouUI = {
       html += this.renderPatternsSection(report.patterns_detected);
     }
 
+    // Evolutions (contradictions, sentiment shifts)
+    if (report.evolutions_detected && report.evolutions_detected.length > 0) {
+      html += this.renderEvolutionsSection(report.evolutions_detected);
+    }
+
     // Reflection question
     if (report.reflection_question) {
       html += this.renderReflectionSection(report.reflection_question);
@@ -357,6 +362,25 @@ const StateOfYouUI = {
         <h3 class="state-of-you__section-title">Patterns Detected</h3>
         <div class="state-of-you__patterns">
           ${patternItems}
+        </div>
+      </div>
+    `;
+  },
+
+  /**
+   * Render evolutions section (contradictions, sentiment shifts)
+   */
+  renderEvolutionsSection(evolutions) {
+    const evolutionItems = evolutions.slice(0, 5).map(evolution => {
+      return `<p class="evolution-item">${this.escapeHtml(evolution)}</p>`;
+    }).join('');
+
+    return `
+      <div class="state-of-you__section">
+        <h3 class="state-of-you__section-title">Evolutions This Month</h3>
+        <p class="state-of-you__section-subtitle">Changes in your thinking or sentiment</p>
+        <div class="state-of-you__evolutions">
+          ${evolutionItems}
         </div>
       </div>
     `;
