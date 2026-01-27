@@ -441,9 +441,10 @@ const MeetingsTab = {
     // Try DECISIONS section - these are high value
     const decisionsMatch = content.match(/(?:^|\n)##?\s*DECISIONS?\s*\n+([\s\S]*?)(?=\n##|$)/i);
     if (decisionsMatch) {
-      const items = decisionsMatch[1].match(/^[-•*✓→]\s*(.+)$/gm);
+      // Match list items with various markers
+      const items = decisionsMatch[1].match(/^[-•✓→]\s+.+$/gm);
       if (items?.length > 0) {
-        const decisions = items.slice(0, 2).map(i => this.stripMarkdown(i.replace(/^[-•*✓→]\s*/, '')));
+        const decisions = items.slice(0, 2).map(i => this.stripMarkdown(i.replace(/^[-•✓→]\s+/, '')));
         return decisions.join(', ');
       }
     }
@@ -451,9 +452,10 @@ const MeetingsTab = {
     // Try to extract DISCUSSED section
     const discussedMatch = content.match(/(?:^|\n)##?\s*DISCUSSED\s*\n+([\s\S]*?)(?=\n##|$)/i);
     if (discussedMatch) {
-      const items = discussedMatch[1].match(/^[-•*]\s*(.+)$/gm);
+      // Match list items but don't confuse ** bold markers with * list markers
+      const items = discussedMatch[1].match(/^[-•]\s+.+$|^\*\s+.+$/gm);
       if (items?.length > 0) {
-        const topics = items.slice(0, 3).map(i => this.stripMarkdown(i.replace(/^[-•*]\s*/, '')));
+        const topics = items.slice(0, 3).map(i => this.stripMarkdown(i.replace(/^[-•]\s+/, '').replace(/^\*\s+/, '')));
         return topics.join(', ');
       }
     }
@@ -461,9 +463,9 @@ const MeetingsTab = {
     // Try KEY INSIGHTS (interview format)
     const insightsMatch = content.match(/(?:^|\n)##?\s*KEY INSIGHTS?\s*\n+([\s\S]*?)(?=\n##|$)/i);
     if (insightsMatch) {
-      const items = insightsMatch[1].match(/^[-•*]\s*(.+)$/gm);
+      const items = insightsMatch[1].match(/^[-•]\s+.+$/gm);
       if (items?.length > 0) {
-        return this.stripMarkdown(items[0].replace(/^[-•*]\s*/, '')).substring(0, 100);
+        return this.stripMarkdown(items[0].replace(/^[-•]\s+/, '')).substring(0, 100);
       }
     }
 
@@ -483,12 +485,14 @@ const MeetingsTab = {
     if (!text) return '';
     return text
       .replace(/^#+\s*/gm, '')           // Remove heading markers
-      .replace(/\*\*([^*]+)\*\*/g, '$1') // Remove bold
-      .replace(/\*([^*]+)\*/g, '$1')     // Remove italic
-      .replace(/__([^_]+)__/g, '$1')     // Remove underline bold
-      .replace(/_([^_]+)_/g, '$1')       // Remove underline italic
-      .replace(/`([^`]+)`/g, '$1')       // Remove code
-      .replace(/^[-•*→✓⚠️📌]\s*/gm, '')   // Remove list markers
+      .replace(/\*\*([^*\n]+)\*\*/g, '$1') // Remove bold **text**
+      .replace(/\*\*([^*\n]+)$/gm, '$1')   // Remove unclosed bold at end of line
+      .replace(/(?<!\*)\*([^*\n]+)\*(?!\*)/g, '$1') // Remove italic (but not bold)
+      .replace(/__([^_\n]+)__/g, '$1')   // Remove underline bold
+      .replace(/_([^_\n]+)_/g, '$1')     // Remove underline italic
+      .replace(/`([^`\n]+)`/g, '$1')     // Remove code
+      .replace(/^[-•→✓⚠️📌]\s+/gm, '')    // Remove list markers (require space after)
+      .replace(/^\*\s+/gm, '')           // Remove * list markers (require space)
       .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // Remove links, keep text
       .replace(/\n+/g, ' ')              // Collapse newlines
       .replace(/\s+/g, ' ')              // Collapse whitespace
