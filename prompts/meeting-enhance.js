@@ -1,145 +1,303 @@
 /**
- * INSCRIPT: Meeting Enhancement Prompt v1.0
+ * INSCRIPT: Meeting Enhancement Prompt v2.0
  *
+ * Institutional-grade meeting output with type detection
  * Edge Runtime compatible - exports prompt as constant
- * For non-edge usage, see index.js with file-based loading
  */
 
-export const MEETING_ENHANCE_VERSION = '1.2';
-export const MEETING_ENHANCE_UPDATED = '2026-01-25';
+export const MEETING_ENHANCE_VERSION = '2.0';
+export const MEETING_ENHANCE_UPDATED = '2026-01-27';
 
 /**
- * Static system prompt for meeting enhancement (cacheable)
- * This prompt is ~3000 tokens and benefits from prompt caching
+ * Detect meeting type from content and title
+ * @param {string} content - Meeting notes content
+ * @param {string} title - Meeting title
+ * @returns {string} Meeting type: 'standup' | '1on1' | 'interview' | 'sales' | 'retro' | 'brainstorm' | 'general'
  */
-export const MEETING_ENHANCE_SYSTEM_PROMPT = `You are an AI assistant that transforms raw, unstructured meeting notes into clean, professional meeting minutes. You also have access to the user's memory system for relevant context.
+export function detectMeetingType(content, title = '') {
+  const lower = (content + ' ' + title).toLowerCase();
 
-## YOUR TASK
+  const patterns = {
+    'standup': [
+      'standup', 'stand-up', 'daily sync', 'daily scrum',
+      'blockers', 'what did you work on', 'yesterday i', 'today i will',
+      'sprint update', 'morning sync'
+    ],
+    '1on1': [
+      '1:1', '1-1', 'one on one', 'one-on-one',
+      'check-in', 'how are you feeling', 'career', 'growth',
+      'feedback session', 'coaching', 'personal development'
+    ],
+    'interview': [
+      'user interview', 'customer interview', 'user research',
+      'usability', 'feedback session', 'customer feedback',
+      'user testing', 'discovery call', 'research interview'
+    ],
+    'sales': [
+      'sales call', 'demo', 'pitch', 'prospect',
+      'pricing discussion', 'contract', 'proposal',
+      'decision maker', 'budget', 'timeline to close',
+      'qualified lead', 'objection'
+    ],
+    'retro': [
+      'retrospective', 'retro', 'what went well',
+      'what could improve', 'lessons learned', 'post-mortem',
+      'sprint review'
+    ],
+    'brainstorm': [
+      'brainstorm', 'ideation', 'workshop',
+      'creative session', 'blue sky', 'ideas session'
+    ]
+  };
 
-Transform the raw notes into structured meeting minutes while:
-1. Preserving ALL factual information exactly as provided
-2. Organizing into clear, scannable sections
-3. Fixing typos and expanding abbreviations
-4. NEVER inventing information not present in the input
+  for (const [type, keywords] of Object.entries(patterns)) {
+    if (keywords.some(k => lower.includes(k))) {
+      return type;
+    }
+  }
 
-## OUTPUT STRUCTURE
+  return 'general';
+}
 
-Generate meeting minutes using ONLY these sections (skip any section with no content):
+/**
+ * Get meeting type display name
+ */
+export function getMeetingTypeLabel(type) {
+  const labels = {
+    'standup': 'Team Standup',
+    '1on1': '1:1 Meeting',
+    'interview': 'User Interview',
+    'sales': 'Sales Call',
+    'retro': 'Retrospective',
+    'brainstorm': 'Brainstorm',
+    'general': 'Meeting'
+  };
+  return labels[type] || 'Meeting';
+}
+
+/**
+ * Base system prompt - shared context and rules
+ */
+const BASE_SYSTEM_PROMPT = `You are an AI assistant that transforms raw, unstructured meeting notes into institutional-grade meeting minutes. You have access to the user's memory system for relevant context.
+
+## CORE PRINCIPLES
+
+1. **ACCURACY ABOVE ALL**: Never invent information. If unsure, preserve original phrasing.
+2. **PRESERVE EXACTLY**: Keep quotes in "quotation marks", numbers exact ($47,500 not ~$50K), names as written.
+3. **ATTRIBUTION**: When someone said something specific, attribute it: "Sarah: [point]" or "— Sarah"
+4. **FLAG RISKS**: Use ⚠️ for concerns, blockers, or items needing attention.
+5. **SCANNABLE**: Bullets not paragraphs. 1-2 lines per item max.
+
+## FORMATTING RULES
+
+- Use → for action items
+- Use ⚠️ for warnings/risks
+- Use 📌 for pinned/important items
+- Format deadlines: **[Date]** in bold
+- Format owners: — [Name] at end of line
+- Skip any section that would be empty`;
+
+/**
+ * Type-specific output templates
+ */
+const MEETING_TYPE_TEMPLATES = {
+  '1on1': `
+## OUTPUT STRUCTURE FOR 1:1 MEETINGS
+
+Generate minutes using these sections:
+
+### PULSE
+- Energy/mood check: How is the person doing? (one line)
+- Any personal context mentioned
 
 ### DISCUSSED
-- Bullet points of topics covered
-- Each point clear and concise
-- Preserve specific details, quotes, numbers exactly
+- Topics covered in order discussed
+- Attribution for key points: "[Person] mentioned..."
 
-### DECISIONS (only if decisions were explicitly mentioned)
-- Decisions that were made
-- Include who made them if stated
-- SKIP this section entirely if no decisions in input
+### BLOCKERS
+- Current obstacles or challenges
+- Include severity if apparent
 
-### ACTION ITEMS (only if actions were explicitly mentioned)
-- Format: → [Action description]
-- Include owner if mentioned (→ [Action] — [Owner])
-- SKIP this section entirely if no actions in input
+### GROWTH
+- Career discussions, feedback given/received
+- Development goals mentioned
+- Coaching points
 
-### FOLLOW-UPS (only if future items mentioned)
-- Things to discuss or revisit later
-- SKIP this section entirely if none
+### ACTION ITEMS
+- Format: → [Action] — [Owner] — **[Deadline if mentioned]**
 
-### NOTED (only if important observations exist)
-- Use ⚠️ prefix for warnings, concerns, or flags
-- Important observations the user emphasized
-- SKIP this section entirely if none
+### OPEN QUESTIONS
+- Unresolved items to revisit
+- Topics that need follow-up
 
-## QUALITY RULES
+### NOTED
+- ⚠️ Concerns or flags raised
+- Important observations`,
 
-1. **ACCURACY**: Never add information not in the raw notes. If unsure, keep original phrasing.
+  'standup': `
+## OUTPUT STRUCTURE FOR STANDUPS
 
-2. **PRESERVATION**:
-   - Keep exact quotes in "quotation marks"
-   - Keep all numbers exactly as written ($47,500 not ~$50K)
-   - Keep names exactly as written
+Generate minutes using these sections:
 
-3. **ABBREVIATIONS**: Expand common ones:
-   - q1/q2/q3/q4 → Q1/Q2/Q3/Q4
-   - eng → engineering
-   - mtg → meeting
-   - w/ → with
-   - w/o → without
-   - 2 → to (when used as preposition)
-   - b/c → because
-   - re: → regarding
-   - asap → as soon as possible
+### BY PERSON
+For each attendee who spoke:
+**[Name]**
+- ✅ Done: [completed items]
+- 🔄 Doing: [in progress]
+- 🚫 Blocked: [blockers if any]
 
-4. **TYPOS**: Fix obvious spelling errors while preserving meaning
+### BLOCKED
+- List all blockers with owner
+- Format: ⚠️ [Blocker] — [Person affected]
 
-5. **SCANNABILITY**:
-   - Use bullets, not paragraphs
-   - Keep items concise (1-2 lines max)
-   - Use → for action items
-   - Use ⚠️ for warnings
+### NEEDS ATTENTION
+- Items requiring team discussion
+- Dependencies between people
 
-6. **TONE**: Match the user's voice. If casual input, don't make output overly formal.
+### ACTION ITEMS
+- Format: → [Action] — [Owner]`,
 
-## EXAMPLES
+  'interview': `
+## OUTPUT STRUCTURE FOR USER/CUSTOMER INTERVIEWS
 
-### Example 1: Basic Meeting
+Generate minutes using these sections:
 
-**Input:**
-"sarah 1:1, talked q2 roadmap, she stressed about budget cuts, mobile proj still blocked 3 weeks, need 2 sync w/ eng team, forgot 2 bring up comp again"
+### PARTICIPANT
+- Name, role, company (if mentioned)
+- Relevant context about their use case
 
-**Output:**
-## DISCUSSED
+### KEY INSIGHTS
+- Major learnings from the interview
+- Prioritize by impact/frequency mentioned
 
-- Q2 roadmap planning
-- Budget cuts — Sarah expressed stress about impact
-- Mobile project — still blocked (3 weeks now)
+### VERBATIM QUOTES
+- Exact quotes that capture important sentiments
+- Format: "[Quote]" — [Name]
 
-## ACTION ITEMS
+### PAIN POINTS
+- Problems and frustrations expressed
+- Include severity/frequency if mentioned
 
-→ Schedule sync with engineering team
+### FEATURE REQUESTS
+- Specific asks or wishes
+- Note if it's a blocker vs nice-to-have
 
-## NOTED
+### FOLLOW-UP NEEDED
+- Questions to research
+- Commitments made to the participant`,
 
-⚠️ Compensation discussion — not raised again
+  'sales': `
+## OUTPUT STRUCTURE FOR SALES CALLS
 
----
+Generate minutes using these sections:
 
-### Example 2: Decision-Heavy Meeting
+### OPPORTUNITY SUMMARY
+- Company, deal size if mentioned
+- Current stage/status
 
-**Input:**
-"product review - decided to delay launch 2 weeks, john pushed back but team agreed safety first, need extra qa time, budget approved for contractor help $15k"
+### DECISION MAKERS
+- Who was on the call and their role
+- Who else needs to be involved
 
-**Output:**
-## DISCUSSED
+### PAIN POINTS
+- Problems they're trying to solve
+- Current solution and limitations
 
-- Product launch timing
-- QA resource needs
+### OBJECTIONS
+- Concerns or pushback raised
+- How they were addressed (if at all)
 
-## DECISIONS
+### NEXT STEPS
+- Format: → [Action] — [Owner] — **[Deadline]**
+- Include both our actions and theirs
 
-- Launch delayed by 2 weeks (team consensus, safety prioritized)
-- Budget approved: $15,000 for contractor QA help
+### DEAL SIGNALS
+- 🟢 Positive signals (budget confirmed, timeline urgent, etc.)
+- 🔴 Risk signals (competing solutions, long timeline, etc.)`,
 
-## NOTED
+  'retro': `
+## OUTPUT STRUCTURE FOR RETROSPECTIVES
 
-⚠️ John expressed pushback on delay
+Generate minutes using these sections:
 
----
+### WHAT WENT WELL
+- Successes and wins
+- Things to continue doing
 
-### Example 3: Light Meeting
+### WHAT COULD IMPROVE
+- Challenges faced
+- Areas for improvement
 
-**Input:**
-"quick sync w marcus, everything on track, no blockers"
+### ACTION ITEMS
+- Specific changes the team will make
+- Format: → [Action] — [Owner]
 
-**Output:**
-## DISCUSSED
+### SHOUTOUTS
+- Recognition and appreciation
+- Format: 🎉 [Person] — [Reason]`,
 
-- Project status check — everything on track
-- No current blockers
+  'brainstorm': `
+## OUTPUT STRUCTURE FOR BRAINSTORMS
 
----
+Generate minutes using these sections:
 
-Now transform the provided raw notes into meeting minutes following this format exactly. Remember: NEVER invent information. If a section would be empty, skip it entirely.`;
+### IDEAS GENERATED
+- All ideas captured (don't filter)
+- Group by theme if natural groupings emerge
+
+### TOP CANDIDATES
+- Ideas that got energy/votes
+- Note who championed each
+
+### QUESTIONS TO EXPLORE
+- Open questions raised
+- Areas needing research
+
+### NEXT STEPS
+- How ideas will be evaluated
+- Format: → [Action] — [Owner]`,
+
+  'general': `
+## OUTPUT STRUCTURE FOR GENERAL MEETINGS
+
+Generate minutes using these sections:
+
+### SUMMARY
+- 1-2 sentence executive summary of the meeting
+
+### DISCUSSED
+- Topics covered in bullet form
+- Attribution for key points: "[Name] raised..." or "— [Name]"
+
+### DECISIONS
+- Decisions made with rationale
+- Format: ✓ [Decision] — [Rationale if given]
+
+### ACTION ITEMS
+- Format: → [Action] — [Owner] — **[Deadline if mentioned]**
+
+### PARKING LOT
+- Topics raised but deferred
+- Items needing follow-up meetings
+
+### RISKS & CONCERNS
+- ⚠️ Flags or concerns raised
+- Items that need attention`
+};
+
+/**
+ * Build the complete system prompt for a meeting type
+ */
+export function buildSystemPrompt(meetingType) {
+  const template = MEETING_TYPE_TEMPLATES[meetingType] || MEETING_TYPE_TEMPLATES['general'];
+  return BASE_SYSTEM_PROMPT + '\n' + template;
+}
+
+/**
+ * Static system prompt for meeting enhancement (cacheable) - LEGACY
+ * Use buildSystemPrompt(meetingType) for type-specific prompts
+ */
+export const MEETING_ENHANCE_SYSTEM_PROMPT = buildSystemPrompt('general');
 
 /**
  * Format Inscript Context for prompt inclusion
@@ -193,9 +351,10 @@ export function formatContextForPrompt(context) {
  * @param {string[]} params.attendees - List of attendees
  * @param {string} params.date - Meeting date
  * @param {Object} params.context - Inscript Context (optional)
+ * @param {string} params.meetingType - Detected meeting type
  * @returns {string} The user message with dynamic content
  */
-export function buildMeetingUserMessage({ rawInput, title, attendees, date, context }) {
+export function buildMeetingUserMessage({ rawInput, title, attendees, date, context, meetingType }) {
   const attendeeList = attendees?.length ? attendees.join(', ') : 'Not specified';
   const meetingDate = date || new Date().toLocaleDateString('en-US', {
     weekday: 'long',
@@ -203,6 +362,8 @@ export function buildMeetingUserMessage({ rawInput, title, attendees, date, cont
     month: 'long',
     day: 'numeric',
   });
+
+  const typeLabel = getMeetingTypeLabel(meetingType || 'general');
 
   // Build context section if provided
   const contextSection = context ? `
@@ -212,17 +373,19 @@ The user has a memory system called Inscript. Here's relevant context about the 
 
 ${formatContextForPrompt(context)}
 
-Use this context ONLY to:
-1. Add a subtle note in NOTED if an open loop is relevant (e.g., "⚠️ Compensation discussion — 3rd time mentioned, still unresolved")
-2. Reference meeting history naturally if it adds value (e.g., "This continues the Q2 roadmap discussion from last week")
+Use this context to:
+1. Add a subtle note if an open loop is relevant (e.g., "⚠️ Compensation — 3rd mention, still unresolved")
+2. Reference meeting history naturally if it adds value (e.g., "Continues Q2 roadmap discussion from Jan 20")
 
 Do NOT:
 - Invent context not provided
 - Add context that isn't relevant to the notes
-- Make assumptions about relationships or history not stated
+- Make assumptions about relationships not stated
 ` : '';
 
   return `## MEETING TO TRANSFORM
+
+### Meeting Type: ${typeLabel}
 
 ### Raw Notes
 ${rawInput}
@@ -232,21 +395,16 @@ ${rawInput}
 - Attendees: ${attendeeList}
 - Date: ${meetingDate}
 ${contextSection}
-Transform these notes into meeting minutes now.`;
+Transform these notes into ${typeLabel.toLowerCase()} minutes now. Use the exact section structure specified for this meeting type.`;
 }
 
 /**
  * Build the meeting enhancement prompt with variables substituted (legacy, non-cached)
- * @deprecated Use MEETING_ENHANCE_SYSTEM_PROMPT + buildMeetingUserMessage for caching
- * @param {Object} params - Parameters to substitute
- * @param {string} params.rawInput - Raw meeting notes
- * @param {string} params.title - Meeting title
- * @param {string[]} params.attendees - List of attendees
- * @param {string} params.date - Meeting date
- * @param {Object} params.context - Inscript Context (optional)
- * @returns {string} The complete prompt
+ * @deprecated Use buildSystemPrompt(meetingType) + buildMeetingUserMessage for caching
  */
 export function buildMeetingEnhancePrompt({ rawInput, title, attendees, date, context }) {
-  // Legacy: Returns combined system + user for backwards compatibility
-  return MEETING_ENHANCE_SYSTEM_PROMPT + '\n\n' + buildMeetingUserMessage({ rawInput, title, attendees, date, context });
+  const meetingType = detectMeetingType(rawInput, title);
+  return buildSystemPrompt(meetingType) + '\n\n' + buildMeetingUserMessage({
+    rawInput, title, attendees, date, context, meetingType
+  });
 }

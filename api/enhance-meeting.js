@@ -16,7 +16,13 @@
  */
 
 import Anthropic from '@anthropic-ai/sdk';
-import { MEETING_ENHANCE_SYSTEM_PROMPT, buildMeetingUserMessage, MEETING_ENHANCE_VERSION } from '../prompts/meeting-enhance.js';
+import {
+  buildMeetingUserMessage,
+  buildSystemPrompt,
+  detectMeetingType,
+  getMeetingTypeLabel,
+  MEETING_ENHANCE_VERSION
+} from '../prompts/meeting-enhance.js';
 import { createClient } from '@supabase/supabase-js';
 
 export const config = { runtime: 'edge' };
@@ -73,9 +79,14 @@ export default async function handler(req, ctx) {
       );
     }
 
+    // Detect meeting type for type-specific prompts
+    const meetingType = detectMeetingType(rawInput, title);
+    const meetingTypeLabel = getMeetingTypeLabel(meetingType);
+
     console.log('[enhance-meeting] Starting enhancement for user:', userId);
     console.log('[enhance-meeting] Input length:', rawInput.length);
     console.log('[enhance-meeting] Attendees:', attendees?.length || 0);
+    console.log('[enhance-meeting] Detected meeting type:', meetingType);
 
     // ============================================
     // STREAMING RESPONSE
@@ -104,7 +115,7 @@ export default async function handler(req, ctx) {
           openLoopCount: context?.openLoops?.length || 0,
         });
 
-        // Send metadata first (now includes context summary)
+        // Send metadata first (now includes context summary and meeting type)
         await writer.write(
           encoder.encode(
             `data: ${JSON.stringify({
@@ -113,6 +124,8 @@ export default async function handler(req, ctx) {
                 title: inferredTitle,
                 date: new Date().toISOString().split('T')[0],
                 attendees: attendees || [],
+                meetingType,
+                meetingTypeLabel,
                 attendeeEntities: context?.attendeeContext?.map(a => ({
                   name: a.name,
                   entityId: a.entityId,
@@ -131,16 +144,21 @@ export default async function handler(req, ctx) {
           apiKey: process.env.ANTHROPIC_API_KEY,
         });
 
-        // Build user message with dynamic content (v1.2)
+        // Build user message with dynamic content (v2.0 - type-aware)
         const userMessage = buildMeetingUserMessage({
           rawInput,
           title: inferredTitle,
           attendees,
           context,
+          meetingType,
         });
+
+        // Build type-specific system prompt (v2.0)
+        const systemPrompt = buildSystemPrompt(meetingType);
 
         // Stream from Claude with prompt caching
         console.log(`[PERF] Claude API call start: ${Date.now() - t0}ms`);
+        console.log(`[enhance-meeting] Using ${meetingType} prompt template`);
         const response = await anthropic.messages.create({
           model: 'claude-sonnet-4-20250514',
           max_tokens: 2000,
@@ -149,7 +167,7 @@ export default async function handler(req, ctx) {
           system: [
             {
               type: 'text',
-              text: MEETING_ENHANCE_SYSTEM_PROMPT,
+              text: systemPrompt,
               cache_control: { type: 'ephemeral' }
             }
           ],
