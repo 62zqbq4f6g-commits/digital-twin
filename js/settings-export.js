@@ -538,9 +538,10 @@ const ExportUI = {
       console.log('[ExportUI] Injecting', localNotes.length, 'notes from IndexedDB');
 
       // Transform notes to export format
+      // Note: raw text is stored in note.input.raw_text
       const transformedNotes = localNotes.map(note => ({
         id: note.id,
-        content: note.raw_text || note.content || '',
+        content: note.input?.raw_text || note.raw_text || note.content || '',
         timestamp: note.timestamps?.created_at || note.created_at,
         category: note.classification?.category || 'uncategorized',
         type: note.note_type || 'standard',
