@@ -317,7 +317,14 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 12px;
+  margin-top: 24px; /* Space above section headers (after meeting cards) */
   padding-top: 8px;
+}
+
+/* First section header doesn't need extra top margin */
+.meetings-section-header:first-child,
+.meetings-list .meetings-section-header:first-of-type {
+  margin-top: 0;
 }
 
 .meetings-section-header h3 {
