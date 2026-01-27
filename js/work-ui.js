@@ -5,8 +5,6 @@
  * Replaces the old ACTIONS-only tab with a comprehensive work utility system.
  */
 
-console.log('=== WORK-UI.JS LOADED ===');
-
 const WorkUI = {
   // Active sub-tab state
   activeTab: 'pulse',

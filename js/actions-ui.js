@@ -7,39 +7,16 @@
  * Phase 7: Action completion signals to Supabase
  */
 
-console.log('=== ACTIONS-UI.JS LOADED ===');
-
-// Debug function to check what's in the database
+// Debug function available in development (call window.debugActions() in console)
 window.debugActions = async function() {
-  console.log('=== DEBUGGING ACTIONS ===');
-
   const notes = await NotesManager.getAll();
-  console.log('Total notes:', notes.length);
-
-  notes.forEach((note, i) => {
-    console.log(`\n--- Note ${i + 1}: ${note.id} ---`);
-    console.log('note.analysis:', note.analysis);
-    console.log('note.analysis?.actions:', note.analysis?.actions);
-
-    if (note.analysis?.actions) {
-      note.analysis.actions.forEach((action, j) => {
-        console.log(`  Action ${j + 1}:`, {
-          type: typeof action,
-          value: action,
-          effort: action?.effort,
-          text: action?.action || action?.text || action
-        });
-      });
-    }
-  });
-
-  console.log('=== END DEBUG ===');
+  console.table(notes.map((note, i) => ({
+    index: i + 1,
+    id: note.id,
+    hasAnalysis: !!note.analysis,
+    actionsCount: note.analysis?.actions?.length || 0
+  })));
 };
-
-// Auto-run hint on load
-setTimeout(() => {
-  console.log('Run window.debugActions() in console to inspect stored actions');
-}, 1000);
 
 /**
  * Phase 5A.7: Calculate suggestion score for an action
