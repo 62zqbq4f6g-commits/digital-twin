@@ -54,7 +54,7 @@ Summary:`;
 
     const summary = response.content[0].text.trim();
 
-    console.log(`[Compress API] Generated summary for ${entityName}: ${summary.substring(0, 50)}...`);
+    console.log(`[Compress API] Generated summary for entity`, { summaryLength: summary.length });
 
     return res.status(200).json({ summary });
 

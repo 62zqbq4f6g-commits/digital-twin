@@ -157,7 +157,7 @@ module.exports = async function handler(req, res) {
       });
 
       const text = response.content[0].text;
-      console.log('[detect-patterns] LLM response preview:', text.substring(0, 300) + '...');
+      console.log('[detect-patterns] LLM response received', { length: text.length });
 
       // Extract JSON from response
       const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -201,7 +201,7 @@ module.exports = async function handler(req, res) {
 
         for (const weak of weakPatterns) {
           if (text.includes(weak) && !text.includes('when') && !text.includes('after') && !text.includes('before')) {
-            console.log(`[detect-patterns] Filtered weak pattern: "${p.insight.substring(0, 50)}..."`);
+            console.log(`[detect-patterns] Filtered weak pattern`, { insightLength: p.insight?.length });
             return false;
           }
         }
@@ -277,7 +277,7 @@ module.exports = async function handler(req, res) {
           firstInsertError = insertError;
         }
       } else if (inserted) {
-        console.log(`[detect-patterns] Inserted: "${inserted.short_description.substring(0, 50)}..."${hasValidEncryption ? ' [encrypted]' : ''}`);
+        console.log(`[detect-patterns] Inserted pattern`, { id: inserted.id, encrypted: hasValidEncryption });
         newPatterns.push(inserted);
       }
     }

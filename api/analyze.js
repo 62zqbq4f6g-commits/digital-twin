@@ -484,7 +484,7 @@ async function executeMemoryOperation(supabaseClient, userId, operation, input, 
       // Log to audit trail
       await logMemoryOperation(supabaseClient, userId, 'ADD', fact, input, data.id, sourceNoteId, Date.now() - startTime);
 
-      console.log('[Analyze] Mem0 ADD:', input.content?.slice(0, 50) || fact.name);
+      console.log('[Analyze] Mem0 ADD completed', { entityId: data.id, hasContent: !!input.content });
       return { operation: 'ADD', entity_id: data.id };
 
     } else if (operation === 'UPDATE') {
@@ -828,7 +828,7 @@ Write ONLY the new summary:`;
         }
       }
 
-      console.log(`[Analyze] Mem0 - Successfully updated ${category} summary (${newSummary.substring(0, 50)}...)`);
+      console.log(`[Analyze] Mem0 - Successfully updated ${category} summary`, { length: newSummary.length });
 
     } catch (err) {
       console.warn(`[Analyze] Mem0 - Summary update error for ${category}:`, err.message);
@@ -1735,7 +1735,7 @@ module.exports = async function handler(req, res) {
     const onboarding = await getUserOnboardingContext(userId);
     if (onboarding) {
       onboardingContext = buildOnboardingContextPrompt(onboarding);
-      console.log('[Analyze] Phase 11 - Built onboarding context:', onboardingContext.substring(0, 200));
+      console.log('[Analyze] Phase 11 - Built onboarding context', { length: onboardingContext.length });
       // Inject into context for downstream use
       context.personalizationContext = onboardingContext;
       context.onboardingData = onboarding;
@@ -1831,7 +1831,7 @@ module.exports = async function handler(req, res) {
       userPrompt = buildTieredUserPrompt(cleanedInput, tier, context);
       console.log('[Analyze] Phase 8.8 DEBUG - Using TIERED prompt');
       console.log('[Analyze] Phase 8.8 DEBUG - Tier:', tier, 'Category:', category, 'Signals:', tierSignals);
-      console.log('[Analyze] Phase 8.8 DEBUG - User prompt:', userPrompt.substring(0, 200));
+      console.log('[Analyze] Phase 8.8 DEBUG - User prompt built', { length: userPrompt.length });
     } else {
       // Legacy mode - only used if tiered system disabled
       systemPrompt = buildTaskSystemPrompt(context, category, preferencesXML, hasImage, isFirstNote);
@@ -1881,14 +1881,13 @@ SHOW understanding, don't just REPEAT.
         const jsonMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)```/) || [null, responseText];
         result = JSON.parse(jsonMatch[1].trim());
 
-        // Phase 8.8 DEBUG: Log raw parsed result
+        // Phase 8.8 DEBUG: Log metadata only (no content)
         if (useTieredSystem && tier) {
-          console.log('[Analyze] Phase 8.8 DEBUG - Raw LLM response (first 500 chars):', responseText.substring(0, 500));
+          console.log('[Analyze] Phase 8.8 DEBUG - LLM response received', { length: responseText.length });
           console.log('[Analyze] Phase 8.8 DEBUG - Parsed result keys:', Object.keys(result));
-          console.log('[Analyze] Phase 8.8 DEBUG - Result:', JSON.stringify(result, null, 2).substring(0, 800));
         }
       } catch (parseError) {
-        console.error('Failed to parse Claude response:', responseText);
+        console.error('Failed to parse Claude response', { length: responseText?.length, error: parseError.message });
         result = getFallbackAnalysis(cleanedInput, isPersonalCategory ? 'personal' : category);
         break; // Parse error, use fallback
       }
@@ -3987,7 +3986,7 @@ Return ONLY valid JSON (no markdown):
         actions: Array.isArray(refined.actions) ? refined.actions : []
       });
     } catch (parseError) {
-      console.error('Failed to parse refine response:', responseText);
+      console.error('Failed to parse refine response', { length: responseText?.length, error: parseError.message });
       return res.status(500).json({ error: 'Failed to parse refinement response' });
     }
 
@@ -4009,7 +4008,7 @@ async function handleReflection(req, res) {
     return res.status(400).json({ error: 'Missing required fields for reflection' });
   }
 
-  console.log('[Analyze] REFLECT mode - originalTier:', originalTier, 'reflection:', reflection.substring(0, 50));
+  console.log('[Analyze] REFLECT mode - originalTier:', originalTier, 'reflectionLength:', reflection?.length);
 
   try {
     const client = new Anthropic({
@@ -4056,7 +4055,7 @@ DO NOT just summarize what they said. INTERPRET it.`;
     });
 
     const responseText = message.content[0].text.trim();
-    console.log('[Analyze] REFLECT - Raw response:', responseText.substring(0, 300));
+    console.log('[Analyze] REFLECT - Response received', { length: responseText.length });
 
     try {
       // Parse JSON response
@@ -4083,12 +4082,12 @@ DO NOT just summarize what they said. INTERPRET it.`;
       analysis.tier = upgradedTier;
       analysis.upgradedFromReflection = true;
 
-      console.log('[Analyze] REFLECT - Parsed analysis, tier:', analysis.tier, 'heard:', analysis.heard?.substring(0, 50));
+      console.log('[Analyze] REFLECT - Parsed analysis, tier:', analysis.tier, 'hasHeard:', !!analysis.heard);
 
       return res.status(200).json(analysis);
 
     } catch (parseError) {
-      console.error('[Analyze] REFLECT - Failed to parse response:', responseText.substring(0, 500));
+      console.error('[Analyze] REFLECT - Failed to parse response', { length: responseText?.length });
       return res.status(500).json({ error: 'Failed to parse reflection response' });
     }
 

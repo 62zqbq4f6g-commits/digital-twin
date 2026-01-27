@@ -111,7 +111,7 @@ Remember: Respond ONLY with valid JSON, no explanations.`
                         [null, responseText];
       result = JSON.parse(jsonMatch[1].trim());
     } catch (parseError) {
-      console.error('Failed to parse Claude response:', responseText);
+      console.error('Failed to parse Claude response', { length: responseText?.length, error: parseError.message });
       // Return empty result if parsing fails
       result = {
         entities: [],

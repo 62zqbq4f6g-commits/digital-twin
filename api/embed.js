@@ -42,7 +42,7 @@ export default async function handler(req, res) {
     const data = await response.json();
     const embedding = data.data[0].embedding;
 
-    console.log(`[Embed API] Generated embedding for ${text.substring(0, 30)}... (${embedding.length} dims)`);
+    console.log(`[Embed API] Generated embedding`, { inputLength: text.length, dims: embedding.length });
 
     return res.status(200).json({ embedding });
 

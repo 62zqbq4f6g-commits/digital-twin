@@ -97,8 +97,7 @@ export default async function handler(req, ctx) {
     const noticed = reflection?.what_i_noticed || reflection?.noticed || '';
     const question = reflection?.question || '';
 
-    console.log(`[Analyze-Edge] Mapped - heard: ${heard?.substring(0, 50)}...`);
-    console.log(`[Analyze-Edge] Mapped - noticed: ${noticed?.substring(0, 50)}...`);
+    console.log(`[Analyze-Edge] Mapped - hasHeard: ${!!heard}, hasNoticed: ${!!noticed}`);
 
     const criticalPathTime = Date.now() - startTime;
     console.log(`[Analyze-Edge] === CRITICAL PATH COMPLETE: ${criticalPathTime}ms ===`);
@@ -347,7 +346,7 @@ GOOD (recognizing key person): "You took Seri out for a walk — sounds like qua
     });
 
     const text = message.content[0]?.type === 'text' ? message.content[0].text : '{}';
-    console.log('[Analyze-Edge] Raw LLM response:', text.substring(0, 300));
+    console.log('[Analyze-Edge] LLM response received', { length: text.length });
 
     // Try to parse JSON, handle various formats
     try {
