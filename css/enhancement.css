@@ -1981,7 +1981,7 @@
   margin-bottom: 16px;
 }
 
-.meetings-section-title:first-of-type,
+/* Only the first section (THIS WEEK) in the header should have no top margin */
 .meetings-list-header .meetings-section-title {
   margin-top: 0;
 }
