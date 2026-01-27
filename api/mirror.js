@@ -24,6 +24,64 @@ const anthropic = new Anthropic({
 // Minimum notes required for full MIRROR experience
 const MIN_NOTES_FOR_INSIGHTS = 5;
 
+/**
+ * SPRINT 3: Fetch structured facts for entities
+ * Facts provide specific knowledge (works_at, role, likes, etc.)
+ */
+async function getFactsForEntities(user_id, entityIds) {
+  if (!entityIds?.length) return [];
+
+  const { data: facts, error } = await supabase
+    .from('entity_facts')
+    .select('entity_id, predicate, object_text, confidence')
+    .eq('user_id', user_id)
+    .in('entity_id', entityIds)
+    .order('confidence', { ascending: false });
+
+  if (error) {
+    console.error('[mirror] Failed to fetch facts:', error.message);
+    return [];
+  }
+
+  return facts || [];
+}
+
+/**
+ * Format facts for natural inclusion in prompt
+ * Groups facts by entity and formats naturally
+ */
+function formatFactsForPrompt(entities, facts) {
+  if (!facts?.length) return null;
+
+  // Create entity ID to name map
+  const entityMap = new Map(entities.map(e => [e.id, e]));
+
+  // Group facts by entity
+  const factsByEntity = {};
+  for (const fact of facts) {
+    const entity = entityMap.get(fact.entity_id);
+    if (!entity) continue;
+
+    if (!factsByEntity[entity.name]) {
+      factsByEntity[entity.name] = { entity, facts: [] };
+    }
+    factsByEntity[entity.name].facts.push(fact);
+  }
+
+  // Format each entity's facts
+  const formatted = Object.entries(factsByEntity).map(([name, data]) => {
+    const factLines = data.facts.slice(0, 5).map(f => {
+      // Format predicate naturally
+      const predicate = f.predicate.replace(/_/g, ' ');
+      return `  - ${predicate}: ${f.object_text}`;
+    }).join('\n');
+
+    return `${name}:\n${factLines}`;
+  });
+
+  return formatted.length > 0 ? formatted.join('\n\n') : null;
+}
+
 module.exports = async function handler(req, res) {
   // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -951,11 +1009,19 @@ async function generateResponse(user_id, userMessage, history, context, addition
   // MEM0 BUILD 7: Get type-aware context based on user's message
   const mirrorContext = await buildMirrorContext(user_id, userMessage);
 
-  // Merge enhanced context with existing context
+  // SPRINT 3: Fetch structured facts for entities in context
+  const entityIds = (context.entities || []).map(e => e.id).filter(Boolean);
+  const entityFacts = await getFactsForEntities(user_id, entityIds);
+  const factsContext = formatFactsForPrompt(context.entities || [], entityFacts);
+
+  console.log('[mirror] Facts loaded:', entityFacts.length, 'facts for', entityIds.length, 'entities');
+
+  // Merge enhanced context with existing context + facts
   const enhancedContext = {
     ...context,
     mem0Context: mirrorContext.context,
-    mem0Stats: mirrorContext.stats
+    mem0Stats: mirrorContext.stats,
+    entityFacts: factsContext  // SPRINT 3: Structured facts
   };
 
   // Analyze the conversation to determine best insight type
@@ -1099,7 +1165,7 @@ function findReferencedEntities(content, entities) {
  * Session notes are passed from client-side for immediate context
  */
 function buildSystemPrompt(context, insightType = 'reflection_prompt') {
-  const { noteCount, entities, patterns, userName, onboarding, recentSessionNotes, profile, depthQuestion, depthAnswer, summaries } = context;
+  const { noteCount, entities, patterns, userName, onboarding, recentSessionNotes, profile, depthQuestion, depthAnswer, summaries, entityFacts } = context;
 
   // Note: Notes are E2E encrypted - we can't read content server-side
   // Instead, we use extracted entities which capture key people/topics from notes
@@ -1127,6 +1193,7 @@ function buildSystemPrompt(context, insightType = 'reflection_prompt') {
   console.log('[mirror]   - Profile lifeContext:', profile?.lifeContext || 'NONE');
   console.log('[mirror]   - Profile boundaries:', profile?.boundaries || 'NONE');
   console.log('[mirror]   - Depth Q/A:', depthQuestion ? 'YES' : 'NO');
+  console.log('[mirror]   - Entity Facts:', entityFacts ? 'YES' : 'NO');
 
   // Build Key People context (highest priority)
   const keyPeopleContext = keyPeople.length > 0
@@ -1242,6 +1309,8 @@ ${sessionNotesContext ? `\nRECENT NOTES FROM THIS SESSION (highest priority - ju
 People and topics from their notes:
 ${entitiesContext}
 ${patternsContext ? `\nObserved patterns:\n${patternsContext}` : ''}
+${entityFacts ? `\n📋 SPECIFIC FACTS YOU KNOW (reference naturally, never robotically):
+${entityFacts}` : ''}
 </user_context>
 ${mem0Context ? `\n<enhanced_memory_context>\n${mem0Context}</enhanced_memory_context>` : ''}`;
 
