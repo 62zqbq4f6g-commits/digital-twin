@@ -262,7 +262,12 @@ const MeetingsTab = {
       const notes = await DB.getAllNotes();
       return notes
         .filter(n => n.note_type === 'meeting')
-        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        .sort((a, b) => {
+          // Handle both root-level and nested timestamps
+          const dateA = a.created_at || a.timestamps?.created_at;
+          const dateB = b.created_at || b.timestamps?.created_at;
+          return new Date(dateB) - new Date(dateA);
+        });
     } catch (error) {
       console.warn('[MeetingsTab] Local fetch error:', error);
       return [];
@@ -343,13 +348,29 @@ const MeetingsTab = {
    * Render a single meeting card
    */
   renderMeetingCard(meeting) {
-    const date = new Date(meeting.created_at);
+    // Handle both root-level and nested timestamps
+    const createdAt = meeting.created_at || meeting.timestamps?.created_at;
+    const date = new Date(createdAt);
     const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toUpperCase();
 
-    // Extract metadata
-    const metadata = meeting.meeting_metadata || meeting.enhancement_metadata || {};
-    const title = metadata.title || this.extractTitle(meeting.content) || 'Untitled Meeting';
-    const actionCount = metadata.action_items?.length || this.countActionItems(meeting.content);
+    // Extract metadata - support both flat and nested structures
+    const metadata = meeting.meeting_metadata ||
+                     meeting.enhancement_metadata ||
+                     meeting.input?.meeting_metadata ||
+                     {};
+
+    // Get title from multiple possible locations
+    const title = metadata.title ||
+                  meeting.extracted?.title ||
+                  meeting.analysis?.title ||
+                  this.extractTitle(meeting.content || meeting.input?.enhanced_text) ||
+                  'Untitled Meeting';
+
+    // Get action count from multiple possible locations
+    const actionCount = metadata.action_items?.length ||
+                        meeting.extracted?.action_items?.length ||
+                        meeting.analysis?.actions?.length ||
+                        this.countActionItems(meeting.content || meeting.input?.enhanced_text);
     const summary = this.getSummary(meeting);
 
     return `
@@ -392,15 +413,24 @@ const MeetingsTab = {
    * Get summary from meeting
    */
   getSummary(meeting) {
-    const metadata = meeting.meeting_metadata || meeting.enhancement_metadata || {};
+    // Support both flat and nested metadata structures
+    const metadata = meeting.meeting_metadata ||
+                     meeting.enhancement_metadata ||
+                     meeting.input?.meeting_metadata ||
+                     {};
 
-    // Try topics from metadata
-    if (metadata.topics?.length > 0) {
-      return metadata.topics.slice(0, 3).join(', ');
+    // Try topics from metadata or extracted
+    const topics = metadata.topics || meeting.extracted?.topics;
+    if (topics?.length > 0) {
+      return topics.slice(0, 3).join(', ');
     }
 
     // Try to extract DISCUSSED section
-    const content = meeting.enhanced_content || meeting.content || '';
+    const content = meeting.enhanced_content ||
+                    meeting.content ||
+                    meeting.input?.enhanced_text ||
+                    meeting.input?.raw_text ||
+                    '';
     const discussedMatch = content.match(/DISCUSSED[\s\S]*?(?=##|ACTION|$)/i);
     if (discussedMatch) {
       const items = discussedMatch[0].match(/^[-•*]\s+(.+)$/gm);
@@ -426,13 +456,16 @@ const MeetingsTab = {
     const startOfLastWeek = new Date(startOfWeek);
     startOfLastWeek.setDate(startOfLastWeek.getDate() - 7);
 
+    // Helper to get date from meeting (handles both formats)
+    const getDate = (m) => new Date(m.created_at || m.timestamps?.created_at);
+
     return {
-      'this-week': meetings.filter(m => new Date(m.created_at) >= startOfWeek),
+      'this-week': meetings.filter(m => getDate(m) >= startOfWeek),
       'last-week': meetings.filter(m => {
-        const d = new Date(m.created_at);
+        const d = getDate(m);
         return d >= startOfLastWeek && d < startOfWeek;
       }),
-      'earlier': meetings.filter(m => new Date(m.created_at) < startOfLastWeek),
+      'earlier': meetings.filter(m => getDate(m) < startOfLastWeek),
     };
   },
 
@@ -715,19 +748,11 @@ const MeetingsTab = {
   openNewMeeting() {
     console.log('[MeetingsTab] Opening new meeting capture');
 
-    // Try MeetingCapture first
-    if (typeof MeetingCapture !== 'undefined') {
-      const modal = document.getElementById('meeting-capture-modal');
-      if (modal) {
-        modal.classList.remove('hidden');
-        MeetingCapture.reset?.();
-        return;
-      }
-    }
-
-    // Fall back to UI method
+    // Use UI.openMeetingCapture which properly initializes MeetingCapture component
     if (typeof UI !== 'undefined' && UI.openMeetingCapture) {
       UI.openMeetingCapture();
+    } else {
+      console.error('[MeetingsTab] UI.openMeetingCapture not available');
     }
   },
 
