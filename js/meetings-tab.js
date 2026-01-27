@@ -410,7 +410,7 @@ const MeetingsTab = {
   },
 
   /**
-   * Get summary from meeting
+   * Get summary from meeting - shows valuable at-a-glance info
    */
   getSummary(meeting) {
     // Support both flat and nested metadata structures
@@ -425,23 +425,74 @@ const MeetingsTab = {
       return topics.slice(0, 3).join(', ');
     }
 
-    // Try to extract DISCUSSED section
     const content = meeting.enhanced_content ||
                     meeting.content ||
                     meeting.input?.enhanced_text ||
                     meeting.input?.raw_text ||
                     '';
-    const discussedMatch = content.match(/DISCUSSED[\s\S]*?(?=##|ACTION|$)/i);
-    if (discussedMatch) {
-      const items = discussedMatch[0].match(/^[-•*]\s+(.+)$/gm);
-      if (items) {
-        return items.slice(0, 3).map(i => i.replace(/^[-•*]\s+/, '')).join(', ');
+
+    // Try to extract SUMMARY section first (v2.0 format)
+    const summaryMatch = content.match(/(?:^|\n)##?\s*SUMMARY\s*\n+([\s\S]*?)(?=\n##|$)/i);
+    if (summaryMatch) {
+      const summary = this.stripMarkdown(summaryMatch[1]).trim();
+      if (summary) return summary.substring(0, 120);
+    }
+
+    // Try DECISIONS section - these are high value
+    const decisionsMatch = content.match(/(?:^|\n)##?\s*DECISIONS?\s*\n+([\s\S]*?)(?=\n##|$)/i);
+    if (decisionsMatch) {
+      const items = decisionsMatch[1].match(/^[-•*✓→]\s*(.+)$/gm);
+      if (items?.length > 0) {
+        const decisions = items.slice(0, 2).map(i => this.stripMarkdown(i.replace(/^[-•*✓→]\s*/, '')));
+        return decisions.join(', ');
       }
     }
 
-    // Fall back to content preview
-    const clean = content.replace(/^#+\s*.+$/gm, '').replace(/\n+/g, ' ').trim();
-    return clean.substring(0, 100) + (clean.length > 100 ? '...' : '');
+    // Try to extract DISCUSSED section
+    const discussedMatch = content.match(/(?:^|\n)##?\s*DISCUSSED\s*\n+([\s\S]*?)(?=\n##|$)/i);
+    if (discussedMatch) {
+      const items = discussedMatch[1].match(/^[-•*]\s*(.+)$/gm);
+      if (items?.length > 0) {
+        const topics = items.slice(0, 3).map(i => this.stripMarkdown(i.replace(/^[-•*]\s*/, '')));
+        return topics.join(', ');
+      }
+    }
+
+    // Try KEY INSIGHTS (interview format)
+    const insightsMatch = content.match(/(?:^|\n)##?\s*KEY INSIGHTS?\s*\n+([\s\S]*?)(?=\n##|$)/i);
+    if (insightsMatch) {
+      const items = insightsMatch[1].match(/^[-•*]\s*(.+)$/gm);
+      if (items?.length > 0) {
+        return this.stripMarkdown(items[0].replace(/^[-•*]\s*/, '')).substring(0, 100);
+      }
+    }
+
+    // Final fallback - clean content preview, no markdown
+    const clean = this.stripMarkdown(content);
+    if (clean.length > 10) {
+      return clean.substring(0, 100) + (clean.length > 100 ? '...' : '');
+    }
+
+    return 'No summary available';
+  },
+
+  /**
+   * Strip markdown formatting from text
+   */
+  stripMarkdown(text) {
+    if (!text) return '';
+    return text
+      .replace(/^#+\s*/gm, '')           // Remove heading markers
+      .replace(/\*\*([^*]+)\*\*/g, '$1') // Remove bold
+      .replace(/\*([^*]+)\*/g, '$1')     // Remove italic
+      .replace(/__([^_]+)__/g, '$1')     // Remove underline bold
+      .replace(/_([^_]+)_/g, '$1')       // Remove underline italic
+      .replace(/`([^`]+)`/g, '$1')       // Remove code
+      .replace(/^[-•*→✓⚠️📌]\s*/gm, '')   // Remove list markers
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // Remove links, keep text
+      .replace(/\n+/g, ' ')              // Collapse newlines
+      .replace(/\s+/g, ' ')              // Collapse whitespace
+      .trim();
   },
 
   /**
