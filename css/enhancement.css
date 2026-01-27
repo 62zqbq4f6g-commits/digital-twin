@@ -2014,23 +2014,25 @@
   gap: 12px;
 }
 
-/* Meeting Card */
+/* Meeting Card — Design System v2 (SoHo editorial) */
 .meeting-card {
   padding: 20px 24px;
-  background: var(--silver-50, #FAFAFA);
+  background: #FFFFFF;
   border: 1px solid rgba(0, 0, 0, 0.06);
   border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   cursor: pointer;
-  transition: border-color 200ms ease-out;
+  transition: box-shadow 200ms ease-out, border-color 200ms ease-out;
 }
 
 .meeting-card:hover {
-  border-color: var(--ink, #000);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  border-color: var(--silver-300, #D4D4D4);
 }
 
 .meeting-card:focus {
   outline: none;
-  border-color: var(--ink, #000);
+  box-shadow: 0 0 0 2px var(--ink, #1A1A1A);
 }
 
 .meeting-card-header {
@@ -2059,11 +2061,12 @@
 }
 
 .meeting-card-summary {
-  font-family: var(--font-body, 'Inter', -apple-system, sans-serif);
-  font-size: 14px;
-  color: var(--silver-600, #525252);
-  line-height: 1.5;
-  margin: 0;
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 15px;
+  font-style: italic;
+  color: var(--text-secondary, #6B6B6B);
+  line-height: 1.6;
+  margin: 0 0 8px 0;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
