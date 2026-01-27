@@ -14,6 +14,8 @@ const { getUserFullContext, buildContextBlock, formatTone } = require('./user-co
 // Research and Knowledge modules
 const { detectResearchMode, conductResearch, buildResearchPrompt, formatResearchForContextUI } = require('../lib/mirror/research-mode.js');
 const { detectKnowledgeQuery, getKnowledgeAbout, buildKnowledgePrompt, formatKnowledgeForContextUI } = require('../lib/mirror/knowledge-about.js');
+// SPRINT 3: Fact retrieval with message-based entity detection
+const { getRelevantFacts } = require('../lib/mirror/fact-retrieval.js');
 
 const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = createClient(
@@ -1079,12 +1081,21 @@ async function generateResponse(user_id, userMessage, history, context, addition
   // MEM0 BUILD 7: Get type-aware context based on user's message
   const mirrorContext = await buildMirrorContext(user_id, userMessage);
 
-  // SPRINT 3: Fetch structured facts for entities in context
-  const entityIds = (context.entities || []).map(e => e.id).filter(Boolean);
-  const entityFacts = await getFactsForEntities(user_id, entityIds);
-  const factsContext = formatFactsForPrompt(context.entities || [], entityFacts);
+  // SPRINT 3: Fetch structured facts with MESSAGE-BASED entity detection
+  // This detects entity names mentioned in the current message and recent history
+  const recentMessages = history.slice(-5).map(h => ({ content: h.content || h.message || '' }));
+  const { facts: relevantFacts, entities: relevantEntities, factsByEntity } = await getRelevantFacts(user_id, userMessage, recentMessages);
 
-  console.log('[mirror] Facts loaded:', entityFacts.length, 'facts for', entityIds.length, 'entities');
+  // Format facts for prompt - use the factsByEntity structure for natural formatting
+  let factsContext = null;
+  if (Object.keys(factsByEntity).length > 0) {
+    factsContext = Object.entries(factsByEntity).map(([name, data]) => {
+      const factLines = data.facts.slice(0, 5).map(f => `  - ${f.predicate.replace(/_/g, ' ')}: ${f.object}`).join('\n');
+      return `${name}:\n${factLines}`;
+    }).join('\n\n');
+  }
+
+  console.log('[mirror] Facts loaded:', relevantFacts.length, 'facts for', relevantEntities.length, 'entities (message-based detection)');
 
   // Merge enhanced context with existing context + facts
   const enhancedContext = {
@@ -1142,13 +1153,12 @@ async function generateResponse(user_id, userMessage, history, context, addition
       });
     }
 
-    // Add facts to context used
-    if (entityFacts?.length > 0) {
-      const factLines = entityFacts.split('\n').filter(l => l.trim().startsWith('-')).slice(0, 2);
-      factLines.forEach(f => {
+    // Add facts to context used (SPRINT 3: using relevantFacts from message detection)
+    if (relevantFacts?.length > 0) {
+      relevantFacts.slice(0, 3).forEach(f => {
         contextUsed.push({
           type: 'fact',
-          value: f.replace(/^\s*-\s*/, '').trim()
+          value: `${f.predicate.replace(/_/g, ' ')}: ${f.object_text}`
         });
       });
     }
