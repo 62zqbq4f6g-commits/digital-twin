@@ -11,6 +11,10 @@ const { createClient } = require('@supabase/supabase-js');
 const Anthropic = require('@anthropic-ai/sdk');
 const { getUserFullContext, buildContextBlock, formatTone } = require('./user-context.js');
 
+// Research and Knowledge modules
+const { detectResearchMode, conductResearch, buildResearchPrompt, formatResearchForContextUI } = require('../lib/mirror/research-mode.js');
+const { detectKnowledgeQuery, getKnowledgeAbout, buildKnowledgePrompt, formatKnowledgeForContextUI } = require('../lib/mirror/knowledge-about.js');
+
 const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -278,8 +282,65 @@ async function handleMessage(req, res, user_id) {
   // Add session notes to context (client-side notes not yet in server DB)
   userContext.recentSessionNotes = recentSessionNotes || [];
 
-  // Generate Inscript response
-  const response = await generateResponse(user_id, message, history || [], userContext, context);
+  // Check for special modes: Research and Knowledge queries
+  let response;
+  let specialMode = null;
+
+  // Check for Research mode (deep dive into topics)
+  const researchCheck = detectResearchMode(message);
+  if (researchCheck.isResearch) {
+    console.log('[mirror] Research mode detected for topic:', researchCheck.topic);
+    specialMode = 'research';
+
+    // Conduct research
+    const research = await conductResearch(user_id, researchCheck.topic, supabase);
+    const researchPrompt = buildResearchPrompt(research);
+    const researchContextUI = formatResearchForContextUI(research);
+
+    // Generate response with research context
+    response = await generateResponse(user_id, message, history || [], {
+      ...userContext,
+      researchContext: researchPrompt,
+      researchResults: research
+    }, context);
+
+    // Add research stats to context used
+    response.contextUsed = [...researchContextUI, ...(response.contextUsed || [])];
+    response.researchSummary = {
+      topic: research.topic,
+      noteCount: research.noteCount,
+      entityCount: research.entities.length,
+      patternCount: research.patterns.length,
+      relatedPeople: research.relatedPeople
+    };
+  }
+  // Check for Knowledge query ("what do you know about X")
+  else {
+    const knowledgeCheck = detectKnowledgeQuery(message);
+    if (knowledgeCheck.isKnowledgeQuery) {
+      console.log('[mirror] Knowledge query detected for subject:', knowledgeCheck.subject);
+      specialMode = 'knowledge';
+
+      // Get knowledge about subject
+      const knowledge = await getKnowledgeAbout(user_id, knowledgeCheck.subject, supabase);
+      const knowledgePrompt = buildKnowledgePrompt(knowledge);
+      const knowledgeContextUI = formatKnowledgeForContextUI(knowledge);
+
+      // Generate response with knowledge context
+      response = await generateResponse(user_id, message, history || [], {
+        ...userContext,
+        knowledgeContext: knowledgePrompt,
+        knowledgeResults: knowledge
+      }, context);
+
+      // Add knowledge to context used
+      response.contextUsed = [...knowledgeContextUI, ...(response.contextUsed || [])];
+    }
+    // Normal response generation
+    else {
+      response = await generateResponse(user_id, message, history || [], userContext, context);
+    }
+  }
 
   // Store Inscript response
   const { data: inscriptMsg } = await supabase
@@ -302,12 +363,21 @@ async function handleMessage(req, res, user_id) {
     .update({ last_message_at: new Date().toISOString() })
     .eq('id', conversation_id);
 
+  // Determine conversation mode for UI indicator
+  let conversationMode = null;
+  if (response.type === 'thinking_partner') conversationMode = 'thinking';
+  else if (specialMode === 'research') conversationMode = 'research';
+  else if (specialMode === 'knowledge') conversationMode = 'knowledge';
+
   return res.status(200).json({
     messageId: inscriptMsg.id,
     response: {
       content: response.content,
       insightType: response.type,
-      referencedNotes: response.referencedNotes
+      referencedNotes: response.referencedNotes,
+      conversationMode, // 'thinking' | 'research' | 'knowledge' | null — for UI indicator
+      contextUsed: response.contextUsed || [], // For Context Used UI
+      researchSummary: response.researchSummary || null // For Research mode UI
     }
   });
 }
@@ -1050,11 +1120,66 @@ async function generateResponse(user_id, userMessage, history, context, addition
     // Find referenced entities mentioned in response
     const referencedEntities = findReferencedEntities(content, context.entities);
 
+    // Build context used list for transparency (Feature 4: Context Used UI)
+    const contextUsed = [];
+
+    // Add entities to context used
+    if (context.entities?.length > 0) {
+      context.entities.slice(0, 3).forEach(e => {
+        if (e.is_key_person) {
+          contextUsed.push({
+            type: 'key_person',
+            name: e.name,
+            value: e.relationship || 'key person'
+          });
+        } else {
+          contextUsed.push({
+            type: 'entity',
+            name: e.name,
+            value: `${e.entity_type || 'person'}, mentioned ${e.mention_count || 1}x`
+          });
+        }
+      });
+    }
+
+    // Add facts to context used
+    if (entityFacts?.length > 0) {
+      const factLines = entityFacts.split('\n').filter(l => l.trim().startsWith('-')).slice(0, 2);
+      factLines.forEach(f => {
+        contextUsed.push({
+          type: 'fact',
+          value: f.replace(/^\s*-\s*/, '').trim()
+        });
+      });
+    }
+
+    // Add patterns to context used
+    if (context.patterns?.length > 0) {
+      context.patterns.slice(0, 2).forEach(p => {
+        contextUsed.push({
+          type: 'pattern',
+          value: p.short_description || p.description
+        });
+      });
+    }
+
+    // Add session notes to context used
+    if (context.recentSessionNotes?.length > 0) {
+      context.recentSessionNotes.slice(0, 2).forEach(n => {
+        contextUsed.push({
+          type: 'note',
+          date: n.created_at ? new Date(n.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'Recent',
+          preview: (n.content || '').slice(0, 50) + '...'
+        });
+      });
+    }
+
     return {
       content,
       type: insightType,
       referencedNotes: null, // Notes are E2E encrypted
-      referencedEntities
+      referencedEntities,
+      contextUsed: contextUsed.slice(0, 5) // Max 5 items
     };
 
   } catch (error) {
@@ -1067,12 +1192,65 @@ async function generateResponse(user_id, userMessage, history, context, addition
 }
 
 /**
+ * Detect if message should trigger Thinking Partner mode
+ * Returns: { isThinkingPartner: boolean, trigger?: string }
+ */
+function detectThinkingPartnerMode(userMessage) {
+  const message = userMessage.toLowerCase();
+
+  // Explicit triggers for Thinking Partner mode
+  const thinkingTriggers = [
+    { pattern: /i'm thinking about/i, trigger: 'exploring' },
+    { pattern: /i'm not sure about/i, trigger: 'uncertainty' },
+    { pattern: /help me think through/i, trigger: 'explicit' },
+    { pattern: /what do you think about/i, trigger: 'opinion_seeking' },
+    { pattern: /i've been wondering/i, trigger: 'exploring' },
+    { pattern: /i can't decide/i, trigger: 'decision' },
+    { pattern: /weighing my options/i, trigger: 'decision' },
+    { pattern: /on one hand.*on the other/i, trigger: 'decision' },
+    { pattern: /part of me (wants|thinks|feels)/i, trigger: 'internal_conflict' },
+    { pattern: /i don't know (if|what|how|whether)/i, trigger: 'uncertainty' },
+    { pattern: /should i/i, trigger: 'decision' },
+    { pattern: /trying to figure out/i, trigger: 'exploring' },
+    { pattern: /not sure (if|what|how|whether)/i, trigger: 'uncertainty' },
+  ];
+
+  for (const { pattern, trigger } of thinkingTriggers) {
+    if (pattern.test(message)) {
+      return { isThinkingPartner: true, trigger };
+    }
+  }
+
+  // Check for exploratory questions (statements that seem exploratory)
+  const isExploratory = /\?$/.test(userMessage.trim()) === false && (
+    message.includes('wonder') ||
+    message.includes('curious') ||
+    message.includes('feels like') ||
+    message.includes('something about') ||
+    message.includes('i keep') ||
+    message.includes('lately i')
+  );
+
+  if (isExploratory) {
+    return { isThinkingPartner: true, trigger: 'exploratory' };
+  }
+
+  return { isThinkingPartner: false };
+}
+
+/**
  * Analyze conversation to determine best insight type
- * Types: connection, pattern, reflection_prompt, reframe, summary
+ * Types: thinking_partner, connection, pattern, reflection_prompt, reframe, summary
  */
 function analyzeForInsightType(userMessage, history, context) {
   const message = userMessage.toLowerCase();
   const recentHistory = history.slice(-4);
+
+  // Check for Thinking Partner mode first (highest priority for exploratory messages)
+  const thinkingPartner = detectThinkingPartnerMode(userMessage);
+  if (thinkingPartner.isThinkingPartner) {
+    return 'thinking_partner';
+  }
 
   // Check for negative self-talk (use reframe)
   const negativePatterns = ['i failed', 'i\'m bad at', 'i can\'t', 'i\'m not good', 'i messed up', 'it was terrible'];
@@ -1082,9 +1260,9 @@ function analyzeForInsightType(userMessage, history, context) {
     }
   }
 
-  // Check for decision/uncertainty (use reflection_prompt)
-  const uncertaintyPatterns = ['should i', 'don\'t know', 'not sure', 'can\'t decide', 'what do you think', 'help me'];
-  for (const pattern of uncertaintyPatterns) {
+  // Check for simple decision/uncertainty that doesn't need deep thinking partner
+  const simpleUncertaintyPatterns = ['help me'];
+  for (const pattern of simpleUncertaintyPatterns) {
     if (message.includes(pattern)) {
       return 'reflection_prompt';
     }
@@ -1165,7 +1343,7 @@ function findReferencedEntities(content, entities) {
  * Session notes are passed from client-side for immediate context
  */
 function buildSystemPrompt(context, insightType = 'reflection_prompt') {
-  const { noteCount, entities, patterns, userName, onboarding, recentSessionNotes, profile, depthQuestion, depthAnswer, summaries, entityFacts } = context;
+  const { noteCount, entities, patterns, userName, onboarding, recentSessionNotes, profile, depthQuestion, depthAnswer, summaries, entityFacts, researchContext, knowledgeContext } = context;
 
   // Note: Notes are E2E encrypted - we can't read content server-side
   // Instead, we use extracted entities which capture key people/topics from notes
@@ -1391,7 +1569,15 @@ CONVERSATION RULES:
 5. Match their energy - quick message = brief response
 
 IMPORTANT: Recent session notes (if present above) are what they JUST wrote - reference these immediately and naturally. Don't say "I don't see that note yet" if it's in your context.
-
+${researchContext ? `
+─────────────────────────────────
+${researchContext}
+─────────────────────────────────
+` : ''}${knowledgeContext ? `
+─────────────────────────────────
+${knowledgeContext}
+─────────────────────────────────
+` : ''}
 Remember: You're their mirror, not their therapist. Reflect, don't prescribe.`;
 }
 
@@ -1400,6 +1586,31 @@ Remember: You're their mirror, not their therapist. Reflect, don't prescribe.`;
  */
 function getInsightTypeInstructions(insightType) {
   const instructions = {
+    thinking_partner: `CURRENT APPROACH: THINKING PARTNER
+You are helping them think through something, NOT giving advice.
+
+RULES:
+1. DO NOT immediately give answers or solutions
+2. First, acknowledge what they've shared (1 sentence)
+3. Search their history for relevant context — reference what they've thought about before
+4. Ask 1-2 probing questions that:
+   - Connect to something they've mentioned before
+   - Surface assumptions they might be making
+   - Open new angles they haven't considered
+
+EXAMPLE:
+User: "I'm stressed about the launch"
+
+BAD: "Launch stress is common. Here are some tips: take breaks, delegate, prioritize..."
+
+GOOD: "You've mentioned launch stress a few times this month. Last time, you said talking to Marcus helped reframe things. What feels different about this one — is it the timeline, the stakes, or something about the team?"
+
+CRITICAL:
+- End EVERY response with a question
+- Never give more than one piece of advice
+- Your job is to help them think, not think for them
+- If they ask "what should I do?", turn it back: "What would you tell a friend in this situation?"`,
+
     connection: `CURRENT APPROACH: CONNECTION
 Link the user's current topic to something they mentioned before.
 Example: "Pitches seem to sit heavy with you. You wrote something similar before the board meeting in November. That time, talking to Marcus helped you find clarity. Is there something similar you could try?"

@@ -330,7 +330,9 @@ class Mirror {
         role: 'inscript',
         content: data.response.content,
         type: data.response.insightType,
-        referencedNotes: data.response.referencedNotes
+        referencedNotes: data.response.referencedNotes,
+        conversationMode: data.response.conversationMode,
+        contextUsed: data.response.contextUsed
       });
 
       // Track Inscript response
@@ -599,13 +601,130 @@ class Mirror {
       `;
     }
 
+    // Mode indicator for Inscript messages
+    let modeIndicatorHtml = '';
+    if (isInscript && msg.conversationMode) {
+      const modeLabels = {
+        'thinking': 'Thinking with you',
+        'thinking_partner': 'Thinking with you',
+        'research': 'Research mode',
+        'knowledge': 'From memory'
+      };
+      const modeLabel = modeLabels[msg.conversationMode] || '';
+      if (modeLabel) {
+        modeIndicatorHtml = `<div class="mirror-mode-indicator">${modeLabel}</div>`;
+      }
+    }
+
+    // Context used section for Inscript messages
+    let contextUsedHtml = '';
+    if (isInscript && msg.contextUsed && msg.contextUsed.length > 0) {
+      contextUsedHtml = this.renderContextUsed(msg.contextUsed);
+    }
+
     return `
       <div class="mirror-message ${isInscript ? 'mirror-message-inscript' : 'mirror-message-user'}" role="article" aria-label="${isInscript ? 'Inscript says' : 'You said'}">
         <div class="mirror-bubble ${bubbleClass}">
+          ${modeIndicatorHtml}
           <p class="mirror-bubble-text">${this.escapeHtml(msg.content)}</p>
           ${buttonsHtml}
+          ${contextUsedHtml}
         </div>
       </div>
+    `;
+  }
+
+  /**
+   * Render context used section
+   */
+  renderContextUsed(contextUsed) {
+    if (!contextUsed || contextUsed.length === 0) return '';
+
+    const contextItems = contextUsed.slice(0, 5).map(item => {
+      const formatDate = (dateStr) => {
+        if (!dateStr) return '';
+        return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      };
+
+      switch (item.type) {
+        case 'note':
+          return `
+            <div class="context-item">
+              <span class="context-type">Note</span>
+              <span class="context-date">${formatDate(item.date)}</span>
+              <span class="context-preview">${this.escapeHtml(item.preview || '')}</span>
+            </div>
+          `;
+        case 'entity':
+          return `
+            <div class="context-item">
+              <span class="context-type">Person</span>
+              <span class="context-value">${this.escapeHtml(item.name || '')}${item.value ? ` (${this.escapeHtml(item.value)})` : ''}</span>
+            </div>
+          `;
+        case 'fact':
+          return `
+            <div class="context-item">
+              <span class="context-type">Fact</span>
+              <span class="context-value">${this.escapeHtml(item.value || '')}</span>
+            </div>
+          `;
+        case 'pattern':
+          return `
+            <div class="context-item">
+              <span class="context-type">Pattern</span>
+              <span class="context-value">${this.escapeHtml(item.value || '')}</span>
+            </div>
+          `;
+        case 'research':
+          return `
+            <div class="context-item">
+              <span class="context-type">Search</span>
+              <span class="context-value">${this.escapeHtml(item.label || '')}: ${this.escapeHtml(item.value || '')}</span>
+            </div>
+          `;
+        case 'mentions':
+          return `
+            <div class="context-item">
+              <span class="context-type">Refs</span>
+              <span class="context-value">${this.escapeHtml(item.value || '')}</span>
+            </div>
+          `;
+        case 'timeline':
+          return `
+            <div class="context-item">
+              <span class="context-type">Time</span>
+              <span class="context-value">${this.escapeHtml(item.value || '')}</span>
+            </div>
+          `;
+        case 'people':
+        case 'related':
+          return `
+            <div class="context-item">
+              <span class="context-type">Related</span>
+              <span class="context-value">${this.escapeHtml(item.value || '')}</span>
+            </div>
+          `;
+        default:
+          return `
+            <div class="context-item">
+              <span class="context-type">${this.escapeHtml(item.type || 'Info')}</span>
+              <span class="context-value">${this.escapeHtml(item.value || item.label || '')}</span>
+            </div>
+          `;
+      }
+    }).join('');
+
+    return `
+      <details class="context-used">
+        <summary class="context-used-toggle">
+          <span class="context-used-label">Context used</span>
+          <span class="context-used-count">${contextUsed.length} source${contextUsed.length !== 1 ? 's' : ''}</span>
+        </summary>
+        <div class="context-used-content">
+          ${contextItems}
+        </div>
+      </details>
     `;
   }
 
