@@ -62,13 +62,14 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ error: 'Some whisper_ids not found or not owned by user' });
     }
 
-    // Get user context for reflection
+    // Get user context for reflection (use FULL onboarding data for personalization)
     const [onboardingResult, keyPeopleResult] = await Promise.all([
-      supabase.from('onboarding_data').select('name').eq('user_id', user_id).maybeSingle(),
+      supabase.from('onboarding_data').select('name, life_seasons, mental_focus, depth_answer').eq('user_id', user_id).maybeSingle(),
       supabase.from('user_key_people').select('name, relationship').eq('user_id', user_id)
     ]);
 
-    const userName = onboardingResult.data?.name || '';
+    const onboarding = onboardingResult.data || {};
+    const userName = onboarding.name || '';
     const keyPeople = keyPeopleResult.data || [];
 
     // Combine whispers for reflection
@@ -81,10 +82,22 @@ module.exports = async function handler(req, res) {
         keyPeople.map(p => `- ${p.name}: ${p.relationship}`).join('\n');
     }
 
+    // Build onboarding context for personalized reflection
+    let onboardingContext = '';
+    if (onboarding.life_seasons?.length > 0) {
+      onboardingContext += `\nLife season: ${onboarding.life_seasons.join(', ')}`;
+    }
+    if (onboarding.mental_focus?.length > 0) {
+      onboardingContext += `\nFocused on: ${onboarding.mental_focus.join(', ')}`;
+    }
+    if (onboarding.depth_answer) {
+      onboardingContext += `\nContext they shared: "${onboarding.depth_answer}"`;
+    }
+
     // Generate reflection using LLM
     const prompt = `You are Inscript, a thoughtful AI companion. The user has captured several quick thoughts (whispers) they'd like you to reflect on together.
 
-${userName ? `The user's name is ${userName}.` : ''}${keyPeopleContext}
+${userName ? `The user's name is ${userName}.` : ''}${onboardingContext}${keyPeopleContext}
 
 WHISPERS:
 ${combinedContent}

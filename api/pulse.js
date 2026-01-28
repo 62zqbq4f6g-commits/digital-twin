@@ -50,14 +50,16 @@ export default async function handler(req, res) {
   const user_id = user.id;
 
   try {
-    // Get user's name from onboarding
+    // Get FULL onboarding data for personalization
     const { data: onboarding } = await supabase
       .from('onboarding_data')
-      .select('name')
+      .select('name, life_seasons, mental_focus')
       .eq('user_id', user_id)
       .maybeSingle();
 
     const userName = onboarding?.name || '';
+    const lifeSeasons = onboarding?.life_seasons || [];
+    const mentalFocus = onboarding?.mental_focus || [];
 
     // Get open actions from action_signals table
     const { data: actionSignals, error: actionsError } = await supabase
@@ -132,7 +134,12 @@ export default async function handler(req, res) {
       themes: themes.slice(0, 5),
       openActions: openActions.slice(0, 5),
       commitments: commitments.slice(0, 5),
-      people: people.slice(0, 3)
+      people: people.slice(0, 3),
+      // Include onboarding context for UI personalization
+      context: {
+        lifeSeasons,
+        mentalFocus
+      }
     });
 
   } catch (error) {

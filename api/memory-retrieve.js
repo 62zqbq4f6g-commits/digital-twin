@@ -184,12 +184,12 @@ async function fastRetrieve(supabase, userId, userMessage, options = {}) {
 }
 
 /**
- * Get user's onboarding data for context
+ * Get user's FULL onboarding data for context (all fields for personalization)
  */
 async function getOnboardingData(supabase, userId) {
   const { data, error } = await supabase
     .from('onboarding_data')
-    .select('name, life_seasons, mental_focus, seeded_people')
+    .select('name, life_seasons, mental_focus, seeded_people, depth_question, depth_answer')
     .eq('user_id', userId)
     .single();
 

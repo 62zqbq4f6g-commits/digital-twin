@@ -626,16 +626,33 @@ const Sync = {
           const encrypted = await Auth.encrypt(note);
 
           // Upsert to Supabase
-          // Include note_type so meetings/decisions are queryable
+          // Include note_type and enhancement fields so meetings/decisions are queryable
+          const upsertData = {
+            id: note.id,
+            user_id: this.user.id,
+            encrypted_data: encrypted,
+            note_type: note.note_type || null,
+            updated_at: new Date().toISOString()
+          };
+
+          // Include enhanced_content and related fields if present
+          // These are stored as plaintext columns (not encrypted) for queryability
+          if (note.enhanced_content) {
+            upsertData.enhanced_content = note.enhanced_content;
+          }
+          if (note.enhancement_metadata) {
+            upsertData.enhancement_metadata = note.enhancement_metadata;
+          }
+          if (note.meeting_metadata) {
+            upsertData.meeting_metadata = note.meeting_metadata;
+          }
+          if (note.raw_input) {
+            upsertData.raw_input = note.raw_input;
+          }
+
           const { error } = await this.supabase
             .from('notes')
-            .upsert({
-              id: note.id,
-              user_id: this.user.id,
-              encrypted_data: encrypted,
-              note_type: note.note_type || null,
-              updated_at: new Date().toISOString()
-            }, { onConflict: 'id' });
+            .upsert(upsertData, { onConflict: 'id' });
 
           if (!error) {
             // Mark as synced locally
@@ -717,6 +734,21 @@ const Sync = {
           if (remoteNote.note_type && !decrypted.note_type) {
             decrypted.note_type = remoteNote.note_type;
             decrypted.type = remoteNote.note_type; // Also set type for consistency
+          }
+
+          // FIX: Merge enhanced_content from Supabase (saved by enhance-note API)
+          // This preserves the structured meeting format after sync
+          if (remoteNote.enhanced_content) {
+            decrypted.enhanced_content = remoteNote.enhanced_content;
+          }
+          if (remoteNote.enhancement_metadata) {
+            decrypted.enhancement_metadata = remoteNote.enhancement_metadata;
+          }
+          if (remoteNote.meeting_metadata) {
+            decrypted.meeting_metadata = remoteNote.meeting_metadata;
+          }
+          if (remoteNote.raw_input) {
+            decrypted.raw_input = remoteNote.raw_input;
           }
 
           // Check if local version exists

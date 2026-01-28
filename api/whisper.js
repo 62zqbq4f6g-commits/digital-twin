@@ -189,14 +189,26 @@ async function handleBatchReflect(req, res, user_id) {
     return res.status(400).json({ error: 'Some whisper_ids not found or not owned by user' });
   }
 
-  // Get user context for reflection
+  // Get user context for reflection (use FULL onboarding for personalization)
   const { data: onboarding } = await supabase
     .from('onboarding_data')
-    .select('name')
+    .select('name, life_seasons, mental_focus, depth_answer')
     .eq('user_id', user_id)
     .maybeSingle();
 
   const userName = onboarding?.name || '';
+
+  // Build onboarding context for personalized reflection
+  let onboardingContext = '';
+  if (onboarding?.life_seasons?.length > 0) {
+    onboardingContext += `\nLife season: ${onboarding.life_seasons.join(', ')}`;
+  }
+  if (onboarding?.mental_focus?.length > 0) {
+    onboardingContext += `\nFocused on: ${onboarding.mental_focus.join(', ')}`;
+  }
+  if (onboarding?.depth_answer) {
+    onboardingContext += `\nContext they shared: "${onboarding.depth_answer}"`;
+  }
 
   // Combine whispers for reflection
   const combinedContent = decrypted_contents.join('\n\n---\n\n');
@@ -204,7 +216,7 @@ async function handleBatchReflect(req, res, user_id) {
   // Generate reflection using LLM
   const prompt = `You are Inscript, a thoughtful AI companion. The user has captured several quick thoughts (whispers) they'd like you to reflect on together.
 
-${userName ? `The user's name is ${userName}.` : ''}
+${userName ? `The user's name is ${userName}.` : ''}${onboardingContext}
 
 WHISPERS:
 ${combinedContent}

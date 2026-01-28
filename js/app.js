@@ -102,6 +102,17 @@ const App = {
         NotesCache.addNote(savedNote);
       }
 
+      // CRITICAL: Ingest into Knowledge Graph for complete audit trail
+      // This ensures ALL notes (not just those via EncryptedDB) are captured
+      if (typeof window !== 'undefined' && window.ingestInput && Sync?.user?.id) {
+        window.ingestInput(Sync.user.id, {
+          type: inputType === 'voice' ? 'voice' : 'note',
+          content: text,
+          sourceId: savedNote.id,
+          timestamp: savedNote.timestamps?.created_at || new Date().toISOString()
+        }).catch(err => console.warn('[App] Knowledge graph ingestion error:', err));
+      }
+
       // Phase 12: Show Knowledge Pulse with learning data + actions
       if (typeof KnowledgePulse !== 'undefined' && window.KnowledgePulse) {
         // Merge learning data with actions for richer feedback

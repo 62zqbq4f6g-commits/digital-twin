@@ -228,11 +228,11 @@ export default async function handler(req, ctx) {
 
         await sendEvent({ type: 'status', message: 'Loading your context...' });
 
-        // Fetch onboarding data and recent context
+        // Fetch FULL onboarding data and recent context for personalization
         const [onboardingResult, recentNotesResult] = await Promise.all([
           supabase
             .from('onboarding_data')
-            .select('name, life_seasons, mental_focus, seeded_people')
+            .select('name, life_seasons, mental_focus, seeded_people, depth_answer')
             .eq('user_id', userId)
             .maybeSingle(),
           supabase

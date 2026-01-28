@@ -1228,6 +1228,12 @@ const WorkUI = {
         DataCapture.trackFeatureUse('meeting_save', { attendeeCount: attendees.length });
       }
 
+      // AUTO-ENHANCE: Trigger enhancement for meetings in background
+      // This converts the raw meeting to structured format (### SUMMARY, ### DISCUSSED, etc.)
+      this.autoEnhanceMeeting(savedNote.id, noteContent).catch(err => {
+        console.warn('[WorkUI] Auto-enhance error (non-blocking):', err);
+      });
+
       // Ingest meeting into Knowledge Graph with full metadata
       if (typeof window !== 'undefined' && window.ingestInput) {
         const userId = typeof Sync !== 'undefined' && Sync.user?.id ? Sync.user.id : null;
@@ -1265,6 +1271,63 @@ const WorkUI = {
         btn.disabled = false;
         btn.textContent = 'Save Meeting';
       }
+    }
+  },
+
+  /**
+   * Auto-enhance a meeting note in background
+   * Converts raw content to structured format (### SUMMARY, ### DISCUSSED, etc.)
+   * @param {string} noteId - Note ID
+   * @param {string} content - Raw meeting content
+   */
+  async autoEnhanceMeeting(noteId, content) {
+    console.log('[WorkUI] Auto-enhancing meeting:', noteId);
+
+    try {
+      // Get auth token
+      const token = typeof Sync !== 'undefined' ? await Sync.getToken() : null;
+      if (!token) {
+        console.warn('[WorkUI] No auth token for auto-enhance');
+        return;
+      }
+
+      // Call enhance API
+      const response = await fetch('/api/enhance-note', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          noteId: noteId,
+          content: content,
+          noteType: 'meeting'
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Enhance API error: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log('[WorkUI] Meeting auto-enhanced:', result.enhanced ? 'success' : 'skipped');
+
+      // The API saves enhanced_content directly to Supabase
+      // Trigger a sync to pull the enhanced content locally
+      if (typeof Sync !== 'undefined' && Sync.pullChanges) {
+        setTimeout(() => {
+          Sync.pullChanges().catch(err => console.warn('[WorkUI] Post-enhance sync error:', err));
+        }, 1000);
+      }
+
+      // Refresh meetings list to show enhanced content
+      setTimeout(() => {
+        this.loadMeetings();
+      }, 1500);
+
+    } catch (error) {
+      console.warn('[WorkUI] Auto-enhance failed:', error.message);
+      // Non-blocking - meeting is still saved, just not enhanced
     }
   },
 
