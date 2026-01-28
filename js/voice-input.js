@@ -28,7 +28,9 @@ class VoiceInput {
     this.onRecordingComplete = options.onRecordingComplete || (() => {});
     this.onError = options.onError || (() => {});
     this.onStateChange = options.onStateChange || (() => {});
-    this.maxDuration = options.maxDuration || 600000; // 10 minutes (increased from 2)
+    // FIX: Increase max duration to 30 minutes for longer voice notes
+    // Whisper API supports up to 25MB, which is ~25 minutes at 128kbps
+    this.maxDuration = options.maxDuration || 1800000; // 30 minutes (increased from 10)
 
     this.state = 'idle'; // idle | recording | transcribing
     this.mediaRecorder = null;
@@ -37,6 +39,7 @@ class VoiceInput {
     this.startTime = null;
     this.timerInterval = null;
     this.autoStopTimeout = null;
+    this.warningTimeout = null; // For approaching time limit warning
     this.durationEl = null;
     this.chunkCount = 0; // Track chunks for debugging
 
@@ -179,12 +182,23 @@ class VoiceInput {
       this.updateUI();
       this.onStateChange(this.state);
 
-      // Auto-stop at max duration with warning at 9 minutes
-      if (this.maxDuration > 540000) { // > 9 minutes
+      // Auto-stop at max duration with warnings
+      // Warning at 5 minutes remaining
+      if (this.maxDuration > 300000) {
+        this.warningTimeout = setTimeout(() => {
+          if (this.state === 'recording') {
+            console.log('[VoiceInput] Approaching max duration, 5 minutes remaining');
+            UI?.showToast?.('5 minutes remaining', { duration: 3000 });
+          }
+        }, this.maxDuration - 300000);
+      }
+
+      // Warning at 1 minute remaining
+      if (this.maxDuration > 60000) {
         setTimeout(() => {
           if (this.state === 'recording') {
-            console.log('[VoiceInput] Approaching max duration, 1 minute remaining');
-            // Could show a UI warning here
+            console.log('[VoiceInput] 1 minute remaining');
+            UI?.showToast?.('1 minute remaining', { duration: 3000 });
           }
         }, this.maxDuration - 60000);
       }
@@ -192,12 +206,12 @@ class VoiceInput {
       this.autoStopTimeout = setTimeout(() => {
         if (this.state === 'recording') {
           console.log('[VoiceInput] Auto-stopping at max duration');
-          UI?.showToast?.('Recording auto-stopped at maximum duration');
+          UI?.showToast?.('Recording auto-stopped at maximum duration (30 minutes)');
           this.stopRecording();
         }
       }, this.maxDuration);
 
-      console.log('[VoiceInput] Recording started, max duration:', this.maxDuration / 1000, 'seconds');
+      console.log('[VoiceInput] Recording started, max duration:', Math.round(this.maxDuration / 60000), 'minutes');
 
     } catch (error) {
       console.error('[VoiceInput] Failed to start recording:', error);
@@ -214,6 +228,11 @@ class VoiceInput {
       if (this.autoStopTimeout) {
         clearTimeout(this.autoStopTimeout);
         this.autoStopTimeout = null;
+      }
+      // Clear warning timeout
+      if (this.warningTimeout) {
+        clearTimeout(this.warningTimeout);
+        this.warningTimeout = null;
       }
 
       this.stopTimer();
