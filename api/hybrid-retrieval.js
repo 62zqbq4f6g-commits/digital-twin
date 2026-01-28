@@ -1,10 +1,23 @@
 /**
  * MEM0 GAP 3: Hybrid Retrieval
- * Runs vector search AND graph traversal SIMULTANEOUSLY
- * Combines semantic similarity with relationship-based discovery
+ *
+ * Phase 19: Post-RAG Architecture
+ *
+ * DEPRECATED: Vector search is being phased out in favor of full context loading.
+ * Graph traversal remains the primary retrieval method.
+ *
+ * As of v9.12.0:
+ * - Vector weight is set to 0 by default
+ * - Graph and direct lookup are primary
+ * - Use /api/context/full for full context loading (preferred)
+ *
+ * Migration: Set MIRROR_FULL_CONTEXT=true to bypass retrieval entirely.
  */
 
 import { createClient } from '@supabase/supabase-js';
+
+// Feature flag to skip vector search entirely
+const SKIP_VECTOR_SEARCH = process.env.SKIP_VECTOR_SEARCH === 'true' || true; // Default: skip
 
 /**
  * Generate embedding using OpenAI
@@ -32,8 +45,19 @@ async function generateEmbedding(text) {
 
 /**
  * Vector search using embeddings
+ *
+ * DEPRECATED: Vector search is being phased out.
+ * Set SKIP_VECTOR_SEARCH=true (default) to skip.
  */
 async function vectorSearch(supabase, userId, query, options = {}) {
+  // Skip vector search if disabled (default in Post-RAG architecture)
+  if (SKIP_VECTOR_SEARCH) {
+    console.log('[hybrid-retrieval] Vector search skipped (DEPRECATED)');
+    return [];
+  }
+
+  console.warn('[hybrid-retrieval] DEPRECATED: Vector search is deprecated. Consider using full context loading.');
+
   const {
     threshold = 0.4,
     limit = 15,
@@ -173,10 +197,11 @@ async function entityLookup(supabase, userId, entityNames) {
  * Merge and rank results from multiple sources
  */
 function mergeAndRank(vectorResults, graphResults, directResults, weights = {}) {
+  // Phase 19: Vector weight set to 0 by default (Post-RAG architecture)
   const {
-    vectorWeight = 0.4,
-    graphWeight = 0.3,
-    directWeight = 0.3
+    vectorWeight = 0,      // DEPRECATED: Was 0.4, now 0
+    graphWeight = 0.5,     // Increased from 0.3
+    directWeight = 0.5     // Increased from 0.3
   } = weights;
 
   // Create a map to track combined scores
