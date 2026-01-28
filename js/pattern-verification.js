@@ -288,12 +288,22 @@ class PatternVerification {
 
       console.log('[PatternVerification] Rebuild complete:', responseData);
 
+      // Check for insert errors and show appropriate feedback
+      if (responseData.insert_error) {
+        console.error('[PatternVerification] Insert error:', responseData.insert_error);
+      }
+
       // Show success message
       const patternsFound = responseData.detected?.length || responseData.patterns_inserted || 0;
+      const patternsAnalyzed = responseData.patterns_found || 0;
+
       if (patternsFound > 0) {
         UI?.showToast?.(`Found ${patternsFound} new pattern${patternsFound > 1 ? 's' : ''}`);
+      } else if (patternsAnalyzed > 0 && responseData.insert_failures > 0) {
+        // Patterns were found but couldn't be saved
+        UI?.showToast?.(`Found ${patternsAnalyzed} patterns but couldn't save — try again`);
       } else {
-        UI?.showToast?.('Analysis complete - no new patterns found');
+        UI?.showToast?.('Analysis complete — no new patterns found');
       }
 
       // Reload patterns to show new ones
@@ -306,12 +316,26 @@ class PatternVerification {
 
     } catch (error) {
       console.error('[PatternVerification] Rebuild error:', error);
-      UI?.showToast?.('Pattern analysis failed. Please try again.');
+
+      // Provide specific error feedback
+      let errorMessage = 'Pattern analysis failed';
+      if (error.message?.includes('fetch')) {
+        errorMessage = 'Network error — check your connection';
+      } else if (error.message?.includes('json')) {
+        errorMessage = 'Analysis returned invalid data';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      UI?.showToast?.(errorMessage);
 
       if (container) {
         container.innerHTML = `
           <div class="patterns-error">
-            <p>Unable to rebuild patterns: ${error.message}</p>
+            <p>${this.escapeHtml(errorMessage)}</p>
+            <p class="text-muted" style="font-size: 12px; margin-top: 8px;">
+              Make sure you have at least 10 notes with content.
+            </p>
             <button class="patterns-rebuild-btn" onclick="window.PatternVerification.rebuildPatterns()">
               Try Again
             </button>
