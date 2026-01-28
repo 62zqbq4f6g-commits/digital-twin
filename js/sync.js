@@ -712,6 +712,13 @@ const Sync = {
           decrypted._syncStatus = 'synced';
           decrypted._localChanges = false;
 
+          // FIX: Merge note_type from Supabase column (not in encrypted_data)
+          // This preserves meeting/decision type after sync
+          if (remoteNote.note_type && !decrypted.note_type) {
+            decrypted.note_type = remoteNote.note_type;
+            decrypted.type = remoteNote.note_type; // Also set type for consistency
+          }
+
           // Check if local version exists
           const localNote = await DB.getNoteById(decrypted.id);
 

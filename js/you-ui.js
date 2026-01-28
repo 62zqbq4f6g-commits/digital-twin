@@ -205,7 +205,9 @@ const YouUI = {
       }
 
       // Render About You section (onboarding data + edit)
+      // FIX: Must load profile from database first to ensure fresh data
       if (typeof UIProfile !== 'undefined') {
+        await UIProfile.loadProfile(); // Load fresh data from database
         const aboutSection = document.getElementById('about-me-section');
         if (aboutSection) {
           aboutSection.innerHTML = UIProfile.renderAboutYouSection();

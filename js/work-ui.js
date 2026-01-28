@@ -1178,12 +1178,11 @@ const WorkUI = {
     try {
       // Process note through App pipeline - returns the saved note directly
       console.log('[WorkUI] saveMeeting - Calling App.processNote...');
-      const savedNote = await App.processNote(noteContent, 'text');
+      // FIX: Pass note_type in options so it's saved from the start
+      const savedNote = await App.processNote(noteContent, 'text', { note_type: 'meeting' });
       console.log('[WorkUI] saveMeeting - App.processNote complete, note ID:', savedNote.id);
 
-      // Add meeting metadata to the saved note
-      savedNote.type = 'meeting';
-      savedNote.note_type = 'meeting'; // Database column for filtering
+      // Meeting metadata (note_type already set via options above)
       savedNote.meeting = {
         title: `Meeting with ${attendees.join(', ') || 'team'}`,
         attendees: attendees,
