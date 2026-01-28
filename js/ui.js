@@ -1977,8 +1977,11 @@ const UI = {
         </div>
       ` : '';
 
-      // Check for Phase 3a analysis format
-      if (note.analysis?.summary) {
+      // MEETING NOTES: Always prefer enhanced_content when available (has structured format)
+      if (note.note_type === 'meeting' && note.enhanced_content) {
+        console.log('[UI] Rendering meeting with enhanced_content');
+        document.getElementById('note-detail-body').innerHTML = imageHtml + this.renderMarkdown(note.enhanced_content);
+      } else if (note.analysis?.summary) {
         // Render new Phase 3a format (Summary + Insight + Question + Feedback)
         // Prepend image if it exists
         document.getElementById('note-detail-body').innerHTML = imageHtml + this.renderPhase3aOutput(note);
