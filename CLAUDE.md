@@ -1,9 +1,9 @@
 # CLAUDE.md — Inscript Developer Guide
 
-## Version 9.12.0 | January 29, 2026
+## Version 9.13.0 | January 29, 2026
 
-> **Phase:** 19 — Post-RAG Architecture Complete (Phase 3)
-> **Status:** MIRROR Full Context Integration Live
+> **Phase:** 19 — Post-RAG Architecture COMPLETE
+> **Status:** PAMP v2.0 Standard, Full Context, Embeddings Deprecated
 > **Last Updated:** January 29, 2026
 
 ---
@@ -16,10 +16,10 @@
 | **Tagline** | Your mirror in code |
 | **Category** | Personal AI Memory |
 | **Vision** | Your data. Your ownership. Portable anywhere. |
-| **Version** | 9.12.0 |
+| **Version** | 9.13.0 |
 | **Production URL** | https://digital-twin-ecru.vercel.app |
 | **Working Directory** | `/Users/airoxthebox/Projects/digital-twin` |
-| **Beta Status** | Production (Phase 19 Phase 3 Complete) |
+| **Beta Status** | Production (Phase 19 Complete - PAMP v2.0) |
 
 ---
 
@@ -582,6 +582,94 @@ MIRROR_FULL_CONTEXT=true
 
 Prompt caching (Anthropic feature) reduces costs by 90% on subsequent calls with same context prefix.
 
+## PAMP v2.0 Standard (Phase 5)
+
+Portable AI Memory Protocol — the open standard for AI memory portability.
+
+### Specification
+
+Full spec at `/docs/PAMP-v2.0-SPEC.md`
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `/docs/PAMP-v2.0-SPEC.md` | Full protocol specification |
+| `/lib/pamp/validator.js` | Validate PAMP documents |
+| `/lib/pamp/index.js` | Module exports |
+| `/api/import.js` | Import memories from other tools |
+| `/api/export.js` | Export in PAMP v2.0 format |
+
+### Export API
+
+```
+GET /api/export?format=pamp
+GET /api/export?format=legacy  (old format)
+```
+
+### Import API
+
+```
+POST /api/import
+Body: PAMP v2.0 JSON document
+
+Query params:
+  mode: 'merge' (default) | 'replace'
+  dry_run: 'true' | 'false'
+```
+
+### PAMP Document Structure
+
+```typescript
+{
+  "@context": "https://pamp.ai/schema/v2",
+  "version": "2.0.0",
+  "identity": { profile, communication, keyPeople },
+  "knowledgeGraph": { entities, relationships, coOccurrences },
+  "episodes": { notes, conversations, meetings },
+  "patterns": [...],
+  "summaries": { byCategory, behavioralProfile },
+  "meta": { exportedAt, source, counts }
+}
+```
+
+### GTM Value
+
+- **Import from anywhere** — Users can bring memories from other AI tools
+- **Export to anywhere** — Take your data to ChatGPT, Claude, any AI
+- **Open standard** — Not locked into Inscript
+- **Validation** — Ensure data integrity on import
+
+## Embedding Deprecation (Phase 4)
+
+Embeddings are deprecated in favor of full context loading.
+
+### What Changed
+
+| Component | Old | New |
+|-----------|-----|-----|
+| `/api/embed.js` | Active | Deprecated (logs warnings) |
+| Vector search | Weight: 0.4 | Weight: 0 (skipped) |
+| Graph traversal | Weight: 0.3 | Weight: 0.5 |
+| Direct lookup | Weight: 0.3 | Weight: 0.5 |
+
+### Environment Variables
+
+```bash
+# Skip vector search entirely (default: true)
+SKIP_VECTOR_SEARCH=true
+
+# Disable embedding generation
+DISABLE_EMBEDDINGS=true
+```
+
+### Migration Path
+
+1. Set `MIRROR_FULL_CONTEXT=true` to use full context loading
+2. Vector search is automatically skipped
+3. Embeddings still work for backward compatibility
+4. Future: Remove `note_embeddings` table
+
 ---
 
 # DATA CAPTURE MODULE (v9.8.1)
@@ -706,6 +794,7 @@ All data stored in `user_settings` table for MIRROR to learn from.
 
 | Version | Phase | Key Changes |
 |---------|-------|-------------|
+| **9.13.0** | 19 | **Phase 4 & 5 Complete**: PAMP v2.0 Standard (spec, validator, import API), Embedding Deprecation (vector weight=0, SKIP_VECTOR_SEARCH), Graph-first retrieval. Full Post-RAG architecture complete. |
 | **9.12.0** | 19 | **Phase 3 Complete**: MIRROR Full Context Integration. Feature flag `MIRROR_FULL_CONTEXT` to toggle modes. Load entire user memory in MIRROR — no RAG, no retrieval. Prompt caching ready. |
 | **9.11.0** | 19 | **Phase 2 Complete**: Full Context Loader (/api/context/full), Document Builder (markdown format), Agent formats (MCP, GPT, Claude). Load entire user memory — no RAG, no retrieval. |
 | **9.10.0** | 19 | **Phase 1 Complete**: Full User State summaries (evolve-summary.js), Semantic Distillation API (distill-episode.js), Behavioral profile generation, Bi-directional relationship inference. Notes can now be distilled into permanent SPO triples. |
@@ -726,5 +815,5 @@ All data stored in `user_settings` table for MIRROR to learn from.
 ---
 
 *CLAUDE.md — Inscript Developer Guide*
-*Version 9.12.0 | Last Updated: January 29, 2026*
+*Version 9.13.0 | Last Updated: January 29, 2026*
 *Production: https://digital-twin-ecru.vercel.app*
