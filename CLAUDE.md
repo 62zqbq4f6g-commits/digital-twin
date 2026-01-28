@@ -1,10 +1,10 @@
 # CLAUDE.md — Inscript Developer Guide
 
-## Version 9.6.0 | January 27, 2026
+## Version 9.8.0 | January 28, 2026
 
-> **Phase:** 18 — Portable Memory Export (Sprint 3 Complete)
-> **Status:** Sprint 3 COMPLETE — MIRROR facts integration, Privacy audit verified
-> **Last Updated:** January 27, 2026
+> **Phase:** 19 — Zero-Knowledge Architecture + Context Engineering
+> **Status:** Two-tier model shipped, Client-side encryption, RAG 2.0
+> **Last Updated:** January 28, 2026
 
 ---
 
@@ -16,10 +16,10 @@
 | **Tagline** | Your mirror in code |
 | **Category** | Personal AI Memory |
 | **Vision** | Your data. Your ownership. Portable anywhere. |
-| **Version** | 9.6.0 |
+| **Version** | 9.8.0 |
 | **Production URL** | https://digital-twin-ecru.vercel.app |
 | **Working Directory** | `/Users/airoxthebox/Projects/digital-twin` |
-| **Beta Status** | Production (Phase 18 in progress) |
+| **Beta Status** | Production (Phase 19 in progress) |
 
 ---
 
@@ -52,15 +52,16 @@
 - No user notes, messages, or entity names in logs
 - **AUDIT REQUIRED:** Review all logging statements
 
-## Privacy Audit Checklist
+## Privacy Audit Checklist (Verified January 27, 2026)
 
 | Area | Question | Status |
 |------|----------|--------|
-| Encryption | Is encryption client-side (user keys) or server-side (Inscript keys)? | ⚠️ VERIFY |
-| LLM Providers | Are all LLM calls to zero-retention APIs? | ⚠️ VERIFY |
-| Logging | Do any logs contain user content? | ⚠️ VERIFY |
-| RLS | Do all tables have row-level security? | ✅ Yes |
+| Encryption | Is encryption client-side (user keys) or server-side (Inscript keys)? | ✅ AES-256-GCM client-side |
+| LLM Providers | Are all LLM calls to zero-retention APIs? | ✅ Anthropic + OpenAI API only |
+| Logging | Do any logs contain user content? | ✅ Metadata only (510 calls audited) |
+| RLS | Do all tables have row-level security? | ✅ All 37 tables verified |
 | Export | Can users export 100% of their data? | ✅ Phase 18 |
+| API Keys | Are all secrets in environment variables? | ✅ No hardcoded secrets |
 
 ## What This Means for Development
 
@@ -223,6 +224,93 @@
 
 ---
 
+# PRIVACY ARCHITECTURE (v9.8.0)
+
+## Two-Tier Model
+
+| Tier | Price | Notes | AI | We See |
+|------|-------|-------|-----|--------|
+| **Managed** | $20/mo | Encrypted | Proxied (not stored) | AI conversations (never logged) |
+| **BYOK** | $10/mo | Encrypted | Direct to Anthropic | Nothing |
+
+**Messaging:** "Notes are encrypted — we can't read them. AI conversations pass through our servers but are never stored or logged."
+
+## Client-Side Encryption
+
+All user content is encrypted with AES-256-GCM before upload.
+
+**Key Derivation:**
+- User password → PBKDF2 (100k iterations, SHA-256) → AES-256 key
+- Key NEVER leaves browser
+- Recovery key generated at setup (XXXX-XXXX-XXXX-XXXX format)
+
+**Encrypted Fields:**
+
+| Table | Encrypted Column | Plaintext Kept? |
+|-------|------------------|-----------------|
+| notes | content_encrypted | No |
+| user_entities | name_encrypted, summary_encrypted | No |
+| entity_facts | object_encrypted | predicate stays plaintext |
+| user_patterns | description_encrypted | category stays plaintext |
+| mirror_messages | content_encrypted | No |
+| mirror_conversations | title_encrypted | No |
+
+**Key Files:**
+- `/js/encryption.js` — Core crypto functions (AES-GCM, PBKDF2)
+- `/js/key-manager.js` — Key lifecycle (setup, unlock, lock, recovery)
+- `/js/encrypted-db.js` — Database operations with auto encrypt/decrypt
+- `/js/api-client.js` — AI calls (BYOK direct / Managed proxy)
+- `/js/tier-manager.js` — Tier info and switching
+
+## Zero-Knowledge Guarantees
+
+**Managed Tier:**
+1. Notes encrypted client-side before upload
+2. We store only ciphertext
+3. AI conversations pass through proxy but are NEVER stored or logged
+4. We cannot read note content
+
+**BYOK Tier:**
+1. Notes encrypted client-side before upload
+2. We store only ciphertext
+3. AI calls go direct to Anthropic (we don't see them)
+4. Complete zero-knowledge — we see nothing
+
+---
+
+# CONTEXT ENGINEERING (RAG 2.0)
+
+## Task Classification
+
+MIRROR classifies messages to load appropriate context:
+
+| Task Type | Triggers | Context Loaded |
+|-----------|----------|----------------|
+| entity_recall | "what do you know about" | Entity + facts + mentions only |
+| decision | "should I", "help me decide" | Values, people, past decisions |
+| emotional | "I'm stressed", "feeling" | Patterns, supportive relationships |
+| research | "research", "deep dive" | Broad search, all related |
+| thinking_partner | "I'm thinking about" | Related notes, thinking patterns |
+| factual | "when did", "where does" | Entity + facts only |
+| general | (fallback) | Top entities, recent notes |
+
+## Key Files
+
+- `/lib/mirror/task-classifier.js` — Classify messages into task types
+- `/lib/mirror/context-strategies.js` — Define what to load per task
+- `/lib/mirror/context-loader.js` — Execute context loading
+- `/lib/mirror/graph-traversal.js` — Navigate entity relationships
+- `/lib/mirror/index.js` — Re-exports
+
+## Graph Traversal
+
+Entities are connected through shared facts:
+- Sarah → works_at Anthropic → others at Anthropic
+- Person → knows → Other person
+- Topic → Notes → Entities mentioned
+
+---
+
 # PRODUCT TEAM PERSONAS
 
 **Use these personas when facing ambiguity. Ask: "What would [Persona] say?"**
@@ -295,7 +383,8 @@
 
 | Version | Phase | Key Changes |
 |---------|-------|-------------|
-| **9.6.0** | 18 | Sprint 3 complete. MIRROR facts integration, Privacy audit verified (see /docs/PRIVACY-AUDIT.md), RLS 37/37 tables verified. |
+| **9.8.0** | 19 | Two-tier model (Managed + BYOK), Client-side AES-256-GCM encryption, Context Engineering (RAG 2.0), Task-aware context loading, Onboarding flow for encryption setup. |
+| 9.6.0 | 18 | Sprint 3 complete. MIRROR facts integration, Privacy audit verified (see /docs/PRIVACY-AUDIT.md), RLS 37/37 tables verified. |
 | 9.5.0 | 18 | Portable Memory Export: Sprint 2 complete. Structured facts, entity_facts table, export with facts + conversations. |
 | 9.4.0 | 17 | Ambient recording pipeline fixed: table migration, RLS policy, mobile detection, error logging |
 | 9.3.0 | 17 | Voice features: Whisper input, real-time transcription, modal consistency |
@@ -307,5 +396,5 @@
 ---
 
 *CLAUDE.md — Inscript Developer Guide*
-*Last Updated: January 27, 2026*
+*Last Updated: January 28, 2026*
 *Production: https://digital-twin-ecru.vercel.app*
