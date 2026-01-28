@@ -1452,7 +1452,8 @@ const PIN = {
       // Fallback: save PIN as simple hash without encryption support
       try {
         console.log('[PIN] Trying fallback (no encryption)...');
-        const saltB64 = btoa(Math.random().toString(36));
+        const saltArray = crypto.getRandomValues(new Uint8Array(16));
+        const saltB64 = btoa(String.fromCharCode(...saltArray));
         const hashB64 = btoa(pin + saltB64); // Simple base64, no crypto
         localStorage.setItem(this.SALT_KEY, saltB64);
         localStorage.setItem(this.HASH_KEY, hashB64);
@@ -1516,10 +1517,11 @@ const PIN = {
 
   generateRecoveryKey() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    const randomBytes = crypto.getRandomValues(new Uint8Array(16));
     let key = '';
     for (let i = 0; i < 16; i++) {
       if (i > 0 && i % 4 === 0) key += '-';
-      key += chars[Math.floor(Math.random() * chars.length)];
+      key += chars[randomBytes[i] % chars.length];
     }
     return key; // Format: XXXX-XXXX-XXXX-XXXX
   },

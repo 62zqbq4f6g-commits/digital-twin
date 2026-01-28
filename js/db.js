@@ -19,7 +19,8 @@ function generateId() {
   const now = new Date();
   const date = now.toISOString().slice(0, 10).replace(/-/g, '');
   const time = now.toTimeString().slice(0, 8).replace(/:/g, '');
-  const random = Math.random().toString(36).substring(2, 5);
+  const randomBytes = crypto.getRandomValues(new Uint8Array(4));
+  const random = Array.from(randomBytes).map(b => b.toString(36)).join('').substring(0, 5);
   return `dt_${date}_${time}_${random}`;
 }
 

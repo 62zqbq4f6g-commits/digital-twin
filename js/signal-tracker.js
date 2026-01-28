@@ -100,7 +100,9 @@ class SignalTrackerClass {
   getSessionId() {
     let sessionId = sessionStorage.getItem('inscript_session_id');
     if (!sessionId) {
-      sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const randomBytes = crypto.getRandomValues(new Uint8Array(8));
+      const random = Array.from(randomBytes).map(b => b.toString(36)).join('').substring(0, 9);
+      sessionId = `session_${Date.now()}_${random}`;
       sessionStorage.setItem('inscript_session_id', sessionId);
     }
     return sessionId;

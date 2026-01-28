@@ -4,20 +4,20 @@
  */
 
 const Anthropic = require('@anthropic-ai/sdk');
+const { setCorsHeaders, handlePreflight } = require('./lib/cors.js');
 
 module.exports = async function handler(req, res) {
-  // CORS headers
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  // CORS headers (restricted to allowed origins)
+  setCorsHeaders(req, res);
 
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
+  if (handlePreflight(req, res)) return;
 
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  // Note: This endpoint receives notes from client (already decrypted client-side)
+  // Auth is implicit - user can only access their own decrypted notes
 
   const { notes } = req.body;
 

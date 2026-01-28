@@ -3,13 +3,13 @@
  */
 
 const Anthropic = require('@anthropic-ai/sdk');
+const { setCorsHeaders, handlePreflight } = require('./lib/cors.js');
 
 module.exports = async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  // CORS headers (restricted to allowed origins)
+  setCorsHeaders(req, res);
 
-  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (handlePreflight(req, res)) return;
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const { input, output, rating, comment } = req.body;

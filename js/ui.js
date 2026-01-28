@@ -283,7 +283,9 @@ const UI = {
    */
   createImageNoteFromVision(visionResult, imageDataUrl, caption) {
     const now = new Date();
-    const id = `dt_${now.toISOString().slice(0, 10).replace(/-/g, '')}_${now.toTimeString().slice(0, 8).replace(/:/g, '')}_${Math.random().toString(36).substring(2, 5)}`;
+    const randomBytes = crypto.getRandomValues(new Uint8Array(4));
+    const random = Array.from(randomBytes).map(b => b.toString(36)).join('').substring(0, 5);
+    const id = `dt_${now.toISOString().slice(0, 10).replace(/-/g, '')}_${now.toTimeString().slice(0, 8).replace(/:/g, '')}_${random}`;
 
     return {
       id,

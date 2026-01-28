@@ -4,6 +4,7 @@
  */
 
 const { createClient } = require('@supabase/supabase-js');
+const { setCorsHeaders, handlePreflight } = require('./lib/cors.js');
 
 const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = createClient(
@@ -12,14 +13,26 @@ const supabase = createClient(
 );
 
 module.exports = async (req, res) => {
-  // CORS headers
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  // CORS headers (restricted to allowed origins)
+  setCorsHeaders(req, res);
 
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+  if (handlePreflight(req, res)) return;
+
+  // Auth check
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Authorization required' });
   }
+
+  const token = authHeader.replace('Bearer ', '');
+  const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+
+  if (authError || !user) {
+    return res.status(401).json({ error: 'Invalid or expired token' });
+  }
+
+  // Store authenticated user_id for use in handlers
+  req.authenticatedUserId = user.id;
 
   try {
     if (req.method === 'POST') {
@@ -39,10 +52,12 @@ module.exports = async (req, res) => {
  * Handle batch signal insert
  */
 async function handleBatchInsert(req, res) {
-  const { user_id, signals } = req.body;
+  // Use authenticated user ID to prevent IDOR
+  const user_id = req.authenticatedUserId;
+  const { signals } = req.body;
 
-  if (!user_id || !signals || !Array.isArray(signals)) {
-    return res.status(400).json({ error: 'Missing user_id or signals array' });
+  if (!signals || !Array.isArray(signals)) {
+    return res.status(400).json({ error: 'Missing signals array' });
   }
 
   // Prepare signals for insert

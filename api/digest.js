@@ -1,24 +1,42 @@
 // api/digest.js — Vercel Serverless Function for Weekly Digest
 // Generates AI-powered weekly summary of notes with contradiction detection
 
+const { createClient } = require('@supabase/supabase-js');
 const { detectContradictions, formatForContext } = require('../lib/contradiction-detection');
+const { setCorsHeaders, handlePreflight } = require('./lib/cors.js');
+
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY
+);
 
 module.exports = async function handler(req, res) {
-  // CORS headers
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  // CORS headers (restricted to allowed origins)
+  setCorsHeaders(req, res);
 
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
+  if (handlePreflight(req, res)) return;
 
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  // Auth check
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Authorization required' });
+  }
+
+  const token = authHeader.replace('Bearer ', '');
+  const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+
+  if (authError || !user) {
+    return res.status(401).json({ error: 'Invalid or expired token' });
+  }
+
   try {
-    const { notes, weekStart, weekEnd, user_id } = req.body;
+    // Use authenticated user ID (ignore user_id from body)
+    const { notes, weekStart, weekEnd } = req.body;
+    const user_id = user.id;
 
     if (!notes || notes.length === 0) {
       return res.status(400).json({ error: 'No notes provided' });

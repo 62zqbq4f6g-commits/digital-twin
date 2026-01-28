@@ -1,6 +1,8 @@
 // api/vision.js — Vercel Serverless Function for Claude Vision
 // Processes images with OCR and description generation
 
+const { setCorsHeaders, handlePreflight } = require('./lib/cors.js');
+
 // CRITICAL LANGUAGE RULE - Enforces second-person language in all outputs
 const CRITICAL_LANGUAGE_RULE = `
 ## CRITICAL LANGUAGE RULE — READ THIS FIRST
@@ -32,14 +34,10 @@ This rule applies to: title, description, summary, action_items, and ALL text ou
 `;
 
 module.exports = async function handler(req, res) {
-  // CORS headers
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  // CORS headers (restricted to allowed origins)
+  setCorsHeaders(req, res);
 
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
+  if (handlePreflight(req, res)) return;
 
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
