@@ -264,7 +264,7 @@ const KnowledgeGraph = {
         .insert({
           user_id: userId,
           name: name,
-          type: type,
+          entity_type: type,
           mention_count: 1,
           first_mentioned: new Date().toISOString()
         })
@@ -669,12 +669,35 @@ const KnowledgeGraph = {
       const { data: entities } = await supabase
         .from('user_entities')
         .select(`
-          id, name, type, summary, mention_count,
-          entity_facts (predicate, object_text, confidence)
+          id, name, entity_type, summary, mention_count
         `)
         .eq('user_id', userId)
-        .order('mention_count', { ascending: false })
+        .order('mention_count', { ascending: false, nullsFirst: false })
         .limit(50);
+
+      // Fetch facts separately to avoid FK ambiguity
+      if (entities && entities.length > 0) {
+        const entityIds = entities.map(e => e.id);
+        const { data: facts } = await supabase
+          .from('entity_facts')
+          .select('entity_id, predicate, object_text, confidence')
+          .eq('user_id', userId)
+          .in('entity_id', entityIds);
+
+        // Attach facts to entities
+        const factsMap = {};
+        (facts || []).forEach(f => {
+          if (!factsMap[f.entity_id]) factsMap[f.entity_id] = [];
+          factsMap[f.entity_id].push({
+            predicate: f.predicate,
+            object_text: f.object_text,
+            confidence: f.confidence
+          });
+        });
+        entities.forEach(e => {
+          e.entity_facts = factsMap[e.id] || [];
+        });
+      }
 
       return entities || [];
     } catch (error) {
@@ -728,25 +751,28 @@ const KnowledgeGraph = {
     if (!supabase) return {};
 
     try {
-      const { data } = await supabase
-        .from('user_settings')
-        .select('setting_key, setting_value')
+      // Use onboarding_data table (same as rest of app) for consistency
+      const { data, error } = await supabase
+        .from('onboarding_data')
+        .select('name, life_seasons, mental_focus, depth_question, depth_answer, seeded_people')
         .eq('user_id', userId)
-        .like('setting_key', 'onboarding_%');
+        .maybeSingle();
 
-      if (!data) return {};
-
-      const onboarding = {};
-      for (const row of data) {
-        const key = row.setting_key.replace('onboarding_', '');
-        try {
-          onboarding[key] = JSON.parse(row.setting_value);
-        } catch {
-          onboarding[key] = row.setting_value;
-        }
+      if (error || !data) {
+        console.warn('[KnowledgeGraph] Could not fetch onboarding data:', error?.message);
+        return {};
       }
-      return onboarding;
+
+      return {
+        name: data.name,
+        lifeSeasons: data.life_seasons || [],
+        mentalFocus: data.mental_focus || [],
+        depthQuestion: data.depth_question,
+        depthAnswer: data.depth_answer,
+        seededPeople: data.seeded_people || []
+      };
     } catch (error) {
+      console.warn('[KnowledgeGraph] Onboarding data error:', error);
       return {};
     }
   },

@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS user_inputs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   input_type TEXT NOT NULL, -- 'note', 'voice', 'meeting', 'mirror_message', 'onboarding', 'preference', 'feedback'
-  source_id UUID, -- Reference to the original record
+  source_id TEXT, -- Reference to the original record (TEXT because notes.id is TEXT)
   content_preview TEXT, -- First 200 chars for quick reference
   metadata JSONB DEFAULT '{}',
   created_at TIMESTAMPTZ DEFAULT NOW()
@@ -76,7 +76,7 @@ CREATE INDEX IF NOT EXISTS idx_entity_links_strength ON entity_links(user_id, st
 -- Link notes to entities (many-to-many)
 -- ============================================
 CREATE TABLE IF NOT EXISTS note_entities (
-  note_id UUID NOT NULL REFERENCES notes(id) ON DELETE CASCADE,
+  note_id TEXT NOT NULL, -- TEXT because notes.id is TEXT, no FK due to type mismatch
   entity_id UUID NOT NULL REFERENCES user_entities(id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
