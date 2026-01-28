@@ -1,9 +1,9 @@
 # CLAUDE.md — Inscript Developer Guide
 
-## Version 9.9.0 | January 29, 2026
+## Version 9.10.0 | January 29, 2026
 
-> **Phase:** 19 — Post-RAG Architecture + Intent-Aware Extraction
-> **Status:** Two-tier model shipped, Client-side encryption, RAG 2.0, Knowledge Graph live, Intent-Aware Extraction
+> **Phase:** 19 — Post-RAG Architecture Complete (Phase 1)
+> **Status:** Intent-Aware Extraction, Full User State Summaries, Semantic Distillation
 > **Last Updated:** January 29, 2026
 
 ---
@@ -16,10 +16,10 @@
 | **Tagline** | Your mirror in code |
 | **Category** | Personal AI Memory |
 | **Vision** | Your data. Your ownership. Portable anywhere. |
-| **Version** | 9.9.0 |
+| **Version** | 9.10.0 |
 | **Production URL** | https://digital-twin-ecru.vercel.app |
 | **Working Directory** | `/Users/airoxthebox/Projects/digital-twin` |
-| **Beta Status** | Production (Phase 19 in progress) |
+| **Beta Status** | Production (Phase 19 Phase 1 Complete) |
 
 ---
 
@@ -409,6 +409,100 @@ Entities are connected through shared facts:
 
 ---
 
+# PHASE 19: POST-RAG ARCHITECTURE (v9.10.0)
+
+## Intent-Aware Extraction
+
+Extract USER'S RELATIONSHIP to entities, not just entity facts.
+
+### Behavioral Predicates (User → Entity)
+
+| Predicate | Meaning |
+|-----------|---------|
+| `trusts_opinion_of` | User trusts this person's judgment |
+| `seeks_advice_from` | User goes to this person for advice |
+| `relies_on` | User depends on this entity |
+| `learns_from` | User gains knowledge from this entity |
+| `inspired_by` | User is inspired by this entity |
+| `feels_about` | User has emotional response to entity |
+| `conflicted_about` | User has mixed feelings |
+| `avoids` | User avoids this entity/topic |
+| `collaborates_with` | User works with this entity |
+| `competes_with` | User competes with this entity |
+
+### Entity Quality Predicates (Entity → User)
+
+| Predicate | Meaning |
+|-----------|---------|
+| `helps_with` | Entity helps user with something |
+| `challenges` | Entity challenges user |
+| `supports` | Entity supports user |
+| `mentors` | Entity mentors user |
+| `drains` | Entity drains user's energy |
+| `energizes` | Entity energizes user |
+
+### Key Files
+
+- `/api/extract-entities.js` — Enhanced extraction with behaviors
+- `/api/save-behaviors.js` — Persist behaviors to database
+- `/lib/mirror/context-loader.js` — Load behaviors into context
+- `/lib/mirror/graph-traversal.js` — Bi-directional relationship inference
+
+## Semantic Distillation
+
+Convert old notes into permanent SPO triples before archiving.
+
+### Why Distillation?
+
+- Old notes become permanent knowledge, not discarded history
+- Token budget stays manageable
+- Patterns survive beyond the recency window
+- "What happened" becomes "what we learned"
+
+### API: `/api/distill-episode.js`
+
+| Action | Purpose |
+|--------|---------|
+| `list` | Get notes eligible for distillation (older than N days) |
+| `distill_note` | Distill a single note by ID |
+| `batch` | Distill multiple old notes |
+| `preview` | Preview distillation without saving |
+
+### Database Columns (notes table)
+
+- `is_distilled` — Whether note has been distilled
+- `distilled_summary` — One-sentence summary from distillation
+- `distilled_at` — When distillation occurred
+
+## Full User Profile
+
+Get complete user context for AI systems via `/api/evolve-summary.js`.
+
+### Actions
+
+| Action | Returns |
+|--------|---------|
+| `get` | Category summaries |
+| `full_profile` | Complete user profile (identity, behaviors, patterns, summaries) |
+| `evolve_behavioral` | Regenerate behavioral profile from behaviors + qualities |
+
+### Full Profile Structure
+
+```json
+{
+  "identity": { "name", "role", "goals", "lifeContext", "tone" },
+  "keyPeople": [{ "name", "relationship" }],
+  "categorySummaries": { "work_life": "...", "relationships": "..." },
+  "behavioralProfile": "Prose summary of how user relates to people/things",
+  "behaviors": [{ "predicate", "entity", "topic", "sentiment" }],
+  "entityQualities": [{ "entity", "predicate", "object" }],
+  "patterns": [{ "type", "description", "confidence" }],
+  "meta": { "behaviorCount", "qualityCount", "patternCount" }
+}
+```
+
+---
+
 # DATA CAPTURE MODULE (v9.8.1)
 
 New `/js/data-capture.js` tracks user behavior for AI personalization.
@@ -531,6 +625,7 @@ All data stored in `user_settings` table for MIRROR to learn from.
 
 | Version | Phase | Key Changes |
 |---------|-------|-------------|
+| **9.10.0** | 19 | **Phase 1 Complete**: Full User State summaries (evolve-summary.js), Semantic Distillation API (distill-episode.js), Behavioral profile generation, Bi-directional relationship inference. Notes can now be distilled into permanent SPO triples. |
 | **9.9.0** | 19 | **Intent-Aware Extraction**: User behaviors (trusts_opinion_of, seeks_advice_from, etc.), Entity qualities (helps_with, challenges, supports), New tables (user_behaviors, entity_qualities), Enhanced extraction prompt, getFullContext with behaviors. Post-RAG architecture foundation. |
 | **9.8.3** | 19 | Knowledge Graph: Unified data ingestion hub, entity extraction, fact detection, entity linking. Meeting enhanced format, voice recording improvements. |
 | **9.8.2** | 19 | Security hardening: CORS restricted to allowed origins, Auth + IDOR fixes on pulse/signals/digest, Math.random→crypto.getRandomValues. |
@@ -548,5 +643,5 @@ All data stored in `user_settings` table for MIRROR to learn from.
 ---
 
 *CLAUDE.md — Inscript Developer Guide*
-*Version 9.9.0 | Last Updated: January 29, 2026*
+*Version 9.10.0 | Last Updated: January 29, 2026*
 *Production: https://digital-twin-ecru.vercel.app*
