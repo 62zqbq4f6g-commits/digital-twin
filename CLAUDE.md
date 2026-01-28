@@ -1,9 +1,9 @@
 # CLAUDE.md — Inscript Developer Guide
 
-## Version 9.11.0 | January 29, 2026
+## Version 9.12.0 | January 29, 2026
 
-> **Phase:** 19 — Post-RAG Architecture Complete (Phase 2)
-> **Status:** Full Context Loading, No RAG, Complete User Memory in Context
+> **Phase:** 19 — Post-RAG Architecture Complete (Phase 3)
+> **Status:** MIRROR Full Context Integration Live
 > **Last Updated:** January 29, 2026
 
 ---
@@ -16,10 +16,10 @@
 | **Tagline** | Your mirror in code |
 | **Category** | Personal AI Memory |
 | **Vision** | Your data. Your ownership. Portable anywhere. |
-| **Version** | 9.11.0 |
+| **Version** | 9.12.0 |
 | **Production URL** | https://digital-twin-ecru.vercel.app |
 | **Working Directory** | `/Users/airoxthebox/Projects/digital-twin` |
-| **Beta Status** | Production (Phase 19 Phase 2 Complete) |
+| **Beta Status** | Production (Phase 19 Phase 3 Complete) |
 
 ---
 
@@ -537,6 +537,51 @@ Load entire user memory into context window. No RAG, no retrieval.
 | `formatForGPTKnowledge()` | ChatGPT Custom GPT knowledge |
 | `formatForClaudeProject()` | Claude Projects knowledge |
 
+## MIRROR Full Context Integration (Phase 3)
+
+MIRROR now supports loading entire user memory instead of RAG retrieval.
+
+### Feature Flag
+
+Set `MIRROR_FULL_CONTEXT=true` in environment to enable full context mode.
+
+```bash
+# In .env or Vercel environment
+MIRROR_FULL_CONTEXT=true
+```
+
+### How It Works
+
+| Mode | Behavior |
+|------|----------|
+| **RAG (default)** | Task classification → Targeted retrieval → Hybrid context |
+| **Full Context** | Load everything → Single markdown document → No retrieval |
+
+### Key Changes (`/api/mirror.js`)
+
+- `loadFullContextForMirror()` — Loads complete memory with configurable limits
+- `buildSystemPrompt()` — Uses full context document when enabled
+- Backward compatible — RAG mode remains default
+
+### Context Limits (Full Mode)
+
+| Setting | Value |
+|---------|-------|
+| Notes | 300 max (metadata only, E2E encrypted) |
+| Entities | 100 max |
+| Conversations | 20 max |
+| Patterns | 10 max (confidence > 0.6) |
+| Behaviors | 15 max (confidence > 0.5) |
+
+### Cost Implications
+
+| Mode | First Call | Cached | Notes |
+|------|------------|--------|-------|
+| RAG | ~$0.03-0.05 | N/A | Small, targeted context |
+| Full Context | ~$0.30 | ~$0.06 | Large context, benefits from prompt caching |
+
+Prompt caching (Anthropic feature) reduces costs by 90% on subsequent calls with same context prefix.
+
 ---
 
 # DATA CAPTURE MODULE (v9.8.1)
@@ -661,6 +706,7 @@ All data stored in `user_settings` table for MIRROR to learn from.
 
 | Version | Phase | Key Changes |
 |---------|-------|-------------|
+| **9.12.0** | 19 | **Phase 3 Complete**: MIRROR Full Context Integration. Feature flag `MIRROR_FULL_CONTEXT` to toggle modes. Load entire user memory in MIRROR — no RAG, no retrieval. Prompt caching ready. |
 | **9.11.0** | 19 | **Phase 2 Complete**: Full Context Loader (/api/context/full), Document Builder (markdown format), Agent formats (MCP, GPT, Claude). Load entire user memory — no RAG, no retrieval. |
 | **9.10.0** | 19 | **Phase 1 Complete**: Full User State summaries (evolve-summary.js), Semantic Distillation API (distill-episode.js), Behavioral profile generation, Bi-directional relationship inference. Notes can now be distilled into permanent SPO triples. |
 | **9.9.0** | 19 | **Intent-Aware Extraction**: User behaviors (trusts_opinion_of, seeks_advice_from, etc.), Entity qualities (helps_with, challenges, supports), New tables (user_behaviors, entity_qualities), Enhanced extraction prompt, getFullContext with behaviors. Post-RAG architecture foundation. |
@@ -680,5 +726,5 @@ All data stored in `user_settings` table for MIRROR to learn from.
 ---
 
 *CLAUDE.md — Inscript Developer Guide*
-*Version 9.11.0 | Last Updated: January 29, 2026*
+*Version 9.12.0 | Last Updated: January 29, 2026*
 *Production: https://digital-twin-ecru.vercel.app*
