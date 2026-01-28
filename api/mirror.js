@@ -25,9 +25,64 @@ const { getContradictionsForEntity, formatForContext: formatContradictionsForCon
 const { loadFullContext } = require('../lib/context/full-loader.js');
 const { buildContextDocument, buildCompactDocument } = require('../lib/context/document-builder.js');
 
-// Feature flag for full context mode
-// Set to true to use full context loading instead of RAG
-const USE_FULL_CONTEXT = process.env.MIRROR_FULL_CONTEXT === 'true' || false;
+// Task classifier for smart context routing
+const { classifyTask } = require('../lib/mirror/task-classifier.js');
+
+// Smart Context Routing Configuration
+// Tasks that benefit from full context (complex, need complete picture)
+const FULL_CONTEXT_TASKS = ['decision', 'emotional', 'thinking_partner'];
+// Tasks that work well with RAG (simple, targeted retrieval)
+const RAG_TASKS = ['factual', 'entity_recall', 'general', 'research'];
+
+// Context mode options: 'auto' (smart routing), 'rag' (always RAG), 'full' (always full context)
+const DEFAULT_CONTEXT_MODE = process.env.DEFAULT_CONTEXT_MODE || 'auto';
+
+/**
+ * Get user's context mode preference from settings
+ * Options: 'auto', 'rag', 'full'
+ */
+async function getUserContextMode(userId) {
+  try {
+    const { data, error } = await supabase
+      .from('user_settings')
+      .select('value')
+      .eq('user_id', userId)
+      .eq('key', 'mirror_context_mode')
+      .maybeSingle();
+
+    if (error || !data) {
+      return DEFAULT_CONTEXT_MODE;
+    }
+
+    const mode = data.value;
+    if (['auto', 'rag', 'full'].includes(mode)) {
+      return mode;
+    }
+    return DEFAULT_CONTEXT_MODE;
+  } catch (e) {
+    console.error('[mirror] Failed to get context mode:', e.message);
+    return DEFAULT_CONTEXT_MODE;
+  }
+}
+
+/**
+ * Determine if full context should be used for this request
+ * Based on task type and user preference
+ */
+function shouldUseFullContext(taskType, userMode) {
+  // User override: always RAG
+  if (userMode === 'rag') {
+    return false;
+  }
+
+  // User override: always full context
+  if (userMode === 'full') {
+    return true;
+  }
+
+  // Auto mode: route based on task complexity
+  return FULL_CONTEXT_TASKS.includes(taskType);
+}
 
 const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = createClient(
@@ -1148,9 +1203,16 @@ async function generateResponse(user_id, userMessage, history, context, addition
   let relevantFacts = [];
   let relevantEntities = [];
 
+  // Smart Context Routing: Determine which mode to use
+  const taskType = classifyTask(userMessage);
+  const userMode = await getUserContextMode(user_id);
+  const useFullContext = shouldUseFullContext(taskType, userMode);
+
+  console.log(`[mirror] Task: ${taskType}, User mode: ${userMode}, Using: ${useFullContext ? 'FULL CONTEXT' : 'RAG'}`);
+
   // PHASE 3: Full Context Mode (Post-RAG)
   // Load entire user memory instead of RAG retrieval
-  if (USE_FULL_CONTEXT) {
+  if (useFullContext) {
     console.log('[mirror] Using FULL CONTEXT mode (Post-RAG)');
 
     const fullContextData = await loadFullContextForMirror(user_id, supabase);
@@ -1273,12 +1335,18 @@ async function generateResponse(user_id, userMessage, history, context, addition
     // Build context used list for transparency (Feature 4: Context Used UI)
     const contextUsed = [];
 
-    // PHASE 3: Show full context indicator if using full context mode
+    // Smart Routing: Show context mode indicator
     if (enhancedContext.fullContextLoaded) {
       contextUsed.push({
         type: 'full_context',
-        name: 'Complete Memory',
-        value: `~${enhancedContext.tokenEstimate} tokens loaded`
+        name: 'Deep Context',
+        value: `${taskType} query → full memory (~${enhancedContext.tokenEstimate} tokens)`
+      });
+    } else {
+      contextUsed.push({
+        type: 'rag_context',
+        name: 'Fast Context',
+        value: `${taskType} query → targeted retrieval`
       });
     }
 

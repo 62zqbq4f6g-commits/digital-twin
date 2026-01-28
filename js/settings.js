@@ -50,6 +50,23 @@ window.Settings = {
             </button>
           </section>
 
+          <section class="settings-section">
+            <h2 class="settings-section-title">MIRROR</h2>
+            <div class="settings-item">
+              <span class="settings-item-label">Context Mode</span>
+              <select id="context-mode-select" class="settings-select" onchange="Settings.setContextMode(this.value)">
+                <option value="auto">Auto (Recommended)</option>
+                <option value="rag">Fast (Lower cost)</option>
+                <option value="full">Deep (Full memory)</option>
+              </select>
+            </div>
+            <p class="settings-help">
+              <strong>Auto:</strong> Smart routing — simple queries use fast retrieval, complex queries load your full memory.<br>
+              <strong>Fast:</strong> Always use targeted retrieval. Cheaper but may miss context.<br>
+              <strong>Deep:</strong> Always load your complete memory. More thorough but higher cost.
+            </p>
+          </section>
+
           <section class="settings-section settings-privacy">
             <h3 class="settings-section-title">Privacy & Security</h3>
 
@@ -116,6 +133,70 @@ window.Settings = {
     // EXPORT - T3: Initialize Export UI after settings page renders
     if (typeof ExportUI !== 'undefined') {
       setTimeout(() => ExportUI.init(), 0);
+    }
+
+    // Load context mode preference
+    this.loadContextMode();
+  },
+
+  /**
+   * Load context mode preference from server
+   */
+  async loadContextMode() {
+    try {
+      const token = await Sync.getToken();
+      if (!token) return;
+
+      const response = await fetch('/api/user-settings?key=mirror_context_mode', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const mode = data.value || 'auto';
+        const select = document.getElementById('context-mode-select');
+        if (select) {
+          select.value = mode;
+        }
+      }
+    } catch (e) {
+      console.error('[Settings] Failed to load context mode:', e);
+    }
+  },
+
+  /**
+   * Set context mode preference
+   */
+  async setContextMode(mode) {
+    try {
+      const token = await Sync.getToken();
+      if (!token) {
+        UI.showError('Not signed in');
+        return;
+      }
+
+      const response = await fetch('/api/user-settings', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          key: 'mirror_context_mode',
+          value: mode
+        })
+      });
+
+      if (response.ok) {
+        UI.showToast(`Context mode set to ${mode === 'auto' ? 'Auto' : mode === 'rag' ? 'Fast' : 'Deep'}`);
+      } else {
+        throw new Error('Failed to save');
+      }
+    } catch (e) {
+      console.error('[Settings] Failed to save context mode:', e);
+      UI.showError('Could not save setting');
     }
   },
 
