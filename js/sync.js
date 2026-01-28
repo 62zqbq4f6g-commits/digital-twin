@@ -61,6 +61,21 @@ const Sync = {
   realtimeDebounce: null, // Debounce timer for rapid changes
 
   /**
+   * Get the current auth token for API calls
+   * @returns {Promise<string|null>} The access token or null if not authenticated
+   */
+  async getToken() {
+    if (!this.supabase) return null;
+    try {
+      const { data: { session } } = await this.supabase.auth.getSession();
+      return session?.access_token || null;
+    } catch (error) {
+      console.warn('[Sync] Failed to get token:', error.message);
+      return null;
+    }
+  },
+
+  /**
    * Initialize sync module
    */
   async init() {
