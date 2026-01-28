@@ -228,10 +228,10 @@
 
 ## Two-Tier Model
 
-| Tier | Price | Notes | AI | We See |
-|------|-------|-------|-----|--------|
-| **Managed** | $20/mo | Encrypted | Proxied (not stored) | AI conversations (never logged) |
-| **BYOK** | $10/mo | Encrypted | Direct to Anthropic | Nothing |
+| Tier | Price | Notes | AI | Limits | We See |
+|------|-------|-------|-----|--------|--------|
+| **Managed** | $10/mo | Encrypted | Proxied (not stored) | 500 MIRROR calls/mo | AI conversations (never logged) |
+| **BYOK** | $5/mo + API | Encrypted | Direct to Anthropic | Unlimited | Nothing |
 
 **Messaging:** "Notes are encrypted — we can't read them. AI conversations pass through our servers but are never stored or logged."
 

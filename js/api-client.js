@@ -167,9 +167,17 @@ async function callManagedProxy({ systemPrompt, messages, model, maxTokens }) {
 
   const data = await response.json();
 
+  // Track usage for managed tier
+  const { count, isOverLimit } = incrementMirrorCallCount();
+
   return {
     ...data,
-    tier: 'managed'
+    tier: 'managed',
+    usage: {
+      ...data.usage,
+      mirrorCallCount: count,
+      isOverLimit
+    }
   };
 }
 
@@ -220,4 +228,85 @@ export async function testApiKey(key) {
   } catch (e) {
     return { valid: false, error: `Connection error: ${e.message}` };
   }
+}
+
+// ============================================
+// USAGE TRACKING (Managed Tier)
+// ============================================
+
+const MIRROR_CALL_COUNT_KEY = 'inscript_mirror_calls';
+const MIRROR_CALL_RESET_KEY = 'inscript_mirror_reset';
+const MANAGED_TIER_LIMIT = 500;
+
+/**
+ * Get current MIRROR call count for managed tier
+ * @returns {{count: number, limit: number, remaining: number, resetDate: string}}
+ */
+export function getMirrorCallCount() {
+  const count = parseInt(localStorage.getItem(MIRROR_CALL_COUNT_KEY) || '0', 10);
+  const resetDate = localStorage.getItem(MIRROR_CALL_RESET_KEY) || getMonthStart();
+
+  // Check if we need to auto-reset (new month)
+  if (isNewMonth(resetDate)) {
+    resetMirrorCallCount();
+    return {
+      count: 0,
+      limit: MANAGED_TIER_LIMIT,
+      remaining: MANAGED_TIER_LIMIT,
+      resetDate: getMonthStart()
+    };
+  }
+
+  return {
+    count,
+    limit: MANAGED_TIER_LIMIT,
+    remaining: Math.max(0, MANAGED_TIER_LIMIT - count),
+    resetDate
+  };
+}
+
+/**
+ * Increment MIRROR call count (called after each managed tier call)
+ * @returns {{count: number, isOverLimit: boolean}}
+ */
+export function incrementMirrorCallCount() {
+  const { count, resetDate } = getMirrorCallCount();
+  const newCount = count + 1;
+
+  localStorage.setItem(MIRROR_CALL_COUNT_KEY, String(newCount));
+  localStorage.setItem(MIRROR_CALL_RESET_KEY, resetDate);
+
+  return {
+    count: newCount,
+    isOverLimit: newCount > MANAGED_TIER_LIMIT
+  };
+}
+
+/**
+ * Reset MIRROR call count (called at month start or manually)
+ */
+export function resetMirrorCallCount() {
+  localStorage.setItem(MIRROR_CALL_COUNT_KEY, '0');
+  localStorage.setItem(MIRROR_CALL_RESET_KEY, getMonthStart());
+}
+
+/**
+ * Check if user is over the managed tier limit
+ * @returns {boolean}
+ */
+export function isOverMirrorLimit() {
+  const { count } = getMirrorCallCount();
+  return count >= MANAGED_TIER_LIMIT;
+}
+
+// Helper: Get first day of current month as ISO string
+function getMonthStart() {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+}
+
+// Helper: Check if reset date is from a previous month
+function isNewMonth(resetDate) {
+  const currentMonthStart = getMonthStart();
+  return resetDate < currentMonthStart;
 }

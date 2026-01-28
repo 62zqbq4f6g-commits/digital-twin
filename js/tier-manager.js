@@ -20,26 +20,29 @@ export const TIER_INFO = {
   managed: {
     id: 'managed',
     name: 'Managed AI',
-    price: '$20/mo',
+    price: '$10/mo',
     description: 'AI included. Notes encrypted.',
     features: [
       'Notes encrypted — we can\'t read them',
       'AI included in subscription',
+      '500 MIRROR calls/month included',
       'No setup required'
     ],
     caveats: [
-      'AI conversations pass through our servers (never stored or logged)'
+      'AI conversations pass through our servers (never stored or logged)',
+      'Slower responses after 500 calls'
     ]
   },
   byok: {
     id: 'byok',
     name: 'Bring Your Own Key',
-    price: '$10/mo + API costs',
+    price: '$5/mo + API costs',
     description: 'Full zero-knowledge. We see nothing.',
     features: [
       'Notes encrypted — we can\'t read them',
       'AI calls direct to Anthropic',
       'Complete privacy — we see nothing',
+      'Unlimited MIRROR calls',
       'You control API spending'
     ],
     caveats: [
