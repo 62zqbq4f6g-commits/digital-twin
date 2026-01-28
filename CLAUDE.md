@@ -1,10 +1,10 @@
 # CLAUDE.md — Inscript Developer Guide
 
-## Version 9.8.3 | January 28, 2026
+## Version 9.9.0 | January 29, 2026
 
-> **Phase:** 19 — Zero-Knowledge Architecture + Context Engineering + Knowledge Graph
-> **Status:** Two-tier model shipped, Client-side encryption, RAG 2.0, Knowledge Graph live
-> **Last Updated:** January 28, 2026
+> **Phase:** 19 — Post-RAG Architecture + Intent-Aware Extraction
+> **Status:** Two-tier model shipped, Client-side encryption, RAG 2.0, Knowledge Graph live, Intent-Aware Extraction
+> **Last Updated:** January 29, 2026
 
 ---
 
@@ -16,7 +16,7 @@
 | **Tagline** | Your mirror in code |
 | **Category** | Personal AI Memory |
 | **Vision** | Your data. Your ownership. Portable anywhere. |
-| **Version** | 9.8.3 |
+| **Version** | 9.9.0 |
 | **Production URL** | https://digital-twin-ecru.vercel.app |
 | **Working Directory** | `/Users/airoxthebox/Projects/digital-twin` |
 | **Beta Status** | Production (Phase 19 in progress) |
@@ -224,7 +224,7 @@
 
 ---
 
-# KNOWLEDGE GRAPH ARCHITECTURE (v9.8.3)
+# KNOWLEDGE GRAPH ARCHITECTURE (v9.9.0)
 
 ## Overview
 
@@ -236,12 +236,15 @@ The Knowledge Graph is the unified hub for ALL user data. Every input flows thro
 |----------|---------|
 | `ingestInput(userId, input)` | Process any input (note, meeting, MIRROR, onboarding) |
 | `getFullContext(userId, query)` | Retrieve unified context for MIRROR |
+| `enhancedExtraction(userId, content)` | LLM-powered intent-aware extraction |
+| `getUserBehaviors(userId)` | Get user's behavioral profile |
+| `getEntityQualities(userId)` | Get how entities relate to user |
 
 ## Input Types
 
 | Type | Source | What Gets Extracted |
 |------|--------|---------------------|
-| `note` | Quick notes, saved notes | Entities, facts, relationships |
+| `note` | Quick notes, saved notes | Entities, facts, relationships, **behaviors** |
 | `meeting` | Meeting mode | Entities, attendees, action items |
 | `mirror_message` | MIRROR conversations | Entities mentioned |
 | `onboarding` | Setup flow | User profile, preferences |
@@ -255,24 +258,59 @@ The Knowledge Graph is the unified hub for ALL user data. Every input flows thro
 | `entity_mentions` | Context where entities appear | entity_id, source_type, context_snippet |
 | `entity_links` | Entity co-occurrence | entity_a, entity_b, strength |
 | `note_entities` | Link notes to entities | note_id, entity_id |
+| `user_behaviors` | **Phase 19** User → Entity relationships | predicate, entity_name, topic, sentiment |
+| `entity_qualities` | **Phase 19** Entity → User relationships | entity_name, predicate, object |
 
-## Entity Extraction
+## Intent-Aware Extraction (Phase 19)
 
-Automatic extraction using pattern matching:
-- **Names**: Capitalized words (e.g., "Marcus", "Sarah Chen")
-- **Companies**: Patterns like "at Company", "works for X"
-- **Relationships**: "X is my mentor", "X works at Y"
+Goes beyond extracting NOUNS to extract USER'S RELATIONSHIP to entities.
 
-## Key File
+**Current (basic):**
+```
+"Marcus helped me think through the AI strategy"
+→ Marcus (Entity) → works_at → Anthropic (Fact)
+```
 
-- `/js/knowledge-graph.js` — Central knowledge hub (ingestInput, getFullContext, entity extraction)
+**Intent-Aware (advanced):**
+```
+→ Marcus (Entity) → works_at → Anthropic (Fact)
+→ User → trusts_opinion_of → Marcus (Behavior)
+→ User → seeks_advice_from → Marcus [topic: AI strategy] (Behavior)
+→ Marcus → helps_with → strategic_thinking (Quality)
+```
+
+### Behavioral Predicates (User → Entity)
+
+| Predicate | Example |
+|-----------|---------|
+| `trusts_opinion_of` | User trusts Marcus on technical decisions |
+| `seeks_advice_from` | User asks Sarah about product strategy |
+| `inspired_by` | User inspired by Paul Graham's writing |
+| `relies_on` | User relies on Mom for emotional support |
+| `conflicted_about` | User conflicted about job offer |
+| `learns_from` | User learns ML from Marcus |
+
+### Quality Predicates (Entity → User)
+
+| Predicate | Example |
+|-----------|---------|
+| `helps_with` | Marcus helps with strategic thinking |
+| `challenges` | Sarah challenges assumptions |
+| `supports` | Mom supports emotionally |
+| `mentors` | Marcus mentors on AI |
+
+## Key Files
+
+- `/js/knowledge-graph.js` — Central knowledge hub
+- `/api/extract-entities.js` — LLM extraction with intent-awareness
+- `/api/save-behaviors.js` — Persist behaviors and qualities
 
 ## Integration Points
 
 - **Note save** (`encrypted-db.js`): Auto-ingests after save
 - **Meeting save** (`work-ui.js`): Auto-ingests with attendees
 - **Onboarding** (`onboarding.js`): Ingests profile data
-- **MIRROR**: Uses `getFullContext()` for unified retrieval
+- **MIRROR**: Uses `getFullContext()` with behaviors for unified retrieval
 
 ---
 
@@ -493,6 +531,7 @@ All data stored in `user_settings` table for MIRROR to learn from.
 
 | Version | Phase | Key Changes |
 |---------|-------|-------------|
+| **9.9.0** | 19 | **Intent-Aware Extraction**: User behaviors (trusts_opinion_of, seeks_advice_from, etc.), Entity qualities (helps_with, challenges, supports), New tables (user_behaviors, entity_qualities), Enhanced extraction prompt, getFullContext with behaviors. Post-RAG architecture foundation. |
 | **9.8.3** | 19 | Knowledge Graph: Unified data ingestion hub, entity extraction, fact detection, entity linking. Meeting enhanced format, voice recording improvements. |
 | **9.8.2** | 19 | Security hardening: CORS restricted to allowed origins, Auth + IDOR fixes on pulse/signals/digest, Math.random→crypto.getRandomValues. |
 | **9.8.1** | 19 | Bug fixes: Mirror auth, Meeting tables/save/navigation, Preferences persistence, Patterns rebuild. Data Capture module. Pricing update ($10/$5). |
@@ -509,5 +548,5 @@ All data stored in `user_settings` table for MIRROR to learn from.
 ---
 
 *CLAUDE.md — Inscript Developer Guide*
-*Version 9.8.3 | Last Updated: January 28, 2026*
+*Version 9.9.0 | Last Updated: January 29, 2026*
 *Production: https://digital-twin-ecru.vercel.app*

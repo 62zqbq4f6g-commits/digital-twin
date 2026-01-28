@@ -9,9 +9,12 @@ const client = new Anthropic();
 
 // Enhanced extraction system prompt with memory types and temporal detection
 // SPRINT 2: Updated to extract structured facts for entity_facts table
+// PHASE 19: Intent-Aware Extraction — extract patterns about user behavior, not just entity facts
 const EXTRACTION_SYSTEM_PROMPT = `You are a Personal Information Organizer extracting memories from notes.
 
 Your job is to extract CRUCIAL, NEW, ACTIONABLE information for memory storage.
+
+CRITICAL: Go beyond just extracting NOUNS. Extract the USER'S RELATIONSHIP to entities — their trust, reliance, emotions, and behavioral patterns. This is what makes memory valuable.
 
 ## MEMORY TYPE CLASSIFICATION
 
@@ -27,13 +30,14 @@ For each piece of information, classify its memory_type:
 | procedure | Step-by-step knowledge or processes | "Deploy process: commit, push, verify" |
 | decision | A decision the user made | "Decided to take the job", "Chose React over Vue" |
 | action | An action completed or outcome | "Shipped the feature", "Closed the deal" |
+| behavior | A pattern in how the user acts/thinks | "User processes stress through writing", "User seeks advice from Marcus on AI" |
 
 ## STRUCTURED FACTS (Sprint 2)
 
 For each entity, extract specific FACTS as Subject-Predicate-Object triples.
 These are queryable pieces of knowledge about entities.
 
-PREDICATE TYPES:
+### ENTITY FACTS (about the entity itself)
 | Predicate | Use For | Example |
 |-----------|---------|---------|
 | works_at | Employment | "Sarah works_at Anthropic" |
@@ -49,12 +53,37 @@ PREDICATE TYPES:
 | member_of | Group membership | "Sarah member_of Platform Team" |
 | reports_to | Reporting structure | "Jamie reports_to Sarah" |
 
+### USER BEHAVIORAL PREDICATES (Phase 19 — the user's relationship TO entities)
+| Predicate | Use For | Example |
+|-----------|---------|---------|
+| trusts_opinion_of | User values someone's advice | "User trusts_opinion_of Marcus" [topic: AI strategy] |
+| seeks_advice_from | User actively consults someone | "User seeks_advice_from Sarah" [topic: product decisions] |
+| inspired_by | Source of inspiration | "User inspired_by Paul Graham" [area: startups] |
+| relies_on | Emotional/practical dependency | "User relies_on Mom" [for: emotional support] |
+| feels_about | Emotional response | "User feels_about Anthropic" [sentiment: excited] |
+| conflicted_about | Internal tension | "User conflicted_about job offer" |
+| avoids | Deliberately avoids | "User avoids confrontation with Dad" |
+| learns_from | Learning relationship | "User learns_from Marcus" [topic: machine learning] |
+| collaborates_with | Working partnership | "User collaborates_with Sarah" [on: Inscript] |
+| competes_with | Competitive relationship | "User competes_with competitor X" |
+
+### ENTITY QUALITY PREDICATES (how entities relate TO the user)
+| Predicate | Use For | Example |
+|-----------|---------|---------|
+| helps_with | What entity helps user with | "Marcus helps_with strategic thinking" |
+| challenges | Entity pushes user | "Sarah challenges assumptions" |
+| supports | Entity provides support | "Mom supports emotionally" |
+| mentors | Mentorship relationship | "Marcus mentors on AI" |
+| drains | Entity is energy-draining | "Work meetings drains energy" |
+| energizes | Entity is energy-giving | "Sarah conversations energizes" |
+
 FACT EXTRACTION RULES:
 - Only extract facts explicitly stated or strongly implied
 - confidence > 0.9 for explicitly stated facts
 - confidence 0.7-0.9 for strongly implied facts
 - confidence < 0.7 for inferred facts
 - Don't invent facts that aren't in the note
+- PRIORITIZE behavioral predicates — these are more valuable than basic facts
 
 ## TEMPORAL DETECTION
 
@@ -137,7 +166,7 @@ Return JSON:
   "memories": [
     {
       "name": "entity or fact name",
-      "memory_type": "entity|fact|preference|event|goal|procedure|decision|action",
+      "memory_type": "entity|fact|preference|event|goal|procedure|decision|action|behavior",
       "content": "the extracted information in clear language",
       "entity_type": "person|project|place|pet|organization|concept|other",
       "relationship": "relationship to user if person (friend, coworker, family, etc.)",
@@ -157,6 +186,24 @@ Return JSON:
       "predicate": "works_at|role|relationship|location|likes|dislikes|status|expertise|studied_at|owns|member_of|reports_to",
       "object": "the fact value (text or entity name)",
       "object_is_entity": false,
+      "confidence": 0.0 to 1.0
+    }
+  ],
+  "behaviors": [
+    {
+      "predicate": "trusts_opinion_of|seeks_advice_from|inspired_by|relies_on|feels_about|conflicted_about|avoids|learns_from|collaborates_with|competes_with",
+      "entity_name": "the entity this behavior relates to",
+      "topic": "optional topic/area this applies to (e.g., 'AI strategy', 'career decisions')",
+      "sentiment": -1.0 to 1.0 (user's feeling in this behavior),
+      "confidence": 0.0 to 1.0,
+      "evidence": "the specific phrase/context that indicates this behavior"
+    }
+  ],
+  "relationship_qualities": [
+    {
+      "entity_name": "the entity",
+      "predicate": "helps_with|challenges|supports|mentors|drains|energizes",
+      "object": "what they help/challenge/support with",
       "confidence": 0.0 to 1.0
     }
   ],
@@ -203,7 +250,15 @@ Rules:
 - Detect temporal markers for future/past events
 - Mark sensitive topics appropriately (health, death, finances)
 - If unsure about a relationship, use "mentioned" as the predicate
-- Empty arrays are fine if nothing is detected`;
+- Empty arrays are fine if nothing is detected
+
+CRITICAL — Intent-Aware Extraction (Phase 19):
+- Look for BEHAVIORAL signals: who does the user trust? rely on? seek advice from?
+- "Marcus helped me think through the AI strategy" → behaviors: [{predicate: "seeks_advice_from", entity_name: "Marcus", topic: "AI strategy"}]
+- "Sarah always challenges my assumptions" → relationship_qualities: [{entity_name: "Sarah", predicate: "challenges", object: "assumptions"}]
+- "Talking to Mom always makes me feel better" → relationship_qualities: [{entity_name: "Mom", predicate: "supports", object: "emotional wellbeing"}]
+- "I trust Marcus on technical decisions" → behaviors: [{predicate: "trusts_opinion_of", entity_name: "Marcus", topic: "technical decisions"}]
+- These behavioral extractions are MORE VALUABLE than basic entity facts — prioritize them!`;
 
   try {
     const response = await client.messages.create({
@@ -330,11 +385,17 @@ Rules:
     // SPRINT 2: Extract structured facts for entity_facts table
     const facts = result.facts || [];
 
+    // PHASE 19: Intent-Aware Extraction — user behaviors and relationship qualities
+    const behaviors = result.behaviors || [];
+    const relationship_qualities = result.relationship_qualities || [];
+
     console.log('[Extract API] Extracted:', {
       memories: filteredMemories.length,
       filtered: memories.length - filteredMemories.length,
       entities: entities.length,
       facts: facts.length,
+      behaviors: behaviors.length,  // Phase 19
+      relationship_qualities: relationship_qualities.length,  // Phase 19
       relationships: relationships.length,
       changes: changes_detected.length,
       decisions: decisions.length,
@@ -345,6 +406,8 @@ Rules:
       // New format
       memories: filteredMemories,
       facts,  // SPRINT 2: Structured facts for entity_facts table
+      behaviors,  // PHASE 19: User behavioral patterns
+      relationship_qualities,  // PHASE 19: How entities relate to user
       decisions,
       actions,
       // Backward compatible format

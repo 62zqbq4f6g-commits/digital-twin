@@ -37,32 +37,44 @@ async function ingestInput(userId, input) {
     // 1. Store the raw input reference
     await KnowledgeGraph.storeInputReference(userId, input);
 
-    // 2. Extract entities from content
-    const entities = await KnowledgeGraph.extractEntities(userId, content, type);
+    // 2. Use enhanced LLM extraction for richer analysis (Phase 19)
+    const extraction = await KnowledgeGraph.enhancedExtraction(userId, content, type);
 
-    // 3. Extract facts/relationships
-    const facts = await KnowledgeGraph.extractFacts(userId, content, entities);
+    // 3. Process extracted entities
+    const entities = extraction.entities || [];
+    const facts = extraction.facts || [];
 
-    // 4. Link to existing knowledge
+    // 4. Save behaviors and relationship qualities (Phase 19 - Intent-Aware)
+    if (extraction.behaviors?.length > 0 || extraction.relationship_qualities?.length > 0) {
+      await KnowledgeGraph.saveBehaviors(userId, extraction, sourceId, type);
+    }
+
+    // 5. Link to existing knowledge
     await KnowledgeGraph.linkToExistingKnowledge(userId, sourceId, type, entities, facts);
 
-    // 5. Update user profile/preferences if relevant
+    // 6. Update user profile/preferences if relevant
     if (type === 'onboarding' || type === 'preference') {
       await KnowledgeGraph.updateUserProfile(userId, input);
     }
 
-    // 6. Trigger pattern detection if enough new data
+    // 7. Trigger pattern detection if enough new data
     await KnowledgeGraph.maybeUpdatePatterns(userId);
 
-    return { entities, facts };
+    return {
+      entities,
+      facts,
+      behaviors: extraction.behaviors || [],
+      relationship_qualities: extraction.relationship_qualities || []
+    };
   } catch (error) {
     console.error('[KnowledgeGraph] Ingestion error:', error);
-    return { entities: [], facts: [] };
+    return { entities: [], facts: [], behaviors: [], relationship_qualities: [] };
   }
 }
 
 /**
  * Get FULL context for MIRROR - the holy grail
+ * Phase 19: Now includes user behaviors and relationship qualities
  */
 async function getFullContext(userId, query) {
   const supabase = KnowledgeGraph.getSupabase();
@@ -90,6 +102,12 @@ async function getFullContext(userId, query) {
 
       // Patterns
       patterns: await KnowledgeGraph.getPatterns(userId),
+
+      // Phase 19: User behaviors (who they trust, rely on, seek advice from)
+      behaviors: await KnowledgeGraph.getUserBehaviors(userId),
+
+      // Phase 19: Entity qualities (how entities relate to the user)
+      entityQualities: await KnowledgeGraph.getEntityQualities(userId),
 
       // Onboarding data
       onboarding: await KnowledgeGraph.getOnboardingData(userId),
@@ -430,6 +448,173 @@ const KnowledgeGraph = {
       }
     } catch (error) {
       console.warn('[KnowledgeGraph] saveFact error:', error);
+    }
+  },
+
+  // ============================================
+  // PHASE 19: ENHANCED LLM EXTRACTION
+  // ============================================
+
+  /**
+   * Use LLM for enhanced extraction with intent-aware analysis
+   * This extracts behaviors, relationship qualities, not just entities and facts
+   */
+  async enhancedExtraction(userId, content, sourceType) {
+    if (!content || content.length < 10) {
+      return { entities: [], facts: [], behaviors: [], relationship_qualities: [] };
+    }
+
+    try {
+      // Get existing entities for context
+      const existingEntities = await this.getKnownEntityNames(userId);
+
+      // Get auth token
+      const token = typeof Sync !== 'undefined' ? await Sync.getToken() : null;
+      if (!token) {
+        console.warn('[KnowledgeGraph] No auth token for LLM extraction');
+        return this.fallbackExtraction(userId, content, sourceType);
+      }
+
+      // Call enhanced extract-entities API
+      const response = await fetch('/api/extract-entities', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          text: content,
+          knownEntities: existingEntities
+        })
+      });
+
+      if (!response.ok) {
+        console.warn('[KnowledgeGraph] Extract API failed:', response.status);
+        return this.fallbackExtraction(userId, content, sourceType);
+      }
+
+      const result = await response.json();
+      console.log('[KnowledgeGraph] Enhanced extraction:', {
+        entities: result.entities?.length || 0,
+        facts: result.facts?.length || 0,
+        behaviors: result.behaviors?.length || 0,
+        relationship_qualities: result.relationship_qualities?.length || 0
+      });
+
+      // Process extracted entities - save to database
+      const savedEntities = [];
+      const entityMap = {}; // For behavior linking
+
+      for (const entity of (result.entities || [])) {
+        let savedEntity = await this.findEntityByName(userId, entity.name);
+        if (!savedEntity) {
+          savedEntity = await this.createEntity(userId, entity.name, entity.type || 'person');
+        }
+        if (savedEntity) {
+          await this.trackMention(userId, savedEntity.id, sourceType, content);
+          savedEntities.push(savedEntity);
+          entityMap[entity.name] = savedEntity.id;
+          entityMap[entity.name.toLowerCase()] = savedEntity.id;
+        }
+      }
+
+      // Save extracted facts
+      for (const fact of (result.facts || [])) {
+        const entityId = entityMap[fact.entity_name] || entityMap[fact.entity_name?.toLowerCase()];
+        if (entityId) {
+          await this.saveFact(userId, {
+            entity_id: entityId,
+            predicate: fact.predicate,
+            object_text: fact.object,
+            confidence: fact.confidence || 0.8
+          });
+        }
+      }
+
+      return {
+        entities: savedEntities,
+        facts: result.facts || [],
+        behaviors: result.behaviors || [],
+        relationship_qualities: result.relationship_qualities || [],
+        entityMap
+      };
+    } catch (error) {
+      console.error('[KnowledgeGraph] Enhanced extraction error:', error);
+      return this.fallbackExtraction(userId, content, sourceType);
+    }
+  },
+
+  /**
+   * Fallback to pattern-based extraction if LLM fails
+   */
+  async fallbackExtraction(userId, content, sourceType) {
+    const entities = await this.extractEntities(userId, content, sourceType);
+    const facts = await this.extractFacts(userId, content, entities);
+    return { entities, facts, behaviors: [], relationship_qualities: [] };
+  },
+
+  /**
+   * Get known entity names for context
+   */
+  async getKnownEntityNames(userId) {
+    const supabase = this.getSupabase();
+    if (!supabase) return [];
+
+    try {
+      const { data } = await supabase
+        .from('user_entities')
+        .select('name, summary')
+        .eq('user_id', userId)
+        .order('mention_count', { ascending: false })
+        .limit(30);
+
+      return (data || []).map(e => ({ name: e.name, summary: e.summary }));
+    } catch (error) {
+      return [];
+    }
+  },
+
+  /**
+   * Save behaviors and relationship qualities via API
+   */
+  async saveBehaviors(userId, extraction, sourceNoteId, sourceType) {
+    const { behaviors, relationship_qualities, entityMap } = extraction;
+
+    if ((!behaviors || behaviors.length === 0) && (!relationship_qualities || relationship_qualities.length === 0)) {
+      return;
+    }
+
+    try {
+      const token = typeof Sync !== 'undefined' ? await Sync.getToken() : null;
+      if (!token) {
+        console.warn('[KnowledgeGraph] No auth token for saving behaviors');
+        return;
+      }
+
+      const response = await fetch('/api/save-behaviors', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          behaviors: behaviors || [],
+          relationshipQualities: relationship_qualities || [],
+          entityMap: entityMap || {},
+          sourceNoteId,
+          sourceType
+        })
+      });
+
+      if (!response.ok) {
+        console.warn('[KnowledgeGraph] Save behaviors API failed:', response.status);
+        return;
+      }
+
+      const result = await response.json();
+      console.log('[KnowledgeGraph] Behaviors saved:', result);
+    } catch (error) {
+      console.error('[KnowledgeGraph] saveBehaviors error:', error);
     }
   },
 
@@ -838,6 +1023,104 @@ const KnowledgeGraph = {
       };
     } catch (error) {
       return { entities: [], notes: [] };
+    }
+  },
+
+  // ============================================
+  // PHASE 19: BEHAVIORAL PROFILE RETRIEVAL
+  // ============================================
+
+  /**
+   * Get user's behavioral patterns (who they trust, rely on, seek advice from)
+   */
+  async getUserBehaviors(userId) {
+    const supabase = this.getSupabase();
+    if (!supabase) return [];
+
+    try {
+      const { data, error } = await supabase
+        .from('user_behaviors')
+        .select(`
+          predicate,
+          entity_name,
+          topic,
+          sentiment,
+          confidence,
+          reinforcement_count
+        `)
+        .eq('user_id', userId)
+        .eq('status', 'active')
+        .order('confidence', { ascending: false })
+        .order('reinforcement_count', { ascending: false })
+        .limit(30);
+
+      if (error) {
+        // Table might not exist yet
+        console.warn('[KnowledgeGraph] getUserBehaviors error:', error.message);
+        return [];
+      }
+
+      return data || [];
+    } catch (error) {
+      console.warn('[KnowledgeGraph] getUserBehaviors error:', error);
+      return [];
+    }
+  },
+
+  /**
+   * Get entity qualities (how entities relate to the user)
+   */
+  async getEntityQualities(userId) {
+    const supabase = this.getSupabase();
+    if (!supabase) return [];
+
+    try {
+      const { data, error } = await supabase
+        .from('entity_qualities')
+        .select(`
+          entity_name,
+          predicate,
+          object,
+          confidence,
+          reinforcement_count
+        `)
+        .eq('user_id', userId)
+        .eq('status', 'active')
+        .order('confidence', { ascending: false })
+        .order('reinforcement_count', { ascending: false })
+        .limit(30);
+
+      if (error) {
+        // Table might not exist yet
+        console.warn('[KnowledgeGraph] getEntityQualities error:', error.message);
+        return [];
+      }
+
+      return data || [];
+    } catch (error) {
+      console.warn('[KnowledgeGraph] getEntityQualities error:', error);
+      return [];
+    }
+  },
+
+  /**
+   * Get behaviors related to a specific entity
+   */
+  async getBehaviorsForEntity(userId, entityName) {
+    const supabase = this.getSupabase();
+    if (!supabase) return [];
+
+    try {
+      const { data } = await supabase
+        .from('user_behaviors')
+        .select('*')
+        .eq('user_id', userId)
+        .ilike('entity_name', entityName)
+        .eq('status', 'active');
+
+      return data || [];
+    } catch (error) {
+      return [];
     }
   }
 };
