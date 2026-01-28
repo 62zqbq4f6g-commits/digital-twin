@@ -604,12 +604,14 @@ const MeetingsTab = {
 
     try {
       // Call the AI-powered query-meetings API
-      const userId = this.userId || Sync?.user?.id;
-      if (!userId) {
+      const token = typeof Sync !== 'undefined' ? await Sync.getToken() : null;
+      if (!token) {
         throw new Error('User not authenticated');
       }
 
-      const response = await fetch(`/api/query-meetings?q=${encodeURIComponent(query)}&userId=${userId}`);
+      const response = await fetch(`/api/query-meetings?q=${encodeURIComponent(query)}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       const result = await response.json();
 
       if (!response.ok) {

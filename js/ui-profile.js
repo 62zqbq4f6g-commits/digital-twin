@@ -1101,7 +1101,12 @@ window.UIProfile = {
     if (!Sync.user?.id) return null;
 
     try {
-      const response = await fetch(`/api/memory-moments/preferences?user_id=${Sync.user.id}`);
+      const token = typeof Sync !== 'undefined' ? await Sync.getToken() : null;
+      if (!token) return null;
+
+      const response = await fetch(`/api/memory-moments/preferences`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       if (response.ok) {
         const data = await response.json();
         this.notificationPrefs = data.preferences || {};
@@ -1120,9 +1125,15 @@ window.UIProfile = {
     if (!Sync.user?.id) return false;
 
     try {
-      const response = await fetch(`/api/memory-moments/preferences?user_id=${Sync.user.id}`, {
+      const token = typeof Sync !== 'undefined' ? await Sync.getToken() : null;
+      if (!token) return false;
+
+      const response = await fetch(`/api/memory-moments/preferences`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify(updates)
       });
 

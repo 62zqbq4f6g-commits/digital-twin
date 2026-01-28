@@ -27,7 +27,12 @@ class PatternVerification {
     if (!Sync?.user?.id) return [];
 
     try {
-      const response = await fetch(`/api/user-patterns?user_id=${Sync.user.id}`);
+      const token = typeof Sync !== 'undefined' ? await Sync.getToken() : null;
+      if (!token) return [];
+
+      const response = await fetch(`/api/user-patterns`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       if (!response.ok) throw new Error('Failed to load patterns');
 
       const data = await response.json();
@@ -68,11 +73,16 @@ class PatternVerification {
     if (!Sync?.user?.id) return false;
 
     try {
+      const token = typeof Sync !== 'undefined' ? await Sync.getToken() : null;
+      if (!token) return false;
+
       const response = await fetch('/api/user-patterns', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({
-          user_id: Sync.user.id,
           pattern_id: patternId,
           action: 'confirm'
         })
@@ -108,11 +118,16 @@ class PatternVerification {
     if (!Sync?.user?.id) return false;
 
     try {
+      const token = typeof Sync !== 'undefined' ? await Sync.getToken() : null;
+      if (!token) return false;
+
       const response = await fetch('/api/user-patterns', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({
-          user_id: Sync.user.id,
           pattern_id: patternId,
           action: 'reject',
           feedback: reason

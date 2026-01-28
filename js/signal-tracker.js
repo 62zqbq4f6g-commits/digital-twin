@@ -71,11 +71,20 @@ class SignalTrackerClass {
     this.queue = [];
 
     try {
+      const token = typeof Sync !== 'undefined' ? await Sync.getToken() : null;
+      if (!token) {
+        this.queue = [...batch, ...this.queue].slice(-this.maxQueueSize);
+        this.isProcessing = false;
+        return;
+      }
+
       const response = await fetch('/api/signals', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({
-          user_id: Sync.user.id,
           signals: batch
         })
       });
@@ -233,7 +242,12 @@ class SignalTrackerClass {
     if (!Sync?.user?.id) return null;
 
     try {
-      const response = await fetch(`/api/signals?user_id=${Sync.user.id}&summary=true`);
+      const token = typeof Sync !== 'undefined' ? await Sync.getToken() : null;
+      if (!token) return null;
+
+      const response = await fetch(`/api/signals?summary=true`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       if (response.ok) {
         return await response.json();
       }

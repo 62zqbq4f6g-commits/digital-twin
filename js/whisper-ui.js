@@ -587,18 +587,25 @@ const WhisperUI = {
       // Encrypt content
       const encrypted = await this.encryptWhisper(content);
 
-      // Get user ID
+      // Get user ID and auth token
       const userId = await this.getUserId();
       if (!userId) {
         throw new Error('Not authenticated');
       }
 
+      const token = typeof Sync !== 'undefined' ? await Sync.getToken() : null;
+      if (!token) {
+        throw new Error('No auth token available');
+      }
+
       // Save to API
       const response = await fetch('/api/whisper', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({
-          user_id: userId,
           content_encrypted: encrypted.content,
           iv: encrypted.iv
         })
@@ -657,7 +664,19 @@ const WhisperUI = {
         return;
       }
 
-      const response = await fetch(`/api/whisper?user_id=${userId}&limit=50`);
+      // Get auth token for API call
+      const token = typeof Sync !== 'undefined' ? await Sync.getToken() : null;
+      if (!token) {
+        console.warn('[WhisperUI] No auth token available');
+        this.renderEmptyState(container);
+        return;
+      }
+
+      const response = await fetch(`/api/whisper?limit=50`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       const data = await response.json();
 
       if (!response.ok) {
@@ -827,6 +846,11 @@ const WhisperUI = {
         throw new Error('Not authenticated');
       }
 
+      const token = typeof Sync !== 'undefined' ? await Sync.getToken() : null;
+      if (!token) {
+        throw new Error('No auth token available');
+      }
+
       // Get decrypted contents
       const whisperIds = Array.from(this.selectedWhispers);
       const decryptedContents = [];
@@ -850,9 +874,11 @@ const WhisperUI = {
       // Call batch reflect API
       const response = await fetch('/api/whisper-reflect', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({
-          user_id: userId,
           whisper_ids: whisperIds,
           decrypted_contents: decryptedContents
         })

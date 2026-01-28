@@ -107,7 +107,18 @@ const StateOfYouUI = {
         return;
       }
 
-      const response = await fetch(`/api/state-of-you?user_id=${userId}&month=${month}`);
+      // Get auth token for API call
+      const token = typeof Sync !== 'undefined' ? await Sync.getToken() : null;
+      if (!token) {
+        this.renderError('Authentication required');
+        return;
+      }
+
+      const response = await fetch(`/api/state-of-you?month=${month}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       const data = await response.json();
 
       if (!response.ok) {
@@ -139,16 +150,19 @@ const StateOfYouUI = {
     this.renderLoading('Generating your report...');
 
     try {
-      const userId = await this.getUserId();
-      if (!userId) {
+      const token = typeof Sync !== 'undefined' ? await Sync.getToken() : null;
+      if (!token) {
         this.renderError('Please sign in to generate a report');
         return;
       }
 
       const response = await fetch('/api/state-of-you', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: userId, month: this.currentMonth })
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ month: this.currentMonth })
       });
 
       const data = await response.json();

@@ -168,7 +168,12 @@ const MemoryMomentsUI = {
         return;
       }
 
-      const response = await fetch(`/api/memory-moments?user_id=${userId}&status=pending&limit=10`);
+      const token = typeof Sync !== 'undefined' ? await Sync.getToken() : null;
+      if (!token) return;
+
+      const response = await fetch(`/api/memory-moments?status=pending&limit=10`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       const data = await response.json();
 
       if (response.ok) {
@@ -226,11 +231,13 @@ const MemoryMomentsUI = {
     this.renderLoading();
 
     try {
-      const userId = await this.getUserId();
-      if (!userId) {
+      const token = typeof Sync !== 'undefined' ? await Sync.getToken() : null;
+      if (!token) {
         this.renderEmptyState('Please sign in to see moments');
         return;
       }
+
+      const userId = await this.getUserId();
 
       // Check usage history
       const hasEnoughHistory = await this.checkUsageHistory(userId);
@@ -239,7 +246,9 @@ const MemoryMomentsUI = {
         return;
       }
 
-      const response = await fetch(`/api/memory-moments?user_id=${userId}&status=pending&limit=10`);
+      const response = await fetch(`/api/memory-moments?status=pending&limit=10`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       const data = await response.json();
 
       if (!response.ok) {
@@ -384,13 +393,16 @@ const MemoryMomentsUI = {
     }
 
     try {
-      const userId = await this.getUserId();
-      if (!userId) return;
+      const token = typeof Sync !== 'undefined' ? await Sync.getToken() : null;
+      if (!token) return;
 
-      const response = await fetch(`/api/memory-moments/${momentId}/engage?user_id=${userId}`, {
+      const response = await fetch(`/api/memory-moments/${momentId}/engage`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: userId, moment_id: momentId })
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ moment_id: momentId })
       });
 
       if (!response.ok) {
@@ -434,13 +446,16 @@ const MemoryMomentsUI = {
     }
 
     try {
-      const userId = await this.getUserId();
-      if (!userId) return;
+      const token = typeof Sync !== 'undefined' ? await Sync.getToken() : null;
+      if (!token) return;
 
-      const response = await fetch(`/api/memory-moments/${momentId}/dismiss?user_id=${userId}`, {
+      const response = await fetch(`/api/memory-moments/${momentId}/dismiss`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: userId, moment_id: momentId })
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ moment_id: momentId })
       });
 
       if (!response.ok) {
