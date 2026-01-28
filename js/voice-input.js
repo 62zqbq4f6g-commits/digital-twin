@@ -7,7 +7,11 @@
  * - RECORDING: Active recording (black bg, white icon, pulse)
  * - TRANSCRIBING: Processing audio (loading state)
  *
- * Max recording: 2 minutes (auto-stop)
+ * Features:
+ * - Chunked recording (5-second intervals) to prevent memory issues
+ * - Extended duration support (up to 10 minutes)
+ * - Automatic error recovery
+ * - Progress feedback
  */
 
 class VoiceInput {
@@ -17,14 +21,14 @@ class VoiceInput {
    * @param {Function} options.onRecordingComplete - Callback with audio blob
    * @param {Function} options.onError - Callback for errors
    * @param {Function} options.onStateChange - Callback for state changes
-   * @param {number} options.maxDuration - Max recording time in ms (default: 120000)
+   * @param {number} options.maxDuration - Max recording time in ms (default: 600000 = 10 minutes)
    */
   constructor(button, options = {}) {
     this.button = button;
     this.onRecordingComplete = options.onRecordingComplete || (() => {});
     this.onError = options.onError || (() => {});
     this.onStateChange = options.onStateChange || (() => {});
-    this.maxDuration = options.maxDuration || 120000; // 2 minutes
+    this.maxDuration = options.maxDuration || 600000; // 10 minutes (increased from 2)
 
     this.state = 'idle'; // idle | recording | transcribing
     this.mediaRecorder = null;
@@ -34,6 +38,7 @@ class VoiceInput {
     this.timerInterval = null;
     this.autoStopTimeout = null;
     this.durationEl = null;
+    this.chunkCount = 0; // Track chunks for debugging
 
     this.init();
   }
@@ -118,28 +123,34 @@ class VoiceInput {
         throw new Error('Audio recording not supported in this browser');
       }
 
-      // Request microphone permission
+      // Request microphone permission with optimized settings
       this.stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
-          sampleRate: 44100,
+          autoGainControl: true,
+          sampleRate: 16000, // Lower sample rate for smaller files
         }
       });
 
       // Determine best audio format
       const mimeType = this.getSupportedMimeType();
+      console.log('[VoiceInput] Using MIME type:', mimeType);
 
-      // Create MediaRecorder
+      // Create MediaRecorder with bitrate limit to prevent memory issues
       this.mediaRecorder = new MediaRecorder(this.stream, {
         mimeType: mimeType,
+        audioBitsPerSecond: 128000 // 128kbps - good quality, reasonable size
       });
       this.chunks = [];
+      this.chunkCount = 0;
 
-      // Handle data available
+      // Handle data available - fires every timeslice ms
       this.mediaRecorder.ondataavailable = (e) => {
         if (e.data.size > 0) {
           this.chunks.push(e.data);
+          this.chunkCount++;
+          console.log(`[VoiceInput] Chunk ${this.chunkCount}: ${(e.data.size / 1024).toFixed(1)}KB`);
         }
       };
 
@@ -148,29 +159,45 @@ class VoiceInput {
         this.handleRecordingComplete();
       };
 
-      // Handle errors
+      // Handle errors with recovery attempt
       this.mediaRecorder.onerror = (e) => {
-        console.error('[VoiceInput] MediaRecorder error:', e);
-        this.handleError(new Error('Recording failed'));
+        console.error('[VoiceInput] MediaRecorder error:', e.error || e);
+        // Try to salvage what we have
+        if (this.chunks.length > 0) {
+          console.log('[VoiceInput] Error occurred but we have chunks, attempting to save');
+          this.handleRecordingComplete();
+        } else {
+          this.handleError(new Error('Recording failed: ' + (e.error?.message || 'Unknown error')));
+        }
       };
 
-      // Start recording
-      this.mediaRecorder.start(1000); // Collect data every second
+      // Start recording with 5-second chunks (prevents memory issues on long recordings)
+      this.mediaRecorder.start(5000);
       this.state = 'recording';
       this.startTime = Date.now();
       this.startTimer();
       this.updateUI();
       this.onStateChange(this.state);
 
-      // Auto-stop at max duration
+      // Auto-stop at max duration with warning at 9 minutes
+      if (this.maxDuration > 540000) { // > 9 minutes
+        setTimeout(() => {
+          if (this.state === 'recording') {
+            console.log('[VoiceInput] Approaching max duration, 1 minute remaining');
+            // Could show a UI warning here
+          }
+        }, this.maxDuration - 60000);
+      }
+
       this.autoStopTimeout = setTimeout(() => {
         if (this.state === 'recording') {
           console.log('[VoiceInput] Auto-stopping at max duration');
+          UI?.showToast?.('Recording auto-stopped at maximum duration');
           this.stopRecording();
         }
       }, this.maxDuration);
 
-      console.log('[VoiceInput] Recording started');
+      console.log('[VoiceInput] Recording started, max duration:', this.maxDuration / 1000, 'seconds');
 
     } catch (error) {
       console.error('[VoiceInput] Failed to start recording:', error);
@@ -209,14 +236,32 @@ class VoiceInput {
       this.stream = null;
     }
 
-    // Create audio blob
-    const mimeType = this.getSupportedMimeType();
+    // Calculate duration
+    const duration = this.startTime ? Math.floor((Date.now() - this.startTime) / 1000) : 0;
+
+    // Create audio blob from all chunks
+    const mimeType = this.mediaRecorder?.mimeType || this.getSupportedMimeType();
     const blob = new Blob(this.chunks, { type: mimeType });
+
+    console.log(`[VoiceInput] Recording complete:`, {
+      size: `${(blob.size / 1024).toFixed(1)}KB`,
+      duration: `${duration}s`,
+      chunks: this.chunkCount,
+      mimeType
+    });
+
+    // Clear chunks
     this.chunks = [];
+    this.chunkCount = 0;
 
-    console.log(`[VoiceInput] Recording complete: ${(blob.size / 1024).toFixed(1)}KB`);
+    // Validate blob before callback
+    if (blob.size === 0) {
+      console.error('[VoiceInput] Empty recording blob');
+      this.handleError(new Error('Recording produced no audio data'));
+      return;
+    }
 
-    // Call completion callback
+    // Call completion callback with blob
     this.onRecordingComplete(blob);
   }
 

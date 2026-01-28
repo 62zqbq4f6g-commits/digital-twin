@@ -1985,7 +1985,13 @@ const UI = {
         this.attachPhase3aListeners(note.id);
       } else {
         // Fallback to old format - prepend image if exists
-        const formattedOutput = note.refined?.formatted_output || '';
+        // Check multiple content sources (meetings use enhanced_content or input.enhanced_text)
+        const formattedOutput = note.enhanced_content ||
+                                note.content ||
+                                note.refined?.formatted_output ||
+                                note.input?.enhanced_text ||
+                                note.input?.raw_text ||
+                                '';
         document.getElementById('note-detail-body').innerHTML = imageHtml + this.renderMarkdown(formattedOutput);
       }
 

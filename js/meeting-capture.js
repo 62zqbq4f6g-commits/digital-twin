@@ -792,6 +792,9 @@ const MeetingCapture = {
       version: '1.0',
       type: 'meeting',
       note_type: 'meeting', // Required for sync.js to upsert to Supabase and MEETINGS tab filtering
+      // Top-level content fields for consistency with regular notes
+      content: content,
+      enhanced_content: content,
       timestamps: {
         created_at: now.toISOString(),
         input_date: now.toISOString().slice(0, 10),
