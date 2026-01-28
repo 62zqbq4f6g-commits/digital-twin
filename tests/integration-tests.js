@@ -339,7 +339,7 @@ async function testEncryptedDatabase() {
 
       const { data } = await supabase
         .from('notes')
-        .select('content, content_encrypted, is_encrypted')
+        .select('content_encrypted, is_encrypted')
         .eq('id', testNoteId)
         .single();
 
