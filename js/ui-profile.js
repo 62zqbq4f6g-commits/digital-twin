@@ -447,17 +447,25 @@ window.UIProfile = {
 
     try {
       // Save to onboarding_data (source of truth)
-      await Sync.supabase
+      const { error } = await Sync.supabase
         .from('onboarding_data')
         .update({ life_seasons: this._selectedRoles })
         .eq('user_id', Sync.user.id);
 
+      if (error) {
+        console.error('[UIProfile] Supabase error saving life seasons:', error);
+        UI.showToast?.('Failed to save. Please try again.');
+        return;
+      }
+
       this.profile.life_seasons = this._selectedRoles;
       this.closeModal();
       this.refreshProfileDisplay();
+      UI.showToast?.('Saved');
       console.log('[UIProfile] Life seasons saved:', this._selectedRoles);
     } catch (err) {
       console.error('[UIProfile] Failed to save life seasons:', err);
+      UI.showToast?.('Failed to save. Please try again.');
     } finally {
       console.log('[Loading] Hiding');
       window.hideProcessingOverlay?.();
@@ -537,17 +545,25 @@ window.UIProfile = {
 
     try {
       // Save to onboarding_data (source of truth)
-      await Sync.supabase
+      const { error } = await Sync.supabase
         .from('onboarding_data')
         .update({ mental_focus: this._selectedGoals })
         .eq('user_id', Sync.user.id);
 
+      if (error) {
+        console.error('[UIProfile] Supabase error saving mental focus:', error);
+        UI.showToast?.('Failed to save. Please try again.');
+        return;
+      }
+
       this.profile.mental_focus = this._selectedGoals;
       this.closeModal();
       this.refreshProfileDisplay();
+      UI.showToast?.('Saved');
       console.log('[UIProfile] Mental focus saved:', this._selectedGoals);
     } catch (err) {
       console.error('[UIProfile] Failed to save goals:', err);
+      UI.showToast?.('Failed to save. Please try again.');
     } finally {
       console.log('[Loading] Hiding');
       window.hideProcessingOverlay?.();

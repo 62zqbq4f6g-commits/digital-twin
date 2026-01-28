@@ -233,8 +233,9 @@ class PatternVerification {
       return;
     }
 
-    // Show loading state
-    const container = document.getElementById('you-patterns-container');
+    // Show loading state - try both container IDs (YOU tab and TWIN tab)
+    const container = document.getElementById('you-patterns-container') ||
+                      document.getElementById('twin-patterns-container');
     console.log('[PatternVerification] Container found:', !!container);
 
     if (container) {
@@ -287,6 +288,14 @@ class PatternVerification {
 
       console.log('[PatternVerification] Rebuild complete:', responseData);
 
+      // Show success message
+      const patternsFound = responseData.detected?.length || responseData.patterns_inserted || 0;
+      if (patternsFound > 0) {
+        UI?.showToast?.(`Found ${patternsFound} new pattern${patternsFound > 1 ? 's' : ''}`);
+      } else {
+        UI?.showToast?.('Analysis complete - no new patterns found');
+      }
+
       // Reload patterns to show new ones
       await this.loadPatterns();
 
@@ -297,6 +306,7 @@ class PatternVerification {
 
     } catch (error) {
       console.error('[PatternVerification] Rebuild error:', error);
+      UI?.showToast?.('Pattern analysis failed. Please try again.');
 
       if (container) {
         container.innerHTML = `
