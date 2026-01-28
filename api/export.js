@@ -25,10 +25,13 @@ import {
   getKeyPeople,
   getEntities,
   getEntityFacts,
+  getEntityLinks,
   getNotes,
   getMeetings,
   getConversations,
-  getPatterns
+  getPatterns,
+  getUserBehaviors,
+  getEntityQualities
 } from '../lib/export/queries.js';
 
 import {
@@ -38,6 +41,9 @@ import {
   transformMeeting,
   transformConversation,
   transformPattern,
+  transformBehavior,
+  transformEntityQuality,
+  transformEntityLink,
   buildMeta
 } from '../lib/export/transforms.js';
 
@@ -98,20 +104,23 @@ export default async function handler(req, res) {
     };
 
     // Gather all data in parallel using T2's functions
-    const [profile, keyPeople, entities, facts, notes, meetings, conversations, patterns] =
+    const [profile, keyPeople, entities, facts, entityLinks, notes, meetings, conversations, patterns, behaviors, entityQualities] =
       await Promise.all([
         timeQuery('profile', () => getProfile(user_id)),
         timeQuery('keyPeople', () => getKeyPeople(user_id)),
         timeQuery('entities', () => getEntities(user_id)),
         timeQuery('facts', () => getEntityFacts(user_id)),
+        timeQuery('entityLinks', () => getEntityLinks(user_id)),
         timeQuery('notes', () => getNotes(user_id)),
         timeQuery('meetings', () => getMeetings(user_id)),
         timeQuery('conversations', () => getConversations(user_id)),
-        timeQuery('patterns', () => getPatterns(user_id))
+        timeQuery('patterns', () => getPatterns(user_id)),
+        timeQuery('behaviors', () => getUserBehaviors(user_id)),
+        timeQuery('entityQualities', () => getEntityQualities(user_id))
       ]);
 
     console.log(`[Export] Query timings:`, timings);
-    console.log(`[Export] Data gathered: ${entities.length} entities, ${facts.length} facts, ${notes.length} notes, ${patterns.length} patterns`);
+    console.log(`[Export] Data gathered: ${entities.length} entities, ${facts.length} facts, ${behaviors.length} behaviors, ${notes.length} notes, ${patterns.length} patterns`);
 
     // ============================================
     // PRIVACY FILTERING (T2's privacy layer)
@@ -146,19 +155,42 @@ export default async function handler(req, res) {
     const exportData = {
       inscript_export: {
         identity: buildIdentity(profile, keyPeople),
-        entities: publicEntities.map(e => transformEntity(e, facts)),
+
+        // Knowledge Graph (PAMP v2.0 Layer 2)
+        knowledgeGraph: {
+          entities: publicEntities.map(e => transformEntity(e, facts)),
+          relationships: entityLinks.map(transformEntityLink),
+          coOccurrences: entityLinks.map(transformEntityLink) // Same data, different semantic
+        },
+
+        // Episodes (PAMP v2.0 Layer 3)
         episodes: {
           notes: publicNotes.map(transformNote),
           meetings: meetings.map(transformMeeting),
           conversations: conversations.map(transformConversation)
         },
+
+        // Behavioral Profile (PAMP v2.0 Layer 4 - Phase 19)
+        behaviors: {
+          userBehaviors: behaviors.map(transformBehavior),
+          entityQualities: entityQualities.map(transformEntityQuality)
+        },
+
+        // Patterns (PAMP v2.0 Layer 4)
         patterns: publicPatterns.map(transformPattern),
+
+        // Legacy: Keep entities at root for backward compatibility
+        entities: publicEntities.map(e => transformEntity(e, facts)),
+
         meta: buildMeta({
           entities: publicEntities,
           notes: publicNotes,
           patterns: publicPatterns,
           facts,
-          conversations
+          conversations,
+          behaviors,
+          entityQualities,
+          entityLinks
         })
       }
     };
