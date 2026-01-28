@@ -1,6 +1,6 @@
 # Inscript — Project Status
 
-## January 27, 2026 | Version 9.6.0
+## January 28, 2026 | Version 9.8.1
 
 ---
 
@@ -37,16 +37,74 @@
 
 ## CURRENT STATE
 
-**Status:** Phase 18 Sprint 3 COMPLETE — MIRROR facts integration, Privacy audit verified
+**Status:** Phase 19 COMPLETE — Zero-Knowledge Architecture + Bug Fixes
 **Production URL:** https://digital-twin-ecru.vercel.app
 **Brand:** Inscript — "Your mirror in code"
 **Category:** Personal AI Memory (PAMP Protocol)
-**Current Phase:** Phase 18 — Portable Memory Export
+**Current Phase:** Phase 19 — Zero-Knowledge Architecture
 **Design System:** SoHo Editorial Aesthetic ✅
+**Encryption:** ✅ Client-side AES-256-GCM
+**Pricing:** $10/mo Managed | $5/mo BYOK
 
 ---
 
-## LATEST SESSION: January 27, 2026
+## LATEST SESSION: January 28, 2026
+
+### v9.8.1 — Zero-Knowledge Architecture + Bug Fixes
+
+**Major Features Shipped:**
+
+1. **Zero-Knowledge Encryption (v9.8.0)**
+   - Client-side AES-256-GCM encryption
+   - Two-tier model: Managed $10/mo, BYOK $5/mo
+   - All content tables have encrypted columns
+   - Recovery key system
+
+2. **Context Engineering / RAG 2.0 (v9.8.0)**
+   - Task classification (7 types)
+   - Task-aware context strategies
+   - Entity graph traversal
+
+3. **Data Capture Module (v9.8.1)**
+   - User behavior tracking for personalization
+   - Preferences saved to Supabase
+
+**Bug Fixes (v9.8.1):**
+
+| Issue | Fix | Commit |
+|-------|-----|--------|
+| Mirror "unable to connect" | Added auth header | 4a03dd7 |
+| Meeting tables missing | Created migration | c4284e8 |
+| Meeting reverts to note | Cache invalidation | c4284e8 |
+| Meeting click broken | Navigation fix | c4284e8 |
+| Preferences don't persist | Supabase save | 0dd021c |
+| Patterns rebuild broken | Dual container | 0dd021c |
+| Pricing outdated | $10/$5 update | 51cab59 |
+
+**Files Created:**
+```
+js/encryption.js
+js/key-manager.js
+js/encrypted-db.js
+js/api-client.js
+js/settings-store.js
+js/tier-manager.js
+js/onboarding-encryption.js
+js/privacy-indicator.js
+js/data-capture.js
+css/onboarding.css
+lib/mirror/task-classifier.js
+lib/mirror/context-strategies.js
+lib/mirror/context-loader.js
+lib/mirror/graph-traversal.js
+supabase/migrations/20260128_encryption_schema.sql
+supabase/migrations/20260128_meeting_tables_fix.sql
+tests/integration-tests.js
+```
+
+---
+
+## PREVIOUS SESSION: January 27, 2026
 
 ### Sprint 3 Complete: MIRROR Facts + Privacy Audit
 
@@ -643,7 +701,7 @@ This is the "holy shit, it knows" moment working in production.
 
 ---
 
-*Last Updated: January 25, 2026*
-*Version: 9.3.0 — Inscript*
+*Last Updated: January 28, 2026*
+*Version: 9.8.1 — Inscript*
 *Vision: PAMP — Portable AI Memory Protocol*
 *Production: https://digital-twin-ecru.vercel.app*

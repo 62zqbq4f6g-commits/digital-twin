@@ -1,11 +1,11 @@
 # Inscript Status Report
 
-## Last Audit: January 28, 2026 (Zero-Knowledge Architecture)
+## Last Audit: January 28, 2026 (Zero-Knowledge Architecture + Bug Fixes)
 
 **Audited by:** Claude Code (T4 Integration)
 **Production URL:** https://digital-twin-ecru.vercel.app
 **Build Status:** ✅ Production Ready
-**Version:** 9.8.0
+**Version:** 9.8.1
 
 ---
 
@@ -83,17 +83,44 @@ Shipped: January 26, 2026
 | Logging | IDs, timestamps, error codes only | ✅ No content |
 
 **Two-Tier Model:**
-- **Managed ($20/mo):** Notes encrypted, AI proxied (never stored)
-- **BYOK ($10/mo):** Notes encrypted, AI direct, complete zero-knowledge
+- **Managed ($10/mo):** Notes encrypted, AI proxied (never stored), 500 MIRROR calls/mo soft cap
+- **BYOK ($5/mo + API costs):** Notes encrypted, AI direct, unlimited, complete zero-knowledge
 
 ---
 
-## Latest Session: January 28, 2026
+## Latest Session: January 28, 2026 (Part 2 — Bug Fixes)
 
-### Zero-Knowledge Architecture + Context Engineering
+### v9.8.1 Bug Fixes + Data Capture Module
+
+**Issues Fixed:**
+
+| Issue | Root Cause | Fix | Commit |
+|-------|------------|-----|--------|
+| Mirror "unable to connect" | Missing Authorization header | Added Bearer token to all API calls | 4a03dd7 |
+| Meeting "ambient_recordings table missing" | Migration not applied | Created comprehensive migration | c4284e8 |
+| Meeting reverts to normal note | NotesCache not invalidated after metadata added | Fixed NotesCache.updateNote() + NotesManager.invalidate() | c4284e8 |
+| Meeting click doesn't open note | Filter only checked `type`, not `note_type` | Added note_type + enhanced_content checks | c4284e8 |
+| Preferences don't persist | Saving to localStorage only | Now saves to Supabase user_settings table | 0dd021c |
+| Patterns rebuild broken | Wrong container ID | Dual container support | 0dd021c |
+| Pricing outdated | Old $20/$10 in TIER_INFO | Updated to $10 Managed / $5 BYOK | 51cab59 |
+
+**New Features:**
+- `/js/data-capture.js` — User behavior tracking for MIRROR personalization
+- Usage tracking for managed tier (500 calls/mo soft cap)
+
+**Database Migrations:**
+- `20260128_meeting_tables_fix.sql` — ambient_recordings + meeting_history fixes
+
+**Commits:** 4a03dd7, c4284e8, 0dd021c, 51cab59
+
+---
+
+## Previous Session: January 28, 2026 (Part 1 — Zero-Knowledge)
+
+### v9.8.0 Zero-Knowledge Architecture + Context Engineering
 
 **Privacy Architecture:**
-- Two-tier model (Managed $20/mo, BYOK $10/mo)
+- Two-tier model (Managed $10/mo, BYOK $5/mo)
 - Client-side AES-256-GCM encryption for all user content
 - All content tables have encrypted columns + is_encrypted flag
 - BYOK direct calls to Anthropic API
@@ -123,21 +150,24 @@ Shipped: January 26, 2026
 /js/tier-manager.js             — Tier info and switching
 /js/onboarding-encryption.js    — Encryption setup UI
 /js/privacy-indicator.js        — Privacy status in header
+/js/data-capture.js             — User behavior tracking
 /css/onboarding.css             — Onboarding styles
 /lib/mirror/task-classifier.js  — Classify messages into task types
 /lib/mirror/context-strategies.js — Define what to load per task
 /lib/mirror/context-loader.js   — Execute context loading
 /lib/mirror/graph-traversal.js  — Navigate entity relationships
 /lib/mirror/index.js            — Re-exports
-/supabase/migrations/20260128_encryption_schema.sql — Schema migration
+/supabase/migrations/20260128_encryption_schema.sql — Encryption schema
+/supabase/migrations/20260128_meeting_tables_fix.sql — Meeting tables fix
 /tests/integration-tests.js     — Full integration test suite
 ```
 
 **Commits:**
-- [T1] Client-side encryption foundation (AES-256-GCM)
-- [T2] Context Engineering (RAG 2.0) - task-aware context loading
-- [T3] Two-tier system (Managed + BYOK) with onboarding
-- [T4] Data layer encryption + integration tests + documentation
+- be8ab48: [T1] Client-side encryption foundation (AES-256-GCM)
+- 5c6151f: [T2] Context Engineering (RAG 2.0) - task-aware context loading
+- af57417: [T4] Data layer encryption + integration tests + documentation
+- 51cab59: Pricing update ($10 Managed / $5 BYOK)
+- c4284e8: Meeting database tables + save flow + navigation fixes
 
 ---
 
@@ -317,6 +347,7 @@ Returns: downloadable JSON file
 
 | Version | Date | Changes |
 |---------|------|---------|
+| **9.8.1** | Jan 28, 2026 | Bug fixes (Mirror auth, Meeting tables/save/navigation, Preferences, Patterns). Data Capture module. Pricing update ($10/$5). |
 | **9.8.0** | Jan 28, 2026 | Two-tier model (Managed + BYOK), Client-side AES-256-GCM encryption, Context Engineering (RAG 2.0), Task-aware context loading, Encrypted database layer. |
 | 9.6.0 | Jan 27, 2026 | Sprint 3 complete. MIRROR facts integration, Privacy audit verified. |
 | 9.5.0 | Jan 27, 2026 | Phase 18 Sprint 2 complete. Structured facts, entity_facts table, export wired with facts + conversations. |
@@ -328,5 +359,5 @@ Returns: downloadable JSON file
 ---
 
 *Status Report Generated: January 28, 2026*
-*Version: 9.8.0 — Inscript*
+*Version: 9.8.1 — Inscript*
 *Production: https://digital-twin-ecru.vercel.app*

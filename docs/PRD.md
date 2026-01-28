@@ -2,10 +2,10 @@
 
 ## Your Mirror in Code.
 
-**Version:** 9.5.0
-**Date:** January 27, 2026
+**Version:** 9.8.1
+**Date:** January 28, 2026
 **Author:** Rox
-**Status:** Phase 18 — Portable Memory Export
+**Status:** Phase 19 — Zero-Knowledge Architecture + Context Engineering
 
 ---
 
@@ -35,9 +35,10 @@
 | Phase | Focus | Status |
 |-------|-------|--------|
 | **Phase 1: Consumer Love** | Build an app people can't live without | ✅ Complete |
-| **Phase 2: Portable Export** | Full data export with structured facts | 🔄 Current |
-| **Phase 3: Platform APIs** | Let developers build on Inscript data | Next |
-| **Phase 4: Protocol** | Open standard for portable AI memory | Future |
+| **Phase 2: Portable Export** | Full data export with structured facts | ✅ Complete |
+| **Phase 3: Zero-Knowledge** | Client-side encryption, two-tier model | ✅ Complete |
+| **Phase 4: Platform APIs** | Let developers build on Inscript data | Next |
+| **Phase 5: Protocol** | Open standard for portable AI memory | Future |
 
 **Inscript's moat:** Being the best place to create and curate personal AI memory — not the only place you can use it.
 
@@ -125,12 +126,21 @@ Inscript is the first **Personal AI Memory** — an AI that actually remembers y
 | Metric | Value |
 |--------|-------|
 | Production URL | https://digital-twin-ecru.vercel.app |
-| Version | 9.5.0 |
-| Memory System | ~95% Complete |
-| Export System | Sprint 1 ✅, Sprint 2 🔄 |
-| Beta Status | Production (Phase 18 in progress) |
+| Version | 9.8.1 |
+| Memory System | ✅ Complete |
+| Export System | ✅ Complete |
+| Encryption | ✅ Client-side AES-256-GCM |
+| Context Engineering | ✅ RAG 2.0 |
+| Beta Status | Production (Phase 19 complete) |
 | Design System | SoHo Editorial Aesthetic ✅ |
 | Mobile Responsive | Verified at 375px ✅ |
+
+## Pricing
+
+| Tier | Price | Includes | We See |
+|------|-------|----------|--------|
+| **Managed** | $10/mo | 500 MIRROR calls/mo (soft cap) | AI conversations (never logged) |
+| **BYOK** | $5/mo + API costs | Unlimited, direct to Anthropic | Nothing |
 
 ---
 
@@ -272,6 +282,43 @@ Works with:
 - Default: everything exports (user decides what to exclude)
 - Inscript doesn't decide what's "too sensitive"
 
+## 6. Client-Side Encryption (NEW — v9.8.0)
+
+**True zero-knowledge architecture:**
+
+- AES-256-GCM encryption via Web Crypto API
+- PBKDF2 key derivation (100k iterations)
+- Keys NEVER leave the browser
+- Recovery key for account recovery
+
+## 7. Data Capture (NEW — v9.8.1)
+
+**Behavioral tracking for AI personalization:**
+
+- Feature usage tracking
+- Preference storage
+- Session tracking
+- Feedback signals on AI responses
+- All data used to improve MIRROR responses
+
+---
+
+# FEATURE STATUS (v9.8.1)
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Notes | ✅ Working | E2E encrypted |
+| MIRROR | ✅ Working | RAG 2.0, task-aware context |
+| Meetings | ✅ Working | Recording, enhancement, navigation |
+| Patterns | ✅ Working | LLM detection, rebuild fixed |
+| Entities/Facts | ✅ Working | Encrypted, structured |
+| Export | ✅ Working | Decrypts for export |
+| Encryption | ✅ NEW | Client-side AES-256-GCM |
+| BYOK | ✅ NEW | Direct Anthropic calls |
+| Two-Tier Pricing | ✅ NEW | $10 Managed / $5 BYOK |
+| Data Capture | ✅ NEW | User behavior tracking |
+| Onboarding | 🟡 Partial | UI built, not wired into app flow |
+
 ---
 
 # THE MOAT (Refined)
@@ -311,31 +358,22 @@ The traditional moat is lock-in. We reject that.
 - Voice input, Ambient recording
 - SoHo Editorial Design
 
-## Current Phase
-
-### Phase 18: Portable Memory Export 🔄
-
-**Sprint 1 (Complete):**
+### Phase 18: Portable Memory Export ✅
 - Export API endpoint
 - Data layer (queries, transforms, privacy)
-- Export UI in Settings
-- JSON download working
-
-**Sprint 2 (In Progress):**
 - Structured facts table (`entity_facts`)
-- Privacy columns (user choice)
 - MIRROR messages in export
-- Updated extraction for facts
+- Privacy controls (user choice)
+
+### Phase 19: Zero-Knowledge Architecture ✅ (Current)
+- Client-side AES-256-GCM encryption
+- Two-tier model (Managed $10/mo, BYOK $5/mo)
+- Context Engineering (RAG 2.0)
+- Task-aware context loading
+- Data Capture module
+- Bug fixes (Mirror, Meetings, Preferences, Patterns)
 
 ## Upcoming Phases
-
-### Phase 19: Privacy Architecture Audit
-| Priority | Task |
-|----------|------|
-| P0 | Verify E2E encryption is client-side |
-| P0 | Document all LLM touchpoints |
-| P1 | Audit logging for content leaks |
-| P1 | Document data flow end-to-end |
 
 ### Phase 20: Platform APIs
 | Priority | Feature |
@@ -343,6 +381,13 @@ The traditional moat is lock-in. We reject that.
 | P0 | `GET /api/export` — Full memory export |
 | P1 | `GET /api/context` — Context for queries |
 | P2 | Third-party app authorization |
+
+### Phase 21: Onboarding Integration
+| Priority | Feature |
+|----------|---------|
+| P0 | Wire encryption onboarding into app flow |
+| P0 | First-run encryption setup |
+| P1 | Recovery key backup verification |
 
 ---
 
@@ -413,6 +458,6 @@ User Device                    Inscript Servers
 ---
 
 *Inscript — Your mirror in code.*
-*PRD Version 4.0 | January 27, 2026*
+*PRD Version 5.0 | January 28, 2026*
 *Vision: Your data. Your ownership. Portable anywhere.*
 *Production: https://digital-twin-ecru.vercel.app*

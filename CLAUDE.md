@@ -1,9 +1,9 @@
 # CLAUDE.md — Inscript Developer Guide
 
-## Version 9.8.0 | January 28, 2026
+## Version 9.8.1 | January 28, 2026
 
 > **Phase:** 19 — Zero-Knowledge Architecture + Context Engineering
-> **Status:** Two-tier model shipped, Client-side encryption, RAG 2.0
+> **Status:** Two-tier model shipped, Client-side encryption, RAG 2.0, Bug fixes complete
 > **Last Updated:** January 28, 2026
 
 ---
@@ -16,7 +16,7 @@
 | **Tagline** | Your mirror in code |
 | **Category** | Personal AI Memory |
 | **Vision** | Your data. Your ownership. Portable anywhere. |
-| **Version** | 9.8.0 |
+| **Version** | 9.8.1 |
 | **Production URL** | https://digital-twin-ecru.vercel.app |
 | **Working Directory** | `/Users/airoxthebox/Projects/digital-twin` |
 | **Beta Status** | Production (Phase 19 in progress) |
@@ -224,43 +224,50 @@
 
 ---
 
-# PRIVACY ARCHITECTURE (v9.8.0)
+# PRIVACY ARCHITECTURE (v9.8.1)
 
 ## Two-Tier Model
 
 | Tier | Price | Notes | AI | Limits | We See |
 |------|-------|-------|-----|--------|--------|
-| **Managed** | $10/mo | Encrypted | Proxied (not stored) | 500 MIRROR calls/mo | AI conversations (never logged) |
+| **Managed** | $10/mo | Encrypted | Proxied (not stored) | 500 MIRROR calls/mo (soft cap) | AI conversations (never logged) |
 | **BYOK** | $5/mo + API | Encrypted | Direct to Anthropic | Unlimited | Nothing |
 
 **Messaging:** "Notes are encrypted — we can't read them. AI conversations pass through our servers but are never stored or logged."
 
 ## Client-Side Encryption
 
-All user content is encrypted with AES-256-GCM before upload.
+All user content is encrypted with AES-256-GCM via Web Crypto API before upload.
 
 **Key Derivation:**
 - User password → PBKDF2 (100k iterations, SHA-256) → AES-256 key
 - Key NEVER leaves browser
 - Recovery key generated at setup (XXXX-XXXX-XXXX-XXXX format)
 
-**Encrypted Fields:**
+**Encrypted Database Columns:**
 
-| Table | Encrypted Column | Plaintext Kept? |
-|-------|------------------|-----------------|
+All content tables have `*_encrypted` TEXT column + `is_encrypted` BOOLEAN flag.
+
+| Table | Encrypted Columns | Plaintext Kept? |
+|-------|-------------------|-----------------|
 | notes | content_encrypted | No |
 | user_entities | name_encrypted, summary_encrypted | No |
 | entity_facts | object_encrypted | predicate stays plaintext |
 | user_patterns | description_encrypted | category stays plaintext |
 | mirror_messages | content_encrypted | No |
 | mirror_conversations | title_encrypted | No |
+| category_summaries | summary_encrypted | No |
+| meeting_history | title_encrypted, notes_encrypted | No |
+| ambient_recordings | transcript_encrypted | No |
 
 **Key Files:**
-- `/js/encryption.js` — Core crypto functions (AES-GCM, PBKDF2)
+- `/js/encryption.js` — Core AES-256-GCM functions
 - `/js/key-manager.js` — Key lifecycle (setup, unlock, lock, recovery)
 - `/js/encrypted-db.js` — Database operations with auto encrypt/decrypt
 - `/js/api-client.js` — AI calls (BYOK direct / Managed proxy)
 - `/js/tier-manager.js` — Tier info and switching
+- `/js/onboarding-encryption.js` — Encryption setup flow
+- `/js/privacy-indicator.js` — Header privacy badge
 
 ## Zero-Knowledge Guarantees
 
@@ -308,6 +315,56 @@ Entities are connected through shared facts:
 - Sarah → works_at Anthropic → others at Anthropic
 - Person → knows → Other person
 - Topic → Notes → Entities mentioned
+
+---
+
+# DATA CAPTURE MODULE (v9.8.1)
+
+New `/js/data-capture.js` tracks user behavior for AI personalization.
+
+## Functions
+
+| Function | Purpose |
+|----------|---------|
+| `trackFeatureUse(feature, metadata)` | Track feature usage (create_note, mirror_chat, meeting_save) |
+| `trackFeedback(messageId, feedback)` | Track AI response feedback (thumbs up/down) |
+| `savePreference(key, value)` | Save user preference to Supabase |
+| `loadPreference(key)` | Load user preference |
+| `trackSessionStart()` | Track session begins |
+| `getUserDataSummary()` | Get summary for MIRROR context personalization |
+
+All data stored in `user_settings` table for MIRROR to learn from.
+
+---
+
+# DATABASE MIGRATIONS (January 28, 2026)
+
+## 20260128_encryption_schema.sql
+
+- Added `*_encrypted` columns to all content tables
+- Created `user_settings` table (key-value store for preferences)
+- Created `encryption_audit_log` table (security audit trail)
+- Added encryption metadata to `user_profiles` (salt, version, recovery_key_hash)
+
+## 20260128_meeting_tables_fix.sql
+
+- Created `ambient_recordings` table with encryption support
+- Fixed `meeting_history` constraints (entity_id now nullable)
+- Added proper indexes and RLS policies
+
+---
+
+# BUG FIXES (v9.8.1)
+
+| Issue | Root Cause | Fix | Commit |
+|-------|------------|-----|--------|
+| Mirror "unable to connect" | Missing Authorization header | Added Bearer token to all API calls | 4a03dd7 |
+| Meeting "table missing" | ambient_recordings not created | Added migration | c4284e8 |
+| Meeting reverts to plain text | NotesCache not invalidated | Fixed NotesCache.updateNote() + NotesManager.invalidate() | c4284e8 |
+| Meeting click doesn't open | Navigation filter incomplete | Added note_type + enhanced_content checks | c4284e8 |
+| Preferences don't persist | Saving to localStorage only | Now saves to Supabase user_settings | 0dd021c |
+| Patterns rebuild broken | Wrong container ID | Dual container support | 0dd021c |
+| Pricing outdated | Old pricing in TIER_INFO | Updated to $10/$5 model | 51cab59 |
 
 ---
 
@@ -383,6 +440,7 @@ Entities are connected through shared facts:
 
 | Version | Phase | Key Changes |
 |---------|-------|-------------|
+| **9.8.1** | 19 | Bug fixes: Mirror auth, Meeting tables/save/navigation, Preferences persistence, Patterns rebuild. Data Capture module. Pricing update ($10/$5). |
 | **9.8.0** | 19 | Two-tier model (Managed + BYOK), Client-side AES-256-GCM encryption, Context Engineering (RAG 2.0), Task-aware context loading, Onboarding flow for encryption setup. |
 | 9.6.0 | 18 | Sprint 3 complete. MIRROR facts integration, Privacy audit verified (see /docs/PRIVACY-AUDIT.md), RLS 37/37 tables verified. |
 | 9.5.0 | 18 | Portable Memory Export: Sprint 2 complete. Structured facts, entity_facts table, export with facts + conversations. |
@@ -396,5 +454,5 @@ Entities are connected through shared facts:
 ---
 
 *CLAUDE.md — Inscript Developer Guide*
-*Last Updated: January 28, 2026*
+*Version 9.8.1 | Last Updated: January 28, 2026*
 *Production: https://digital-twin-ecru.vercel.app*
