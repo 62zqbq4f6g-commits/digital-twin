@@ -1202,12 +1202,13 @@ async function generateResponse(user_id, userMessage, history, context, addition
       });
     }
 
-    // Add session notes to context used
+    // Add session notes to context used (increased from 2 to 5 for better context)
     if (context.recentSessionNotes?.length > 0) {
-      context.recentSessionNotes.slice(0, 2).forEach(n => {
+      context.recentSessionNotes.slice(0, 5).forEach(n => {
+        const noteDate = n.created_at || n.timestamp; // Support both field names
         contextUsed.push({
           type: 'note',
-          date: n.created_at ? new Date(n.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'Recent',
+          date: noteDate ? new Date(noteDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'Recent',
           preview: (n.content || '').slice(0, 50) + '...'
         });
       });

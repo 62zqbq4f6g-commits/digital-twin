@@ -1229,6 +1229,23 @@ const WorkUI = {
         DataCapture.trackFeatureUse('meeting_save', { attendeeCount: attendees.length });
       }
 
+      // Ingest meeting into Knowledge Graph with full metadata
+      if (typeof window !== 'undefined' && window.ingestInput) {
+        const userId = typeof Sync !== 'undefined' && Sync.user?.id ? Sync.user.id : null;
+        if (userId) {
+          window.ingestInput(userId, {
+            type: 'meeting',
+            content: noteContent,
+            sourceId: savedNote.id,
+            metadata: {
+              title: savedNote.meeting.title,
+              attendees: attendees,
+              actionItems: savedNote.meeting.actionItems || []
+            }
+          }).catch(err => console.warn('[WorkUI] Knowledge graph ingestion error:', err));
+        }
+      }
+
       // Switch to meetings tab after a short delay
       setTimeout(() => {
         console.log('[WorkUI] saveMeeting - Switching to meetings tab');

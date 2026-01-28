@@ -1049,6 +1049,25 @@ window.Onboarding = {
       // Seed entities from people
       await this.seedEntities(userId);
 
+      // Ingest onboarding data into Knowledge Graph
+      if (typeof window !== 'undefined' && window.ingestInput) {
+        window.ingestInput(userId, {
+          type: 'onboarding',
+          content: 'Onboarding completed',
+          metadata: {
+            fields: {
+              name: this.data.name,
+              life_seasons: this.data.life_seasons,
+              mental_focus: this.data.mental_focus,
+              depth_question: this.data.depth_question,
+              depth_answer: this.data.depth_answer,
+              value_priorities: this.data.value_priorities,
+              seeded_people: this.data.seeded_people.filter(p => p && p.name)
+            }
+          }
+        }).catch(err => console.warn('[Onboarding] Knowledge graph ingestion error:', err));
+      }
+
       // Close onboarding
       this.container.classList.remove('visible');
       setTimeout(() => {

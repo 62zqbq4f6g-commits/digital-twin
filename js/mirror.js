@@ -94,12 +94,13 @@ class Mirror {
         // Add to session notes (keep last 5)
         this.sessionNotes.push({
           content: rawText.substring(0, 500), // Limit size
-          timestamp: new Date().toISOString(),
+          created_at: new Date().toISOString(), // Use created_at to match API expectations
+          timestamp: new Date().toISOString(), // Keep for backwards compatibility
           title: title
         });
 
-        // Keep only last 5 session notes
-        if (this.sessionNotes.length > 5) {
+        // Keep only last 10 session notes (increased from 5 for better context)
+        if (this.sessionNotes.length > 10) {
           this.sessionNotes.shift();
         }
 
@@ -220,7 +221,8 @@ class Mirror {
 
           return {
             content: content.substring(0, 500),
-            timestamp,
+            created_at: timestamp, // API expects created_at
+            timestamp, // Keep for backwards compatibility
             title
           };
         })
@@ -240,10 +242,18 @@ class Mirror {
       const sessionIds = new Set(this.sessionNotes.map(n => n.timestamp));
       const historicalNotes = recentNotes.filter(n => !sessionIds.has(n.timestamp));
 
-      // Combine: session notes first, then historical notes, max 10 total
-      this.sessionNotes = [...this.sessionNotes, ...historicalNotes].slice(0, 10);
+      // Combine: session notes first, then historical notes, max 15 total for richer context
+      this.sessionNotes = [...this.sessionNotes, ...historicalNotes].slice(0, 15);
 
+      // Log detailed info about notes being used for debugging
       console.log('[Mirror] Loaded notes. Total context notes:', this.sessionNotes.length);
+      if (this.sessionNotes.length > 0) {
+        const noteDetails = this.sessionNotes.slice(0, 5).map(n => ({
+          title: n.title?.substring(0, 30),
+          age: Math.floor((Date.now() - new Date(n.created_at || n.timestamp)) / (1000 * 60 * 60)) + 'h ago'
+        }));
+        console.log('[Mirror] Top 5 notes for context:', noteDetails);
+      }
     } catch (error) {
       console.warn('[Mirror] Failed to load historical notes:', error);
     }

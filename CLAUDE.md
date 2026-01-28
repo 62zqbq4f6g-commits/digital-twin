@@ -1,9 +1,9 @@
 # CLAUDE.md — Inscript Developer Guide
 
-## Version 9.8.1 | January 28, 2026
+## Version 9.8.2 | January 28, 2026
 
 > **Phase:** 19 — Zero-Knowledge Architecture + Context Engineering
-> **Status:** Two-tier model shipped, Client-side encryption, RAG 2.0, Bug fixes complete
+> **Status:** Two-tier model shipped, Client-side encryption, RAG 2.0, Security hardening complete
 > **Last Updated:** January 28, 2026
 
 ---
@@ -16,7 +16,7 @@
 | **Tagline** | Your mirror in code |
 | **Category** | Personal AI Memory |
 | **Vision** | Your data. Your ownership. Portable anywhere. |
-| **Version** | 9.8.1 |
+| **Version** | 9.8.2 |
 | **Production URL** | https://digital-twin-ecru.vercel.app |
 | **Working Directory** | `/Users/airoxthebox/Projects/digital-twin` |
 | **Beta Status** | Production (Phase 19 in progress) |
@@ -268,6 +268,7 @@ All content tables have `*_encrypted` TEXT column + `is_encrypted` BOOLEAN flag.
 - `/js/tier-manager.js` — Tier info and switching
 - `/js/onboarding-encryption.js` — Encryption setup flow
 - `/js/privacy-indicator.js` — Header privacy badge
+- `/api/lib/cors.js` — Shared CORS utility (allowed origins, preflight handling)
 
 ## Zero-Knowledge Guarantees
 
@@ -440,6 +441,7 @@ All data stored in `user_settings` table for MIRROR to learn from.
 
 | Version | Phase | Key Changes |
 |---------|-------|-------------|
+| **9.8.2** | 19 | Security hardening: CORS restricted to allowed origins, Auth + IDOR fixes on pulse/signals/digest, Math.random→crypto.getRandomValues. |
 | **9.8.1** | 19 | Bug fixes: Mirror auth, Meeting tables/save/navigation, Preferences persistence, Patterns rebuild. Data Capture module. Pricing update ($10/$5). |
 | **9.8.0** | 19 | Two-tier model (Managed + BYOK), Client-side AES-256-GCM encryption, Context Engineering (RAG 2.0), Task-aware context loading, Onboarding flow for encryption setup. |
 | 9.6.0 | 18 | Sprint 3 complete. MIRROR facts integration, Privacy audit verified (see /docs/PRIVACY-AUDIT.md), RLS 37/37 tables verified. |
@@ -454,5 +456,5 @@ All data stored in `user_settings` table for MIRROR to learn from.
 ---
 
 *CLAUDE.md — Inscript Developer Guide*
-*Version 9.8.1 | Last Updated: January 28, 2026*
+*Version 9.8.2 | Last Updated: January 28, 2026*
 *Production: https://digital-twin-ecru.vercel.app*

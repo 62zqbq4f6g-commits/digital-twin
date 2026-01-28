@@ -97,6 +97,16 @@ async function saveNote(userId, content, metadata = {}) {
 
   if (error) throw error;
 
+  // Ingest into Knowledge Graph (async, don't block)
+  if (typeof window !== 'undefined' && window.ingestInput) {
+    window.ingestInput(userId, {
+      type: 'note',
+      content: content,
+      sourceId: data.id,
+      timestamp: data.created_at
+    }).catch(err => console.warn('[EncryptedDB] Knowledge graph ingestion error:', err));
+  }
+
   return {
     ...data,
     content: content // Return decrypted for immediate use
@@ -126,6 +136,16 @@ async function updateNote(noteId, content) {
     .single();
 
   if (error) throw error;
+
+  // Ingest update into Knowledge Graph (async, don't block)
+  if (typeof window !== 'undefined' && window.ingestInput && data.user_id) {
+    window.ingestInput(data.user_id, {
+      type: 'note',
+      content: content,
+      sourceId: noteId,
+      timestamp: data.updated_at
+    }).catch(err => console.warn('[EncryptedDB] Knowledge graph ingestion error:', err));
+  }
 
   return {
     ...data,
@@ -461,6 +481,21 @@ async function saveMirrorMessage(conversationId, role, content) {
     .single();
 
   if (error) throw error;
+
+  // Ingest user messages into Knowledge Graph (async, don't block)
+  // Only ingest user messages, not assistant responses
+  if (role === 'user' && typeof window !== 'undefined' && window.ingestInput) {
+    const userId = typeof Sync !== 'undefined' && Sync.user?.id ? Sync.user.id : null;
+    if (userId) {
+      window.ingestInput(userId, {
+        type: 'mirror_message',
+        content: content,
+        sourceId: data.id,
+        metadata: { conversationId },
+        timestamp: data.created_at
+      }).catch(err => console.warn('[EncryptedDB] Knowledge graph ingestion error:', err));
+    }
+  }
 
   return {
     ...data,
