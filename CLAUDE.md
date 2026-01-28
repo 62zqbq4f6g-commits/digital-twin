@@ -1,9 +1,9 @@
 # CLAUDE.md — Inscript Developer Guide
 
-## Version 9.13.0 | January 29, 2026
+## Version 9.14.0 | January 29, 2026
 
 > **Phase:** 19 — Post-RAG Architecture COMPLETE
-> **Status:** PAMP v2.0 Standard, Full Context, Embeddings Deprecated
+> **Status:** Smart Context Routing, PAMP v2.0, User Settings
 > **Last Updated:** January 29, 2026
 
 ---
@@ -16,10 +16,10 @@
 | **Tagline** | Your mirror in code |
 | **Category** | Personal AI Memory |
 | **Vision** | Your data. Your ownership. Portable anywhere. |
-| **Version** | 9.13.0 |
+| **Version** | 9.14.0 |
 | **Production URL** | https://digital-twin-ecru.vercel.app |
 | **Working Directory** | `/Users/airoxthebox/Projects/digital-twin` |
-| **Beta Status** | Production (Phase 19 Complete - PAMP v2.0) |
+| **Beta Status** | Production (Phase 19 Complete - Smart Routing) |
 
 ---
 
@@ -582,6 +582,48 @@ MIRROR_FULL_CONTEXT=true
 
 Prompt caching (Anthropic feature) reduces costs by 90% on subsequent calls with same context prefix.
 
+## Smart Context Routing (v9.14.0)
+
+Automatically routes between RAG and Full Context based on query complexity.
+
+### Task → Route Mapping
+
+| Task Type | Patterns | Route | Why |
+|-----------|----------|-------|-----|
+| `decision` | "should I", "help me decide" | Full Context | Needs complete picture |
+| `emotional` | "I'm stressed", "struggling" | Full Context | Needs relationship awareness |
+| `thinking_partner` | "help me think through" | Full Context | Needs everything |
+| `factual` | "when did", "what is the" | RAG | Simple lookup |
+| `entity_recall` | "what do you know about" | RAG | Targeted retrieval |
+| `research` | "deep dive", "analyze my" | RAG | Search works fine |
+| `general` | (default) | RAG | Cheaper |
+
+### User Settings
+
+Users can override in Settings → MIRROR → Context Mode:
+
+| Option | Behavior |
+|--------|----------|
+| **Auto (Recommended)** | Smart routing based on query type |
+| **Fast** | Always use RAG (lower cost) |
+| **Deep** | Always load full memory (most thorough) |
+
+### Key Files
+
+- `/api/mirror.js`: Smart routing logic with `shouldUseFullContext()`
+- `/api/user-settings.js`: User preference storage
+- `/js/settings.js`: Context mode selector UI
+- `/lib/mirror/task-classifier.js`: Query classification
+
+### Cost Impact
+
+| Query Type | Route | Cost |
+|------------|-------|------|
+| "What's Marcus's email?" | RAG | ~$0.03 |
+| "Help me decide about this job" | Full Context | ~$0.30 (first), ~$0.06 (cached) |
+
+Best of both worlds: cheap for simple queries, thorough for complex ones.
+
 ## PAMP v2.0 Standard (Phase 5)
 
 Portable AI Memory Protocol — the open standard for AI memory portability.
@@ -794,6 +836,7 @@ All data stored in `user_settings` table for MIRROR to learn from.
 
 | Version | Phase | Key Changes |
 |---------|-------|-------------|
+| **9.14.0** | 19 | **Smart Context Routing**: Auto-route between RAG and Full Context based on query type. User settings for context mode (Auto/Fast/Deep). Best of both worlds — cheap for simple, thorough for complex. |
 | **9.13.0** | 19 | **Phase 4 & 5 Complete**: PAMP v2.0 Standard (spec, validator, import API), Embedding Deprecation (vector weight=0, SKIP_VECTOR_SEARCH), Graph-first retrieval. Full Post-RAG architecture complete. |
 | **9.12.0** | 19 | **Phase 3 Complete**: MIRROR Full Context Integration. Feature flag `MIRROR_FULL_CONTEXT` to toggle modes. Load entire user memory in MIRROR — no RAG, no retrieval. Prompt caching ready. |
 | **9.11.0** | 19 | **Phase 2 Complete**: Full Context Loader (/api/context/full), Document Builder (markdown format), Agent formats (MCP, GPT, Claude). Load entire user memory — no RAG, no retrieval. |
@@ -815,5 +858,5 @@ All data stored in `user_settings` table for MIRROR to learn from.
 ---
 
 *CLAUDE.md — Inscript Developer Guide*
-*Version 9.13.0 | Last Updated: January 29, 2026*
+*Version 9.14.0 | Last Updated: January 29, 2026*
 *Production: https://digital-twin-ecru.vercel.app*
