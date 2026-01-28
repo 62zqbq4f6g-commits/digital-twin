@@ -446,17 +446,29 @@ window.UIProfile = {
     window.showProcessingOverlay?.('Updating...');
 
     try {
-      // Save to onboarding_data (source of truth)
+      // FIX: Use upsert to handle case where row doesn't exist
       const { error } = await Sync.supabase
         .from('onboarding_data')
-        .update({ life_seasons: this._selectedRoles })
-        .eq('user_id', Sync.user.id);
+        .upsert({
+          user_id: Sync.user.id,
+          life_seasons: this._selectedRoles,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'user_id' });
 
       if (error) {
         console.error('[UIProfile] Supabase error saving life seasons:', error);
         UI.showToast?.('Failed to save. Please try again.');
         return;
       }
+
+      // Verify the save worked by re-loading
+      const { data: verifyData } = await Sync.supabase
+        .from('onboarding_data')
+        .select('life_seasons')
+        .eq('user_id', Sync.user.id)
+        .maybeSingle();
+
+      console.log('[UIProfile] Verified saved life_seasons:', verifyData?.life_seasons);
 
       this.profile.life_seasons = this._selectedRoles;
       this.closeModal();
@@ -544,17 +556,29 @@ window.UIProfile = {
     window.showProcessingOverlay?.('Updating...');
 
     try {
-      // Save to onboarding_data (source of truth)
+      // FIX: Use upsert to handle case where row doesn't exist
       const { error } = await Sync.supabase
         .from('onboarding_data')
-        .update({ mental_focus: this._selectedGoals })
-        .eq('user_id', Sync.user.id);
+        .upsert({
+          user_id: Sync.user.id,
+          mental_focus: this._selectedGoals,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'user_id' });
 
       if (error) {
         console.error('[UIProfile] Supabase error saving mental focus:', error);
         UI.showToast?.('Failed to save. Please try again.');
         return;
       }
+
+      // Verify the save worked by re-loading
+      const { data: verifyData } = await Sync.supabase
+        .from('onboarding_data')
+        .select('mental_focus')
+        .eq('user_id', Sync.user.id)
+        .maybeSingle();
+
+      console.log('[UIProfile] Verified saved mental_focus:', verifyData?.mental_focus);
 
       this.profile.mental_focus = this._selectedGoals;
       this.closeModal();
@@ -882,17 +906,37 @@ window.UIProfile = {
 
   /**
    * Refresh profile display in TWIN tab
+   * FIX: Added logging and alternative element selectors
    */
   refreshProfileDisplay() {
-    const aboutSection = document.getElementById('about-me-section');
-    if (aboutSection) {
-      aboutSection.innerHTML = this.renderAboutYouSection();
+    console.log('[UIProfile] Refreshing profile display...');
+    console.log('[UIProfile] Current life_seasons:', this.profile?.life_seasons);
+    console.log('[UIProfile] Current mental_focus:', this.profile?.mental_focus);
+
+    // Try multiple possible element IDs/selectors for about section
+    let aboutSection = document.getElementById('about-me-section');
+    if (!aboutSection) {
+      aboutSection = document.querySelector('.about-you-section, [data-section="about"]');
     }
 
-    // Also refresh preferences if it exists
-    const prefsSection = document.getElementById('preferences-section');
+    if (aboutSection) {
+      aboutSection.innerHTML = this.renderAboutYouSection();
+      console.log('[UIProfile] Updated about section');
+    } else {
+      console.warn('[UIProfile] About section element not found');
+    }
+
+    // Try multiple possible element IDs/selectors for preferences
+    let prefsSection = document.getElementById('preferences-section');
+    if (!prefsSection) {
+      prefsSection = document.querySelector('.preferences-section, [data-section="preferences"]');
+    }
+
     if (prefsSection) {
       prefsSection.innerHTML = this.renderPreferencesSection();
+      console.log('[UIProfile] Updated preferences section');
+    } else {
+      console.log('[UIProfile] Preferences section element not found (may not exist yet)');
     }
 
     // Update key people count

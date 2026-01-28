@@ -943,55 +943,89 @@ const TwinUI = {
       await TwinEngine.runFullAnalysis();
       console.log('[TwinUI] Full analysis complete');
 
-      // Phase 3d: Pattern Detection
+      // Phase 3d: Pattern Detection - BULLETPROOF VERSION
       if (totalNotes >= 10) {
         this.updateRebuildState('detecting');
         console.log('[TwinUI] Running pattern detection...');
 
-        // Prepare note summaries for pattern API
+        // Prepare note summaries - include notes with OR without analysis
+        // FIX: Use raw content for notes without analysis
         const noteSummaries = notes
-          .filter(n => n.analysis) // Only notes with analysis
           .slice(0, 50) // Limit to 50 most recent
-          .map(n => ({
-            date: new Date(n.timestamps?.created_at || n.createdAt || Date.now()).toLocaleDateString(),
-            category: n.classification?.category || n.analysis?.category || 'personal',
-            title: n.analysis?.title || 'Untitled',
-            summary: n.analysis?.summary || '',
-            isDecision: n.analysis?.decision?.isDecision || false,
-            decisionType: n.analysis?.decision?.type || null,
-            resolved: n.analysis?.decision?.resolved || false
-          }));
+          .map(n => {
+            // Get content from multiple possible locations
+            const rawText = n.input?.raw_text || '';
+            const summary = n.analysis?.summary || n.refined?.summary || rawText.substring(0, 200);
+            const title = n.analysis?.title || n.title || (rawText.substring(0, 50) + '...');
 
-        try {
-          const response = await fetch('/api/patterns', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ notes: noteSummaries })
-          });
+            return {
+              date: new Date(n.timestamps?.created_at || n.createdAt || Date.now()).toLocaleDateString(),
+              category: n.classification?.category || n.analysis?.category || 'personal',
+              title: title,
+              summary: summary,
+              isDecision: n.analysis?.decision?.isDecision || false,
+              decisionType: n.analysis?.decision?.type || null,
+              resolved: n.analysis?.decision?.resolved || false
+            };
+          })
+          .filter(n => n.summary && n.summary.length > 10); // Only include notes with content
 
-          if (response.ok) {
-            const patternData = await response.json();
-            console.log('[TwinUI] Patterns detected:', patternData);
+        console.log(`[TwinUI] Prepared ${noteSummaries.length} notes for pattern detection`);
 
-            // Save patterns to profile
-            let profile = await TwinProfile.load() || { id: 'main' };
-            profile.patterns = patternData.patterns || [];
-            profile.patternsConfidence = patternData.confidence || 'medium';
-            profile.patternsDetectedAt = new Date().toISOString();
-            profile.patternsSuggestion = patternData.suggestion || null;
-            await TwinProfile.save(profile);
-            console.log('[TwinUI] Patterns saved to profile');
-
-            // Sync to cloud (non-blocking)
-            if (typeof TwinProfile.syncToCloud === 'function') {
-              TwinProfile.syncToCloud().catch(e => console.warn('[TwinUI] Cloud sync failed:', e));
-            }
-          } else {
-            console.warn('[TwinUI] Pattern API returned non-OK status:', response.status);
+        if (noteSummaries.length < 10) {
+          console.warn('[TwinUI] Not enough notes with content for pattern detection');
+          if (typeof UI !== 'undefined' && UI.showToast) {
+            UI.showToast('Need at least 10 notes with content for patterns');
           }
-        } catch (patternError) {
-          console.error('[TwinUI] Pattern detection failed:', patternError);
-          // Don't fail the whole rebuild
+        } else {
+          try {
+            const response = await fetch('/api/patterns', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ notes: noteSummaries })
+            });
+
+            if (response.ok) {
+              const patternData = await response.json();
+              console.log('[TwinUI] Patterns detected:', patternData);
+
+              // Save patterns to profile
+              let profile = await TwinProfile.load() || { id: 'main' };
+              profile.patterns = patternData.patterns || [];
+              profile.patternsConfidence = patternData.confidence || 'medium';
+              profile.patternsDetectedAt = new Date().toISOString();
+              profile.patternsSuggestion = patternData.suggestion || null;
+              await TwinProfile.save(profile);
+              console.log('[TwinUI] Patterns saved to profile');
+
+              // Show success toast
+              const patternCount = (patternData.patterns || []).length;
+              if (typeof UI !== 'undefined' && UI.showToast) {
+                UI.showToast(`Found ${patternCount} patterns`);
+              }
+
+              // Sync to cloud (non-blocking)
+              if (typeof TwinProfile.syncToCloud === 'function') {
+                TwinProfile.syncToCloud().catch(e => console.warn('[TwinUI] Cloud sync failed:', e));
+              }
+            } else {
+              const errorData = await response.json().catch(() => ({}));
+              console.error('[TwinUI] Pattern API error:', response.status, errorData);
+              if (typeof UI !== 'undefined' && UI.showToast) {
+                UI.showToast(errorData.error || 'Pattern detection failed');
+              }
+            }
+          } catch (patternError) {
+            console.error('[TwinUI] Pattern detection failed:', patternError);
+            if (typeof UI !== 'undefined' && UI.showToast) {
+              UI.showToast('Pattern detection failed: ' + patternError.message);
+            }
+          }
+        }
+      } else {
+        console.log(`[TwinUI] Only ${totalNotes} notes - need 10 for patterns`);
+        if (typeof UI !== 'undefined' && UI.showToast) {
+          UI.showToast(`Need 10 notes for patterns (have ${totalNotes})`);
         }
       }
 

@@ -179,23 +179,62 @@ class Mirror {
   /**
    * Load recent notes from local storage for historical context
    * This ensures Mirror has context even for notes saved before this session
+   *
+   * FIX: Uses correct property paths for IndexedDB notes:
+   * - Date: note.timestamps.created_at (not note.created_at)
+   * - Content: note.input?.raw_text || note.refined?.summary || note.content
    */
   async loadRecentNotesFromStorage() {
     try {
-      if (typeof NotesManager === 'undefined') return;
+      // First, force a cache refresh to get latest notes
+      if (typeof NotesManager !== 'undefined') {
+        NotesManager.invalidate();
+      }
 
-      const allNotes = await NotesManager.getAll();
-      if (!allNotes || allNotes.length === 0) return;
+      const allNotes = typeof NotesManager !== 'undefined'
+        ? await NotesManager.getAll(true) // Force refresh
+        : (typeof DB !== 'undefined' ? await DB.getAllNotes() : []);
 
-      // Get last 10 notes by date (includes notes from before this session)
+      if (!allNotes || allNotes.length === 0) {
+        console.log('[Mirror] No notes found in storage');
+        return;
+      }
+
+      // Get last 10 notes by date - use correct timestamp path
       const recentNotes = allNotes
-        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+        .sort((a, b) => {
+          const dateA = a.timestamps?.created_at || a.created_at || '';
+          const dateB = b.timestamps?.created_at || b.created_at || '';
+          return new Date(dateB) - new Date(dateA);
+        })
         .slice(0, 10)
-        .map(note => ({
-          content: (note.content || '').substring(0, 500),
-          timestamp: note.created_at,
-          title: note.title || 'Note'
-        }));
+        .map(note => {
+          // Get content from correct location - notes store content in different places
+          const content = note.input?.raw_text
+            || note.refined?.summary
+            || note.content
+            || note.analysis?.summary
+            || '';
+          const timestamp = note.timestamps?.created_at || note.created_at;
+          const title = note.analysis?.title || note.title || 'Note';
+
+          return {
+            content: content.substring(0, 500),
+            timestamp,
+            title
+          };
+        })
+        .filter(n => n.content && n.content.length > 10); // Only include notes with content
+
+      // Log note ages for debugging
+      if (recentNotes.length > 0) {
+        const now = Date.now();
+        const ages = recentNotes.map(n => {
+          const age = Math.floor((now - new Date(n.timestamp)) / (1000 * 60 * 60 * 24));
+          return `${age}d`;
+        });
+        console.log('[Mirror] Note ages:', ages.join(', '));
+      }
 
       // Merge with session notes (session notes have priority for duplicates)
       const sessionIds = new Set(this.sessionNotes.map(n => n.timestamp));
@@ -204,7 +243,7 @@ class Mirror {
       // Combine: session notes first, then historical notes, max 10 total
       this.sessionNotes = [...this.sessionNotes, ...historicalNotes].slice(0, 10);
 
-      console.log('[Mirror] Loaded historical notes. Total context notes:', this.sessionNotes.length);
+      console.log('[Mirror] Loaded notes. Total context notes:', this.sessionNotes.length);
     } catch (error) {
       console.warn('[Mirror] Failed to load historical notes:', error);
     }
@@ -239,6 +278,16 @@ class Mirror {
     this.render();
 
     try {
+      // Trigger sync to get latest notes from server before loading context
+      if (typeof Sync !== 'undefined' && Sync.pullChanges) {
+        try {
+          await Sync.pullChanges();
+          console.log('[Mirror] Synced latest notes from server');
+        } catch (syncError) {
+          console.warn('[Mirror] Sync failed, using local notes:', syncError.message);
+        }
+      }
+
       // Load recent notes from local storage (includes historical notes)
       await this.loadRecentNotesFromStorage();
 
