@@ -500,15 +500,18 @@ const WorkUI = {
     console.log('[WorkUI] loadMeetings - Total notes:', notes.length);
 
     // Filter notes that are meetings
-    // Check: note.type === 'meeting' OR note.meeting exists OR content starts with "Meeting with"
+    // Check: note.type === 'meeting' OR note.note_type === 'meeting' OR note.meeting exists OR content starts with "Meeting with"
     this.meetings = notes
       .filter(n => {
-        const isMeetingType = n.type === 'meeting';
+        const isMeetingType = n.type === 'meeting' || n.note_type === 'meeting';
         const hasMeetingData = !!n.meeting;
         const content = n.content || n.input?.raw_text || '';
         const contentStartsWithMeeting = content.toLowerCase().startsWith('meeting with');
+        // Also check enhanced_content for meetings created via MeetingCapture
+        const enhancedContent = n.enhanced_content || '';
+        const hasEnhancedMeetingContent = enhancedContent.includes('## DISCUSSED') || enhancedContent.includes('## ACTION');
 
-        const isMeeting = isMeetingType || hasMeetingData || contentStartsWithMeeting;
+        const isMeeting = isMeetingType || hasMeetingData || contentStartsWithMeeting || hasEnhancedMeetingContent;
 
         if (isMeeting) {
           console.log('[WorkUI] Found meeting note:', {
@@ -1209,6 +1212,11 @@ const WorkUI = {
       // Update NotesCache with meeting metadata (fixes cache having old version)
       if (typeof NotesCache !== 'undefined') {
         NotesCache.updateNote(savedNote);
+      }
+
+      // Invalidate NotesManager cache so loadMeetings gets fresh data
+      if (typeof NotesManager !== 'undefined') {
+        NotesManager.invalidate();
       }
 
       // Track analytics

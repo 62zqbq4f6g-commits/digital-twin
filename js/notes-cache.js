@@ -81,7 +81,13 @@ window.NotesCache = {
           type: note.input.type,
           raw_text: note.input.raw_text?.substring(0, 500) // Limit text size
         } : null,
-        classification: note.classification
+        classification: note.classification,
+        // Meeting metadata (required for meetings tab)
+        type: note.type,
+        note_type: note.note_type,
+        meeting: note.meeting,
+        content: note.content?.substring(0, 500),
+        enhanced_content: note.enhanced_content?.substring(0, 500)
       }));
 
       localStorage.setItem(CACHE_KEY, JSON.stringify(minimalNotes));
@@ -120,6 +126,12 @@ window.NotesCache = {
       analysis: note.analysis,
       input: note.input,
       classification: note.classification,
+      // Meeting metadata
+      type: note.type,
+      note_type: note.note_type,
+      meeting: note.meeting,
+      content: note.content?.substring(0, 500),
+      enhanced_content: note.enhanced_content?.substring(0, 500),
       _optimistic: note._optimistic || false
     });
     this.set(notes);
@@ -127,15 +139,38 @@ window.NotesCache = {
 
   /**
    * Update a note in cache
-   * @param {string} noteId - Note ID to update
-   * @param {Object} updates - Fields to update
+   * @param {string|Object} noteIdOrNote - Note ID or full note object
+   * @param {Object} [updates] - Fields to update (if first param is ID)
    */
-  updateNote(noteId, updates) {
+  updateNote(noteIdOrNote, updates) {
     const notes = this.get() || [];
+
+    // Handle both signatures: updateNote(note) and updateNote(noteId, updates)
+    let noteId, updateData;
+    if (typeof noteIdOrNote === 'object' && noteIdOrNote.id) {
+      noteId = noteIdOrNote.id;
+      updateData = {
+        timestamps: noteIdOrNote.timestamps,
+        extracted: noteIdOrNote.extracted,
+        analysis: noteIdOrNote.analysis,
+        input: noteIdOrNote.input,
+        classification: noteIdOrNote.classification,
+        type: noteIdOrNote.type,
+        note_type: noteIdOrNote.note_type,
+        meeting: noteIdOrNote.meeting,
+        content: noteIdOrNote.content?.substring(0, 500),
+        enhanced_content: noteIdOrNote.enhanced_content?.substring(0, 500)
+      };
+    } else {
+      noteId = noteIdOrNote;
+      updateData = updates;
+    }
+
     const index = notes.findIndex(n => n.id === noteId);
     if (index !== -1) {
-      notes[index] = { ...notes[index], ...updates };
+      notes[index] = { ...notes[index], ...updateData };
       this.set(notes);
+      console.log(`[NotesCache] Updated note ${noteId}`);
     }
   },
 
