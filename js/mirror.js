@@ -211,6 +211,22 @@ class Mirror {
   }
 
   /**
+   * Get auth token for API calls
+   * @returns {Promise<string|null>} Access token
+   */
+  async getAuthToken() {
+    if (typeof Sync !== 'undefined' && Sync.supabase) {
+      const { data: { session } } = await Sync.supabase.auth.getSession();
+      return session?.access_token;
+    }
+    if (window.supabase) {
+      const { data: { session } } = await window.supabase.auth.getSession();
+      return session?.access_token;
+    }
+    return null;
+  }
+
+  /**
    * Open MIRROR tab - initialize or resume conversation
    */
   async open() {
@@ -229,9 +245,13 @@ class Mirror {
       // Get client-side decrypted context
       const clientContext = await this.getClientContext();
 
+      const token = await this.getAuthToken();
       const response = await fetch('/api/mirror?action=open', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({
           user_id: Sync.user.id,
           clientContext // Send decrypted context from client
@@ -302,10 +322,14 @@ class Mirror {
     try {
       // Get client-side decrypted context
       const clientContext = await this.getClientContext();
+      const token = await this.getAuthToken();
 
       const response = await fetch('/api/mirror?action=message', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({
           user_id: Sync.user.id,
           conversation_id: this.conversationId,
@@ -367,9 +391,13 @@ class Mirror {
     if (this.conversationId) {
       // Close current conversation
       try {
+        const token = await this.getAuthToken();
         await fetch('/api/mirror?action=close', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
           body: JSON.stringify({
             user_id: Sync.user.id,
             conversation_id: this.conversationId
