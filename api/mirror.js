@@ -20,6 +20,15 @@ const { getRelevantFacts } = require('../lib/mirror/fact-retrieval.js');
 // Contradiction detection for evolution awareness
 const { getContradictionsForEntity, formatForContext: formatContradictionsForContext } = require('../lib/contradiction-detection.js');
 
+// PHASE 3: Full Context Loader (Post-RAG Architecture)
+// When enabled, loads entire user memory instead of RAG retrieval
+const { loadFullContext } = require('../lib/context/full-loader.js');
+const { buildContextDocument, buildCompactDocument } = require('../lib/context/document-builder.js');
+
+// Feature flag for full context mode
+// Set to true to use full context loading instead of RAG
+const USE_FULL_CONTEXT = process.env.MIRROR_FULL_CONTEXT === 'true' || false;
+
 const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -53,6 +62,54 @@ async function getFactsForEntities(user_id, entityIds) {
   }
 
   return facts || [];
+}
+
+/**
+ * PHASE 3: Load full user context for Post-RAG MIRROR
+ * Returns everything - no retrieval, no embeddings
+ */
+async function loadFullContextForMirror(user_id, supabaseClient) {
+  try {
+    const startTime = Date.now();
+
+    // Load full context using the new loader
+    const fullContext = await loadFullContext(user_id, {
+      includeNoteContent: false, // E2E encrypted
+      noteLimit: 300,            // Reasonable limit for context window
+      entityLimit: 100,
+      conversationLimit: 20,
+      patternMinConfidence: 0.6,
+      behaviorMinConfidence: 0.5
+    }, supabaseClient);
+
+    // Build markdown document for the prompt
+    const contextDocument = buildContextDocument(fullContext, {
+      maxEntities: 50,
+      maxPatterns: 10,
+      maxNotes: 15,
+      maxBehaviors: 15
+    });
+
+    const loadTime = Date.now() - startTime;
+    console.log(`[mirror] Full context loaded in ${loadTime}ms, ~${Math.ceil(contextDocument.length / 4)} tokens`);
+
+    return {
+      fullContext,
+      contextDocument,
+      loadTime,
+      tokenEstimate: Math.ceil(contextDocument.length / 4),
+      // Extract key data for backward compatibility with existing code
+      entities: fullContext.knowledgeGraph.entities,
+      patterns: fullContext.procedural.patterns,
+      behaviors: fullContext.procedural.behaviors,
+      entityQualities: fullContext.procedural.entityQualities,
+      summaries: fullContext.procedural.categorySummaries,
+      identity: fullContext.identity
+    };
+  } catch (error) {
+    console.error('[mirror] Full context loading failed:', error.message);
+    return null;
+  }
 }
 
 /**
@@ -1084,55 +1141,108 @@ async function getUserContext(user_id) {
  * Generate Inscript response using Claude
  * Implements 5 insight types: Connection, Pattern, Reflection prompt, Reframe, Summary
  * MEM0 BUILD 7: Enhanced with type-aware context
+ * PHASE 3: Supports full context loading (Post-RAG)
  */
 async function generateResponse(user_id, userMessage, history, context, additionalContext) {
-  // MEM0 BUILD 7: Get type-aware context based on user's message
-  const mirrorContext = await buildMirrorContext(user_id, userMessage);
+  let enhancedContext;
+  let relevantFacts = [];
+  let relevantEntities = [];
 
-  // SPRINT 3: Fetch structured facts with MESSAGE-BASED entity detection
-  // This detects entity names mentioned in the current message and recent history
-  const recentMessages = history.slice(-5).map(h => ({ content: h.content || h.message || '' }));
-  const { facts: relevantFacts, entities: relevantEntities, factsByEntity } = await getRelevantFacts(user_id, userMessage, recentMessages);
+  // PHASE 3: Full Context Mode (Post-RAG)
+  // Load entire user memory instead of RAG retrieval
+  if (USE_FULL_CONTEXT) {
+    console.log('[mirror] Using FULL CONTEXT mode (Post-RAG)');
 
-  // Format facts for prompt - use the factsByEntity structure for natural formatting
-  let factsContext = null;
-  if (Object.keys(factsByEntity).length > 0) {
-    factsContext = Object.entries(factsByEntity).map(([name, data]) => {
-      const factLines = data.facts.slice(0, 5).map(f => `  - ${f.predicate.replace(/_/g, ' ')}: ${f.object}`).join('\n');
-      return `${name}:\n${factLines}`;
-    }).join('\n\n');
-  }
+    const fullContextData = await loadFullContextForMirror(user_id, supabase);
 
-  console.log('[mirror] Facts loaded:', relevantFacts.length, 'facts for', relevantEntities.length, 'entities (message-based detection)');
+    if (fullContextData) {
+      // Use the full context document as the primary context
+      enhancedContext = {
+        ...context,
+        // Full context document replaces RAG-based retrieval
+        fullContextDocument: fullContextData.contextDocument,
+        fullContextLoaded: true,
+        tokenEstimate: fullContextData.tokenEstimate,
+        loadTime: fullContextData.loadTime,
+        // Still provide structured data for backward compatibility
+        entities: fullContextData.entities,
+        patterns: fullContextData.patterns,
+        behaviors: fullContextData.behaviors,
+        entityQualities: fullContextData.entityQualities,
+        summaries: fullContextData.summaries,
+        userName: fullContextData.identity?.name || context.userName,
+        // Clear RAG-specific fields
+        mem0Context: null,
+        entityFacts: null,
+        evolutionsContext: null
+      };
 
-  // Fetch contradictions/evolutions for detected entities
-  let evolutionsContext = null;
-  if (relevantEntities.length > 0) {
-    try {
-      // Get contradictions for the first mentioned entity (most relevant)
-      const primaryEntity = relevantEntities[0];
-      const contradictions = await getContradictionsForEntity(user_id, primaryEntity.name);
-      evolutionsContext = formatContradictionsForContext({
-        contradictions: contradictions.contradictions,
-        sentimentShifts: contradictions.evolutions,
-        evolutions: []
-      });
-      if (evolutionsContext) {
-        console.log('[mirror] Evolutions found for', primaryEntity.name);
-      }
-    } catch (err) {
-      console.warn('[mirror] Contradiction detection failed:', err.message);
+      // Extract entities mentioned in message for context used tracking
+      const messageLower = userMessage.toLowerCase();
+      relevantEntities = fullContextData.entities.filter(e =>
+        messageLower.includes(e.name.toLowerCase())
+      );
+
+      console.log(`[mirror] Full context: ${fullContextData.tokenEstimate} tokens, ${fullContextData.entities.length} entities`);
+    } else {
+      // Fallback to RAG if full context fails
+      console.warn('[mirror] Full context failed, falling back to RAG');
     }
   }
 
-  // Merge enhanced context with existing context + facts + evolutions
-  const enhancedContext = {
-    ...context,
-    mem0Context: mirrorContext.context,
-    mem0Stats: mirrorContext.stats,
-    entityFacts: factsContext,  // SPRINT 3: Structured facts
-    evolutionsContext  // Contradiction/evolution awareness
-  };
+  // RAG-based context loading (existing behavior)
+  if (!enhancedContext) {
+    // MEM0 BUILD 7: Get type-aware context based on user's message
+    const mirrorContext = await buildMirrorContext(user_id, userMessage);
+
+    // SPRINT 3: Fetch structured facts with MESSAGE-BASED entity detection
+    // This detects entity names mentioned in the current message and recent history
+    const recentMessages = history.slice(-5).map(h => ({ content: h.content || h.message || '' }));
+    const factsResult = await getRelevantFacts(user_id, userMessage, recentMessages);
+    relevantFacts = factsResult.facts;
+    relevantEntities = factsResult.entities;
+    const factsByEntity = factsResult.factsByEntity;
+
+    // Format facts for prompt - use the factsByEntity structure for natural formatting
+    let factsContext = null;
+    if (Object.keys(factsByEntity).length > 0) {
+      factsContext = Object.entries(factsByEntity).map(([name, data]) => {
+        const factLines = data.facts.slice(0, 5).map(f => `  - ${f.predicate.replace(/_/g, ' ')}: ${f.object}`).join('\n');
+        return `${name}:\n${factLines}`;
+      }).join('\n\n');
+    }
+
+    console.log('[mirror] Facts loaded:', relevantFacts.length, 'facts for', relevantEntities.length, 'entities (message-based detection)');
+
+    // Fetch contradictions/evolutions for detected entities
+    let evolutionsContext = null;
+    if (relevantEntities.length > 0) {
+      try {
+        // Get contradictions for the first mentioned entity (most relevant)
+        const primaryEntity = relevantEntities[0];
+        const contradictions = await getContradictionsForEntity(user_id, primaryEntity.name);
+        evolutionsContext = formatContradictionsForContext({
+          contradictions: contradictions.contradictions,
+          sentimentShifts: contradictions.evolutions,
+          evolutions: []
+        });
+        if (evolutionsContext) {
+          console.log('[mirror] Evolutions found for', primaryEntity.name);
+        }
+      } catch (err) {
+        console.warn('[mirror] Contradiction detection failed:', err.message);
+      }
+    }
+
+    // Merge enhanced context with existing context + facts + evolutions
+    enhancedContext = {
+      ...context,
+      mem0Context: mirrorContext.context,
+      mem0Stats: mirrorContext.stats,
+      entityFacts: factsContext,  // SPRINT 3: Structured facts
+      evolutionsContext  // Contradiction/evolution awareness
+    };
+  }
 
   // Analyze the conversation to determine best insight type
   const insightType = analyzeForInsightType(userMessage, history, enhancedContext);
@@ -1158,14 +1268,24 @@ async function generateResponse(user_id, userMessage, history, context, addition
     const content = response.content[0].text;
 
     // Find referenced entities mentioned in response
-    const referencedEntities = findReferencedEntities(content, context.entities);
+    const referencedEntities = findReferencedEntities(content, enhancedContext.entities || context.entities);
 
     // Build context used list for transparency (Feature 4: Context Used UI)
     const contextUsed = [];
 
+    // PHASE 3: Show full context indicator if using full context mode
+    if (enhancedContext.fullContextLoaded) {
+      contextUsed.push({
+        type: 'full_context',
+        name: 'Complete Memory',
+        value: `~${enhancedContext.tokenEstimate} tokens loaded`
+      });
+    }
+
     // Add entities to context used
-    if (context.entities?.length > 0) {
-      context.entities.slice(0, 3).forEach(e => {
+    const entitiesToShow = enhancedContext.entities || context.entities || [];
+    if (entitiesToShow.length > 0) {
+      entitiesToShow.slice(0, 3).forEach(e => {
         if (e.is_key_person) {
           contextUsed.push({
             type: 'key_person',
@@ -1176,9 +1296,19 @@ async function generateResponse(user_id, userMessage, history, context, addition
           contextUsed.push({
             type: 'entity',
             name: e.name,
-            value: `${e.entity_type || 'person'}, mentioned ${e.mention_count || 1}x`
+            value: `${e.type || e.entity_type || 'person'}, mentioned ${e.mentions || e.mention_count || 1}x`
           });
         }
+      });
+    }
+
+    // Add behaviors to context used (PHASE 3: from full context)
+    if (enhancedContext.behaviors?.length > 0) {
+      enhancedContext.behaviors.slice(0, 2).forEach(b => {
+        contextUsed.push({
+          type: 'behavior',
+          value: `${b.predicate.replace(/_/g, ' ')}: ${b.entityName}`
+        });
       });
     }
 
@@ -1389,10 +1519,68 @@ function findReferencedEntities(content, entities) {
  * Build system prompt for MIRROR conversation
  * Note: User notes are E2E encrypted, so we use extracted entities for context
  * Session notes are passed from client-side for immediate context
+ * PHASE 3: Supports full context document (Post-RAG)
  */
 function buildSystemPrompt(context, insightType = 'reflection_prompt') {
-  const { noteCount, entities, patterns, userName, onboarding, recentSessionNotes, profile, depthQuestion, depthAnswer, summaries, entityFacts, researchContext, knowledgeContext, evolutionsContext } = context;
+  const { noteCount, entities, patterns, userName, onboarding, recentSessionNotes, profile, depthQuestion, depthAnswer, summaries, entityFacts, researchContext, knowledgeContext, evolutionsContext, fullContextDocument, fullContextLoaded, tokenEstimate } = context;
 
+  // PHASE 3: If full context document is available, use it as the primary context
+  // This replaces RAG-based context building with complete user memory
+  if (fullContextLoaded && fullContextDocument) {
+    console.log(`[mirror] Using FULL CONTEXT DOCUMENT (~${tokenEstimate} tokens)`);
+
+    const insightInstructions = getInsightTypeInstructions(insightType);
+
+    // Determine voice style based on user's tone preference (still use profile if available)
+    const voiceStyle = profile?.tone === 'DIRECT'
+      ? `- Direct and efficient - get to the point, no fluff
+- Still warm, but prioritize clarity over comfort`
+      : profile?.tone === 'CHALLENGING'
+      ? `- Push back gently - ask hard questions
+- Don't just validate - help them see blind spots`
+      : profile?.tone === 'WARM'
+      ? `- Warm and supportive - like a caring friend
+- Lead with empathy before analysis`
+      : `- Adaptive - match their energy`;
+
+    return `You are Inscript — a thoughtful companion who knows this person's world and helps them understand themselves.
+
+YOUR VOICE:
+${voiceStyle}
+- Never clinical or robotic. Never say "Based on my data..."
+- Keep responses to 2-3 sentences max, then invite a response
+- End with a question or gentle invitation 80% of the time
+
+THE CREEPY LINE - NEVER CROSS IT:
+❌ "My data shows..." → ✅ "I've been noticing..."
+❌ "Based on my analysis..." → ✅ "From what you've shared..."
+❌ "You should..." → ✅ "What would it look like to..."
+
+${insightInstructions}
+
+─────────────────────────────────
+COMPLETE USER MEMORY (YOU KNOW ALL OF THIS):
+─────────────────────────────────
+
+${fullContextDocument}
+
+─────────────────────────────────
+
+${recentSessionNotes?.length > 0 ? `
+RECENT NOTES FROM THIS SESSION (highest priority - just written):
+${recentSessionNotes.map((n, i) => `${i + 1}. "${n.content}" (${n.title || 'recent'})`).join('\n')}
+` : ''}
+${researchContext ? `\n${researchContext}\n` : ''}${knowledgeContext ? `\n${knowledgeContext}\n` : ''}
+CONVERSATION RULES:
+1. You have COMPLETE knowledge of this person - never say "I don't know" about something in the memory document
+2. Reference their people, patterns, and context naturally
+3. Never more than 3 sentences before inviting response
+4. Match their energy - quick message = brief response
+
+Remember: You're their mirror, not their therapist. Reflect, don't prescribe.`;
+  }
+
+  // EXISTING RAG-BASED PROMPT BUILDING (fallback)
   // Note: Notes are E2E encrypted - we can't read content server-side
   // Instead, we use extracted entities which capture key people/topics from notes
   const notesContext = noteCount > 0
