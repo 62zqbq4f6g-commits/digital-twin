@@ -1,9 +1,9 @@
 # CLAUDE.md — Inscript Developer Guide
 
-## Version 9.8.2 | January 28, 2026
+## Version 9.8.3 | January 28, 2026
 
-> **Phase:** 19 — Zero-Knowledge Architecture + Context Engineering
-> **Status:** Two-tier model shipped, Client-side encryption, RAG 2.0, Security hardening complete
+> **Phase:** 19 — Zero-Knowledge Architecture + Context Engineering + Knowledge Graph
+> **Status:** Two-tier model shipped, Client-side encryption, RAG 2.0, Knowledge Graph live
 > **Last Updated:** January 28, 2026
 
 ---
@@ -16,7 +16,7 @@
 | **Tagline** | Your mirror in code |
 | **Category** | Personal AI Memory |
 | **Vision** | Your data. Your ownership. Portable anywhere. |
-| **Version** | 9.8.2 |
+| **Version** | 9.8.3 |
 | **Production URL** | https://digital-twin-ecru.vercel.app |
 | **Working Directory** | `/Users/airoxthebox/Projects/digital-twin` |
 | **Beta Status** | Production (Phase 19 in progress) |
@@ -224,7 +224,59 @@
 
 ---
 
-# PRIVACY ARCHITECTURE (v9.8.1)
+# KNOWLEDGE GRAPH ARCHITECTURE (v9.8.3)
+
+## Overview
+
+The Knowledge Graph is the unified hub for ALL user data. Every input flows through here, gets connected, and nothing is siloed.
+
+## Core Functions
+
+| Function | Purpose |
+|----------|---------|
+| `ingestInput(userId, input)` | Process any input (note, meeting, MIRROR, onboarding) |
+| `getFullContext(userId, query)` | Retrieve unified context for MIRROR |
+
+## Input Types
+
+| Type | Source | What Gets Extracted |
+|------|--------|---------------------|
+| `note` | Quick notes, saved notes | Entities, facts, relationships |
+| `meeting` | Meeting mode | Entities, attendees, action items |
+| `mirror_message` | MIRROR conversations | Entities mentioned |
+| `onboarding` | Setup flow | User profile, preferences |
+| `voice` | Voice recordings | Transcribed entities |
+
+## Database Tables
+
+| Table | Purpose | Key Columns |
+|-------|---------|-------------|
+| `user_inputs` | Track ALL inputs | input_type, source_id, content_preview |
+| `entity_mentions` | Context where entities appear | entity_id, source_type, context_snippet |
+| `entity_links` | Entity co-occurrence | entity_a, entity_b, strength |
+| `note_entities` | Link notes to entities | note_id, entity_id |
+
+## Entity Extraction
+
+Automatic extraction using pattern matching:
+- **Names**: Capitalized words (e.g., "Marcus", "Sarah Chen")
+- **Companies**: Patterns like "at Company", "works for X"
+- **Relationships**: "X is my mentor", "X works at Y"
+
+## Key File
+
+- `/js/knowledge-graph.js` — Central knowledge hub (ingestInput, getFullContext, entity extraction)
+
+## Integration Points
+
+- **Note save** (`encrypted-db.js`): Auto-ingests after save
+- **Meeting save** (`work-ui.js`): Auto-ingests with attendees
+- **Onboarding** (`onboarding.js`): Ingests profile data
+- **MIRROR**: Uses `getFullContext()` for unified retrieval
+
+---
+
+# PRIVACY ARCHITECTURE (v9.8.3)
 
 ## Two-Tier Model
 
@@ -441,6 +493,7 @@ All data stored in `user_settings` table for MIRROR to learn from.
 
 | Version | Phase | Key Changes |
 |---------|-------|-------------|
+| **9.8.3** | 19 | Knowledge Graph: Unified data ingestion hub, entity extraction, fact detection, entity linking. Meeting enhanced format, voice recording improvements. |
 | **9.8.2** | 19 | Security hardening: CORS restricted to allowed origins, Auth + IDOR fixes on pulse/signals/digest, Math.random→crypto.getRandomValues. |
 | **9.8.1** | 19 | Bug fixes: Mirror auth, Meeting tables/save/navigation, Preferences persistence, Patterns rebuild. Data Capture module. Pricing update ($10/$5). |
 | **9.8.0** | 19 | Two-tier model (Managed + BYOK), Client-side AES-256-GCM encryption, Context Engineering (RAG 2.0), Task-aware context loading, Onboarding flow for encryption setup. |
@@ -456,5 +509,5 @@ All data stored in `user_settings` table for MIRROR to learn from.
 ---
 
 *CLAUDE.md — Inscript Developer Guide*
-*Version 9.8.2 | Last Updated: January 28, 2026*
+*Version 9.8.3 | Last Updated: January 28, 2026*
 *Production: https://digital-twin-ecru.vercel.app*
