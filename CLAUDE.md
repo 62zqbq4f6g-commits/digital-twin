@@ -1,9 +1,9 @@
 # CLAUDE.md — Inscript Developer Guide
 
-## Version 9.10.0 | January 29, 2026
+## Version 9.11.0 | January 29, 2026
 
-> **Phase:** 19 — Post-RAG Architecture Complete (Phase 1)
-> **Status:** Intent-Aware Extraction, Full User State Summaries, Semantic Distillation
+> **Phase:** 19 — Post-RAG Architecture Complete (Phase 2)
+> **Status:** Full Context Loading, No RAG, Complete User Memory in Context
 > **Last Updated:** January 29, 2026
 
 ---
@@ -16,10 +16,10 @@
 | **Tagline** | Your mirror in code |
 | **Category** | Personal AI Memory |
 | **Vision** | Your data. Your ownership. Portable anywhere. |
-| **Version** | 9.10.0 |
+| **Version** | 9.11.0 |
 | **Production URL** | https://digital-twin-ecru.vercel.app |
 | **Working Directory** | `/Users/airoxthebox/Projects/digital-twin` |
-| **Beta Status** | Production (Phase 19 Phase 1 Complete) |
+| **Beta Status** | Production (Phase 19 Phase 2 Complete) |
 
 ---
 
@@ -501,6 +501,42 @@ Get complete user context for AI systems via `/api/evolve-summary.js`.
 }
 ```
 
+## Full Context Loader (Phase 2)
+
+Load entire user memory into context window. No RAG, no retrieval.
+
+### API: GET /api/context/full
+
+| Query Param | Values | Default |
+|-------------|--------|---------|
+| `format` | `markdown`, `json`, `compact` | `markdown` |
+| `focusEntity` | entity name | null |
+
+### Response Headers
+
+| Header | Description |
+|--------|-------------|
+| `X-Token-Estimate` | Estimated token count |
+| `X-Load-Time-Ms` | Load time in milliseconds |
+| `X-Entity-Count` | Number of entities loaded |
+| `X-Note-Count` | Number of notes loaded |
+
+### Key Files
+
+- `/lib/context/full-loader.js` — Load complete memory in parallel
+- `/lib/context/document-builder.js` — Convert to markdown
+- `/lib/context/agent-format.js` — MCP, GPT, Claude formats
+- `/api/context/full.js` — API endpoint
+
+### Agent Formats
+
+| Function | Use Case |
+|----------|----------|
+| `formatForMCP()` | Model Context Protocol resources |
+| `formatAsSystemPrompt()` | Direct LLM system prompt |
+| `formatForGPTKnowledge()` | ChatGPT Custom GPT knowledge |
+| `formatForClaudeProject()` | Claude Projects knowledge |
+
 ---
 
 # DATA CAPTURE MODULE (v9.8.1)
@@ -625,6 +661,7 @@ All data stored in `user_settings` table for MIRROR to learn from.
 
 | Version | Phase | Key Changes |
 |---------|-------|-------------|
+| **9.11.0** | 19 | **Phase 2 Complete**: Full Context Loader (/api/context/full), Document Builder (markdown format), Agent formats (MCP, GPT, Claude). Load entire user memory — no RAG, no retrieval. |
 | **9.10.0** | 19 | **Phase 1 Complete**: Full User State summaries (evolve-summary.js), Semantic Distillation API (distill-episode.js), Behavioral profile generation, Bi-directional relationship inference. Notes can now be distilled into permanent SPO triples. |
 | **9.9.0** | 19 | **Intent-Aware Extraction**: User behaviors (trusts_opinion_of, seeks_advice_from, etc.), Entity qualities (helps_with, challenges, supports), New tables (user_behaviors, entity_qualities), Enhanced extraction prompt, getFullContext with behaviors. Post-RAG architecture foundation. |
 | **9.8.3** | 19 | Knowledge Graph: Unified data ingestion hub, entity extraction, fact detection, entity linking. Meeting enhanced format, voice recording improvements. |
@@ -643,5 +680,5 @@ All data stored in `user_settings` table for MIRROR to learn from.
 ---
 
 *CLAUDE.md — Inscript Developer Guide*
-*Version 9.10.0 | Last Updated: January 29, 2026*
+*Version 9.11.0 | Last Updated: January 29, 2026*
 *Production: https://digital-twin-ecru.vercel.app*
