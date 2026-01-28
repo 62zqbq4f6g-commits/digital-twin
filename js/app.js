@@ -90,6 +90,11 @@ const App = {
         Analytics.noteCreated(savedNote.id, inputType);
       }
 
+      // Track feature usage for personalization
+      if (typeof DataCapture !== 'undefined') {
+        DataCapture.trackFeatureUse('create_note', { inputType });
+      }
+
       // Add to notes cache for instant loading
       if (typeof NotesCache !== 'undefined') {
         NotesCache.addNote(savedNote);

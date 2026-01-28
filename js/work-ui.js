@@ -1206,9 +1206,19 @@ const WorkUI = {
       await DB.saveNote(savedNote);
       console.log('[WorkUI] saveMeeting - Meeting metadata saved');
 
+      // Update NotesCache with meeting metadata (fixes cache having old version)
+      if (typeof NotesCache !== 'undefined') {
+        NotesCache.updateNote(savedNote);
+      }
+
       // Track analytics
       if (typeof Analytics !== 'undefined') {
         Analytics.meetingSaved(savedNote.id, attendees.length);
+      }
+
+      // Track feature usage for personalization
+      if (typeof DataCapture !== 'undefined') {
+        DataCapture.trackFeatureUse('meeting_save', { attendeeCount: attendees.length });
       }
 
       // Switch to meetings tab after a short delay

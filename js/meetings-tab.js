@@ -832,10 +832,13 @@ const MeetingsTab = {
     console.log('[MeetingsTab] Opening meeting:', noteId);
 
     // Use global UI if available
-    if (typeof UI !== 'undefined' && UI.viewNote) {
-      UI.viewNote(noteId);
+    if (typeof UI !== 'undefined' && UI.openNoteDetail) {
+      UI.openNoteDetail(noteId);
+    } else if (typeof WorkUI !== 'undefined' && WorkUI.openMeetingDetail) {
+      // Fallback to WorkUI
+      WorkUI.openMeetingDetail(noteId);
     } else {
-      window.location.hash = `#note/${noteId}`;
+      console.error('[MeetingsTab] No note detail function available');
     }
   },
 

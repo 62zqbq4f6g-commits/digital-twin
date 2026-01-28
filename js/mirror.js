@@ -315,6 +315,11 @@ class Mirror {
       SignalTracker.trackMirrorMessage(this.conversationId, 'user', content.trim().length);
     }
 
+    // Track feature usage for personalization
+    if (typeof DataCapture !== 'undefined') {
+      DataCapture.trackFeatureUse('mirror_chat', { messageLength: content.trim().length });
+    }
+
     this.isLoading = true;
     this.render();
     this.scrollToBottom();
