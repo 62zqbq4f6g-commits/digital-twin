@@ -1,6 +1,8 @@
 -- ============================================
 -- KNOWLEDGE CASCADE SOFT-DELETE
 --
+-- DEPLOYED: January 30, 2026
+--
 -- When a note is deleted (deleted_at is set), cascade to:
 -- - entity_facts: mark as status = 'inactive'
 -- - user_behaviors: mark as status = 'inactive'
@@ -8,26 +10,25 @@
 -- This ensures deleted content doesn't affect user experience.
 -- ============================================
 
--- 1. Ensure entity_facts has status column
+-- 1. Ensure entity_facts has status column [DEPLOYED]
 ALTER TABLE entity_facts
 ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active';
 
 CREATE INDEX IF NOT EXISTS idx_entity_facts_status
 ON entity_facts(user_id, status);
 
--- 2. Ensure user_behaviors has status column (should already exist)
+-- 2. Ensure user_behaviors has status column [DEPLOYED]
 ALTER TABLE user_behaviors
 ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active';
 
 CREATE INDEX IF NOT EXISTS idx_user_behaviors_status
 ON user_behaviors(user_id, status);
 
--- 3. Ensure user_topics has status column
-ALTER TABLE user_topics
-ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active';
-
-CREATE INDEX IF NOT EXISTS idx_user_topics_status
-ON user_topics(user_id, status);
+-- 3. user_topics table does not exist yet - skip
+-- ALTER TABLE user_topics
+-- ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active';
+-- CREATE INDEX IF NOT EXISTS idx_user_topics_status
+-- ON user_topics(user_id, status);
 
 -- 4. Create function to cascade soft-delete to knowledge tables
 CREATE OR REPLACE FUNCTION cascade_note_soft_delete()
@@ -152,27 +153,29 @@ BEGIN
 END $$;
 
 -- 7. Backfill: Mark existing facts/behaviors from deleted notes as inactive
-UPDATE entity_facts ef
-SET status = 'inactive',
-    updated_at = NOW()
-FROM notes n
-WHERE ef.source_id = n.id
-  AND n.deleted_at IS NOT NULL
-  AND ef.status = 'active';
-
-UPDATE user_behaviors ub
-SET status = 'inactive',
-    updated_at = NOW()
-FROM notes n
-WHERE ub.source_note_id = n.id
-  AND n.deleted_at IS NOT NULL
-  AND ub.status = 'active';
+-- NOTE: Skipped - entity_facts.source_id column doesn't exist in current schema
+-- The extraction pipeline stores source info differently.
+-- Backfill can be done when the knowledge-store.js is updated to track source_note_id.
+--
+-- UPDATE entity_facts ef
+-- SET status = 'inactive', updated_at = NOW()
+-- FROM notes n
+-- WHERE ef.source_id = n.id AND n.deleted_at IS NOT NULL AND ef.status = 'active';
+--
+-- UPDATE user_behaviors ub
+-- SET status = 'inactive', updated_at = NOW()
+-- FROM notes n
+-- WHERE ub.source_note_id = n.id AND n.deleted_at IS NOT NULL AND ub.status = 'active';
 
 -- ============================================
--- SUMMARY:
--- - entity_facts.status = 'active'/'inactive'
--- - user_behaviors.status = 'active'/'inactive'
--- - user_topics.status = 'active'/'inactive'
--- - Trigger auto-cascades when note.deleted_at is set
--- - Backfill marks existing orphaned knowledge as inactive
+-- DEPLOYED SUMMARY (Jan 30, 2026):
+-- ✅ entity_facts.status = 'active'/'inactive'
+-- ✅ user_behaviors.status = 'active'/'inactive'
+-- ✅ cascade_note_soft_delete() trigger function
+-- ✅ trigger_cascade_note_soft_delete trigger on notes table
+-- ⏭️ user_topics table does not exist - skipped
+-- ⏭️ Backfill skipped - source_id column needs to be added
+--
+-- The cascade will work once entity_facts has source_id column
+-- that references notes.id
 -- ============================================
