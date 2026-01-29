@@ -1,9 +1,9 @@
 # CLAUDE.md — Inscript Developer Guide
 
-## Version 9.15.0 | January 30, 2026
+## Version 9.15.1 | January 30, 2026
 
-> **Phase:** 19 — Knowledge Graph Enhancement COMPLETE
-> **Status:** Unified extraction, cascade delete, graph visualization
+> **Phase:** 19 — Knowledge Graph Enhancement + Security Hardening COMPLETE
+> **Status:** Unified extraction, cascade delete, graph visualization, API auth complete
 > **Last Updated:** January 30, 2026
 
 ---
@@ -16,7 +16,7 @@
 | **Tagline** | Your mirror in code |
 | **Category** | Personal AI Memory |
 | **Vision** | Your data. Your ownership. Portable anywhere. |
-| **Version** | 9.15.0 |
+| **Version** | 9.15.1 |
 | **Production URL** | https://digital-twin-ecru.vercel.app |
 | **Working Directory** | `/Users/airoxthebox/Projects/digital-twin` |
 | **Beta Status** | Production (Phase 19 Complete - Knowledge Graph) |
@@ -62,6 +62,38 @@
 | RLS | Do all tables have row-level security? | ✅ All 37 tables verified |
 | Export | Can users export 100% of their data? | ✅ Phase 18 |
 | API Keys | Are all secrets in environment variables? | ✅ No hardcoded secrets |
+
+## Security Audit (January 30, 2026)
+
+**16 API routes secured** — All routes now require Bearer token authentication.
+
+| Route Category | Routes Fixed | Risk Before | Fix Applied |
+|----------------|--------------|-------------|-------------|
+| **Data Access** | 7 routes | IDOR — attacker could access other users' data | Verify token + use `user.id` from auth |
+| **AI/LLM** | 8 routes | API credit abuse | Require Bearer token |
+| **Knowledge Graph** | 1 route | SQL filter injection | Input sanitization |
+
+**Routes Secured:**
+- `/api/tiered-retrieval.js`, `/api/memory-retrieve.js`, `/api/hybrid-retrieval.js`
+- `/api/memory-search.js`, `/api/memory-consolidate.js`, `/api/extract-entities.js`
+- `/api/patterns.js`, `/api/extract.js`
+- `/api/classify-importance.js`, `/api/infer-connections.js`, `/api/compress-memory.js`
+- `/api/vision.js`, `/api/refine.js`, `/api/classify-feedback.js`
+- `/api/synthesize-query.js`, `/api/assemble-context.js`
+
+**Auth Pattern (use everywhere):**
+```javascript
+const authHeader = req.headers.authorization;
+if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  return res.status(401).json({ error: 'Authorization required' });
+}
+const token = authHeader.replace('Bearer ', '');
+const { data: { user }, error } = await supabase.auth.getUser(token);
+if (error || !user) return res.status(401).json({ error: 'Invalid token' });
+// Use user.id — NEVER trust userId from request body
+```
+
+**Shared Utility:** `/api/lib/auth.js` — `requireAuth()` and `requireAuthEdge()`
 
 ## What This Means for Development
 
@@ -931,6 +963,8 @@ All data stored in `user_settings` table for MIRROR to learn from.
 
 | Version | Phase | Key Changes |
 |---------|-------|-------------|
+| **9.15.1** | 19 | **Security Hardening**: Comprehensive API auth audit — 16 routes secured with Bearer token + Supabase auth.getUser(). IDOR fixes (use verified userId). SQL injection prevention in knowledge-graph.js filters. /api/lib/auth.js shared utility created. |
+| **9.15.0** | 19 | **Knowledge Graph Enhancement Complete**: Unified extraction hub, entity facts with source tracking, cascade soft-delete, user_topics table, graph visualization, schema fixes. |
 | **9.14.0** | 19 | **Smart Context Routing**: Auto-route between RAG and Full Context based on query type. User settings for context mode (Auto/Fast/Deep). Best of both worlds — cheap for simple, thorough for complex. |
 | **9.13.0** | 19 | **Phase 4 & 5 Complete**: PAMP v2.0 Standard (spec, validator, import API), Embedding Deprecation (vector weight=0, SKIP_VECTOR_SEARCH), Graph-first retrieval. Full Post-RAG architecture complete. |
 | **9.12.0** | 19 | **Phase 3 Complete**: MIRROR Full Context Integration. Feature flag `MIRROR_FULL_CONTEXT` to toggle modes. Load entire user memory in MIRROR — no RAG, no retrieval. Prompt caching ready. |
@@ -953,5 +987,5 @@ All data stored in `user_settings` table for MIRROR to learn from.
 ---
 
 *CLAUDE.md — Inscript Developer Guide*
-*Version 9.14.0 | Last Updated: January 29, 2026*
+*Version 9.15.1 | Last Updated: January 30, 2026*
 *Production: https://digital-twin-ecru.vercel.app*
