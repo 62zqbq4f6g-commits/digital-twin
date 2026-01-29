@@ -16,7 +16,7 @@
 | **Tagline** | Your mirror in code |
 | **Category** | Personal AI Memory |
 | **Vision** | Your data. Your ownership. Portable anywhere. |
-| **Version** | 9.15.2 |
+| **Version** | 9.15.4 |
 | **Production URL** | https://digital-twin-ecru.vercel.app |
 | **Working Directory** | `/Users/airoxthebox/Projects/digital-twin` |
 | **Beta Status** | Production (Phase 19 Complete - Knowledge Graph) |
@@ -1013,5 +1013,5 @@ All data stored in `user_settings` table for MIRROR to learn from.
 ---
 
 *CLAUDE.md — Inscript Developer Guide*
-*Version 9.15.2 | Last Updated: January 30, 2026*
+*Version 9.15.4 | Last Updated: January 30, 2026*
 *Production: https://digital-twin-ecru.vercel.app*
