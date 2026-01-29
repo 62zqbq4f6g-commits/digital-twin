@@ -13,10 +13,10 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { userId, force = false, threshold = 0.85 } = req.body;
-
-  if (!userId) {
-    return res.status(400).json({ error: 'userId required' });
+  // Auth check - require Bearer token
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Authorization required' });
   }
 
   // Support both env var naming conventions
@@ -29,6 +29,18 @@ export default async function handler(req, res) {
   }
 
   const supabase = createClient(supabaseUrl, supabaseKey);
+
+  // Verify token and get user
+  const token = authHeader.replace('Bearer ', '');
+  const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+
+  if (authError || !user) {
+    return res.status(401).json({ error: 'Invalid token' });
+  }
+
+  // Use authenticated user's ID
+  const userId = user.id;
+  const { force = false, threshold = 0.85 } = req.body;
 
   try {
     // Find all active entities with embeddings

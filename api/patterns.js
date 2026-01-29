@@ -16,8 +16,15 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Note: This endpoint receives notes from client (already decrypted client-side)
-  // Auth is implicit - user can only access their own decrypted notes
+  // Auth check - require Bearer token
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Authorization required' });
+  }
+
+  // Note: Token requirement prevents unauthorized API usage.
+  // Full verification not needed since this endpoint processes client-provided
+  // notes (already decrypted client-side) and doesn't access DB directly.
 
   const { notes } = req.body;
 

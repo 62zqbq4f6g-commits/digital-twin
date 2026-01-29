@@ -205,15 +205,10 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const {
-    userId,
-    message,
-    conversationContext,
-    options = {}
-  } = req.body;
-
-  if (!userId || !message) {
-    return res.status(400).json({ error: 'userId and message required' });
+  // Auth check - require Bearer token
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Authorization required' });
   }
 
   const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -224,6 +219,22 @@ export default async function handler(req, res) {
   }
 
   const supabase = createClient(supabaseUrl, supabaseKey);
+
+  // Verify token and get user
+  const token = authHeader.replace('Bearer ', '');
+  const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+
+  if (authError || !user) {
+    return res.status(401).json({ error: 'Invalid token' });
+  }
+
+  // Use authenticated user's ID
+  const userId = user.id;
+  const { message, conversationContext, options = {} } = req.body;
+
+  if (!message) {
+    return res.status(400).json({ error: 'message required' });
+  }
 
   try {
     // Get onboarding data

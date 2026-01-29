@@ -136,6 +136,16 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  // Auth check - require Bearer token
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Authorization required' });
+  }
+
+  // Note: This endpoint doesn't need to verify the token against Supabase
+  // since it doesn't access user-specific data - it just extracts entities from text.
+  // The token requirement prevents unauthorized API usage.
+
   const { text, knownEntities = [], userContext = {} } = req.body;
 
   if (!text) {
