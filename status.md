@@ -5,7 +5,7 @@
 **Audited by:** Claude Code (T4 Integration)
 **Production URL:** https://digital-twin-ecru.vercel.app
 **Build Status:** ✅ Production Ready
-**Version:** 9.15.0
+**Version:** 9.15.4
 
 ---
 
@@ -153,6 +153,8 @@ All three sprints shipped. Portable Memory Export fully functional.
 **Migrations applied:**
 - `20260130_knowledge_cascade_delete.sql` — status columns + cascade trigger (partial)
 - `20260130_knowledge_schema_fixes.sql` — Fixed cascade trigger + user_topics + backfill
+- `20260130_bitemporal_edge_invalidation.sql` — Bi-temporal columns, contradiction detection, point-in-time queries
+- `20260130_fix_topics_and_source_tracking.sql` — Topics schema + entity source tracking
 
 **Schema fixes (Jan 30, 2026):**
 | Fix | Description |
@@ -446,6 +448,7 @@ None — v9.8.1 stable in production.
 
 | Version | Date | Changes |
 |---------|------|---------|
+| **9.15.4** | Jan 30, 2026 | Bi-temporal edge invalidation. Contradiction detection, point-in-time queries, version history, cascade soft-delete with invalidation. |
 | **9.15.0** | Jan 30, 2026 | Knowledge Graph Enhancement (Phases 1-10). Unified extraction, cascade soft-delete, graph visualization, "Why I Know This". |
 | **9.14.0** | Jan 29, 2026 | Post-RAG Complete. Smart Context Routing, PAMP v2.0, User Settings. |
 | **9.8.1** | Jan 28, 2026 | Bug fixes (Mirror auth, Meeting tables/save/navigation, Preferences, Patterns). Data Capture module. Pricing update ($10/$5). |
@@ -460,5 +463,5 @@ None — v9.8.1 stable in production.
 ---
 
 *Status Report Generated: January 30, 2026*
-*Version: 9.15.0 — Inscript*
+*Version: 9.15.4 — Inscript*
 *Production: https://digital-twin-ecru.vercel.app*
