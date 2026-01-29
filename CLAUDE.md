@@ -1,9 +1,9 @@
 # CLAUDE.md — Inscript Developer Guide
 
-## Version 9.15.1 | January 30, 2026
+## Version 9.15.2 | January 30, 2026
 
 > **Phase:** 19 — Knowledge Graph Enhancement + Security Hardening COMPLETE
-> **Status:** Unified extraction, cascade delete, graph visualization, API auth complete
+> **Status:** Unified extraction, cascade delete, graph visualization, full API auth + CORS
 > **Last Updated:** January 30, 2026
 
 ---
@@ -16,7 +16,7 @@
 | **Tagline** | Your mirror in code |
 | **Category** | Personal AI Memory |
 | **Vision** | Your data. Your ownership. Portable anywhere. |
-| **Version** | 9.15.1 |
+| **Version** | 9.15.2 |
 | **Production URL** | https://digital-twin-ecru.vercel.app |
 | **Working Directory** | `/Users/airoxthebox/Projects/digital-twin` |
 | **Beta Status** | Production (Phase 19 Complete - Knowledge Graph) |
@@ -65,15 +65,16 @@
 
 ## Security Audit (January 30, 2026)
 
-**16 API routes secured** — All routes now require Bearer token authentication.
+**26 API routes secured** — All routes now require Bearer token authentication + CORS restricted.
 
 | Route Category | Routes Fixed | Risk Before | Fix Applied |
 |----------------|--------------|-------------|-------------|
 | **Data Access** | 7 routes | IDOR — attacker could access other users' data | Verify token + use `user.id` from auth |
 | **AI/LLM** | 8 routes | API credit abuse | Require Bearer token |
 | **Knowledge Graph** | 1 route | SQL filter injection | Input sanitization |
+| **Edge Runtime** | 10 routes | CORS wildcard + no auth | CORS allowlist + token verification |
 
-**Routes Secured:**
+**Standard API Routes Secured:**
 - `/api/tiered-retrieval.js`, `/api/memory-retrieve.js`, `/api/hybrid-retrieval.js`
 - `/api/memory-search.js`, `/api/memory-consolidate.js`, `/api/extract-entities.js`
 - `/api/patterns.js`, `/api/extract.js`
@@ -81,7 +82,12 @@
 - `/api/vision.js`, `/api/refine.js`, `/api/classify-feedback.js`
 - `/api/synthesize-query.js`, `/api/assemble-context.js`
 
-**Auth Pattern (use everywhere):**
+**Edge Runtime Routes Secured:**
+- `/api/enhance-note.js`, `/api/enhance-meeting.js`, `/api/process-ambient.js`
+- `/api/transcribe-voice.js`, `/api/upload-audio-chunk.js`, `/api/analyze-edge.js`
+- `/api/inscript-context.js`, `/api/query-meetings.js`, `/api/chat.js`, `/api/embed.js`
+
+**Auth Pattern (Standard Runtime):**
 ```javascript
 const authHeader = req.headers.authorization;
 if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -93,7 +99,24 @@ if (error || !user) return res.status(401).json({ error: 'Invalid token' });
 // Use user.id — NEVER trust userId from request body
 ```
 
-**Shared Utility:** `/api/lib/auth.js` — `requireAuth()` and `requireAuthEdge()`
+**Auth Pattern (Edge Runtime):**
+```javascript
+import { getCorsHeaders, handlePreflightEdge } from './lib/cors-edge.js';
+import { requireAuthEdge } from './lib/auth-edge.js';
+
+const corsHeaders = getCorsHeaders(req);
+const preflightResponse = handlePreflightEdge(req);
+if (preflightResponse) return preflightResponse;
+
+const { user, errorResponse } = await requireAuthEdge(req, corsHeaders);
+if (errorResponse) return errorResponse;
+const userId = user.id;
+```
+
+**Shared Utilities:**
+- `/api/lib/auth.js` — `requireAuth()` for standard runtime
+- `/api/lib/auth-edge.js` — `requireAuthEdge()` for Edge runtime
+- `/api/lib/cors-edge.js` — `getCorsHeaders()`, `handlePreflightEdge()` for Edge runtime
 
 ## What This Means for Development
 
@@ -963,6 +986,7 @@ All data stored in `user_settings` table for MIRROR to learn from.
 
 | Version | Phase | Key Changes |
 |---------|-------|-------------|
+| **9.15.2** | 19 | **Edge Runtime Security**: CORS wildcard → origin allowlist on 10 Edge endpoints. Token auth on all Edge APIs. New utilities: /api/lib/cors-edge.js, /api/lib/auth-edge.js. Total 26 routes now secured. |
 | **9.15.1** | 19 | **Security Hardening**: Comprehensive API auth audit — 16 routes secured with Bearer token + Supabase auth.getUser(). IDOR fixes (use verified userId). SQL injection prevention in knowledge-graph.js filters. /api/lib/auth.js shared utility created. |
 | **9.15.0** | 19 | **Knowledge Graph Enhancement Complete**: Unified extraction hub, entity facts with source tracking, cascade soft-delete, user_topics table, graph visualization, schema fixes. |
 | **9.14.0** | 19 | **Smart Context Routing**: Auto-route between RAG and Full Context based on query type. User settings for context mode (Auto/Fast/Deep). Best of both worlds — cheap for simple, thorough for complex. |
@@ -987,5 +1011,5 @@ All data stored in `user_settings` table for MIRROR to learn from.
 ---
 
 *CLAUDE.md — Inscript Developer Guide*
-*Version 9.15.1 | Last Updated: January 30, 2026*
+*Version 9.15.2 | Last Updated: January 30, 2026*
 *Production: https://digital-twin-ecru.vercel.app*
