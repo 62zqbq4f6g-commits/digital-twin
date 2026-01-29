@@ -50,9 +50,9 @@ export default async function handler(req, res) {
     // Build entity query
     let entityQuery = supabase
       .from('user_entities')
-      .select('id, name, entity_type, subtype, importance, privacy_level')
+      .select('id, name, entity_type, importance, privacy_level, created_at')
       .eq('user_id', userId)
-      .order('importance', { ascending: false, nullsFirst: false })
+      .order('created_at', { ascending: false })
       .limit(nodeLimit);
 
     // Apply type filter if specified
@@ -88,19 +88,19 @@ export default async function handler(req, res) {
 
     // Build nodes
     const nodes = entities.map(e => {
-      // Calculate node size based on importance
+      // Calculate node size based on importance (text: high/medium/low)
+      const importanceMap = { high: 1.0, medium: 0.6, low: 0.3 };
+      const importanceValue = importanceMap[e.importance] || 0.5;
       const baseSize = 15;
-      const importanceBonus = (e.importance || 0.5) * 25;
-      const size = baseSize + importanceBonus;
+      const size = baseSize + (importanceValue * 25);
 
       return {
         id: e.id,
         label: e.name,
         type: e.entity_type,
-        subtype: e.subtype,
         size: Math.round(size),
         color: getColorForType(e.entity_type),
-        importance: e.importance || 0
+        importance: e.importance || 'medium'
       };
     });
 
