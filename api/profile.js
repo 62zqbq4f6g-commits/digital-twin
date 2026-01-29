@@ -59,13 +59,11 @@ export default async function handler(req, res) {
         .from('user_entities')
         .select(`
           id, name, entity_type, subtype, summary,
-          importance_score, mention_count, sentiment_average,
-          first_mentioned, last_mentioned,
+          importance, privacy_level,
           entity_facts (predicate, object_text, confidence)
         `)
         .eq('user_id', userId)
-        .or('status.eq.active,status.is.null')
-        .order('mention_count', { ascending: false, nullsFirst: false })
+        .order('importance', { ascending: false, nullsFirst: false })
         .limit(25),
 
       // Topics of interest
@@ -122,11 +120,8 @@ export default async function handler(req, res) {
       type: e.entity_type,
       subtype: e.subtype,
       summary: e.summary,
-      importance: e.importance_score || 0,
-      mentions: e.mention_count || 0,
-      sentiment: e.sentiment_average,
-      firstMentioned: e.first_mentioned,
-      lastMentioned: e.last_mentioned,
+      importance: e.importance || 0,
+      privacyLevel: e.privacy_level,
       facts: (e.entity_facts || []).map(f => ({
         predicate: f.predicate,
         value: f.object_text,

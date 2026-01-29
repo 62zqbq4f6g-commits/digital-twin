@@ -52,12 +52,11 @@ export default async function handler(req, res) {
       .from('user_entities')
       .select(`
         id, name, entity_type, subtype,
-        importance_score, mention_count, sentiment_average,
+        importance, privacy_level,
         entity_facts (predicate, object_text)
       `)
       .eq('user_id', userId)
-      .or('status.eq.active,status.is.null')
-      .order('mention_count', { ascending: false, nullsFirst: false })
+      .order('importance', { ascending: false, nullsFirst: false })
       .limit(nodeLimit);
 
     // Apply type filter if specified
@@ -93,11 +92,10 @@ export default async function handler(req, res) {
 
     // Build nodes
     const nodes = entities.map(e => {
-      // Calculate node size based on importance and mentions
+      // Calculate node size based on importance
       const baseSize = 15;
-      const importanceBonus = (e.importance_score || 0.5) * 20;
-      const mentionBonus = Math.min(15, (e.mention_count || 0) * 0.5);
-      const size = baseSize + importanceBonus + mentionBonus;
+      const importanceBonus = (e.importance || 0.5) * 25;
+      const size = baseSize + importanceBonus;
 
       return {
         id: e.id,
@@ -106,9 +104,7 @@ export default async function handler(req, res) {
         subtype: e.subtype,
         size: Math.round(size),
         color: getColorForType(e.entity_type),
-        importance: e.importance_score || 0,
-        mentions: e.mention_count || 0,
-        sentiment: e.sentiment_average,
+        importance: e.importance || 0,
         facts: (e.entity_facts || []).slice(0, 5).map(f => ({
           predicate: f.predicate,
           value: f.object_text
