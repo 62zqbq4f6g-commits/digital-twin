@@ -1439,7 +1439,7 @@ async function generateResponse(user_id, userMessage, history, context, addition
       type: insightType,
       referencedNotes: null, // Notes are E2E encrypted
       referencedEntities,
-      contextUsed: contextUsed.slice(0, 5) // Max 5 items
+      contextUsed: contextUsed.slice(0, 8) // Max 8 items for better transparency
     };
 
   } catch (error) {

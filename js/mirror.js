@@ -732,7 +732,7 @@ class Mirror {
   renderContextUsed(contextUsed) {
     if (!contextUsed || contextUsed.length === 0) return '';
 
-    const contextItems = contextUsed.slice(0, 5).map(item => {
+    const contextItems = contextUsed.slice(0, 8).map(item => {
       const formatDate = (dateStr) => {
         if (!dateStr) return '';
         return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -797,6 +797,41 @@ class Mirror {
               <span class="context-value">${this.escapeHtml(item.value || '')}</span>
             </div>
           `;
+        case 'behavior':
+          return `
+            <div class="context-item">
+              <span class="context-type">Behavior</span>
+              <span class="context-value">${this.escapeHtml(item.value || '')}</span>
+            </div>
+          `;
+        case 'key_person':
+          return `
+            <div class="context-item">
+              <span class="context-type">Key Person</span>
+              <span class="context-value">${this.escapeHtml(item.name || '')} (${this.escapeHtml(item.value || 'close relationship')})</span>
+            </div>
+          `;
+        case 'full_context':
+          return `
+            <div class="context-item context-item-mode">
+              <span class="context-type">Deep Context</span>
+              <span class="context-value">${this.escapeHtml(item.value || '')}</span>
+            </div>
+          `;
+        case 'rag_context':
+          return `
+            <div class="context-item context-item-mode">
+              <span class="context-type">Fast Context</span>
+              <span class="context-value">${this.escapeHtml(item.value || '')}</span>
+            </div>
+          `;
+        case 'evolution':
+          return `
+            <div class="context-item">
+              <span class="context-type">Evolution</span>
+              <span class="context-value">${this.escapeHtml(item.value || 'Detected changes in your thinking')}</span>
+            </div>
+          `;
         default:
           return `
             <div class="context-item">
@@ -808,9 +843,9 @@ class Mirror {
     }).join('');
 
     return `
-      <details class="context-used">
+      <details class="context-used why-i-know">
         <summary class="context-used-toggle">
-          <span class="context-used-label">Context used</span>
+          <span class="context-used-label">Why I know this</span>
           <span class="context-used-count">${contextUsed.length} source${contextUsed.length !== 1 ? 's' : ''}</span>
         </summary>
         <div class="context-used-content">
