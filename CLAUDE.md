@@ -1,10 +1,10 @@
 # CLAUDE.md — Inscript Developer Guide
 
-## Version 9.14.0 | January 29, 2026
+## Version 9.15.0 | January 30, 2026
 
-> **Phase:** 19 — Post-RAG Architecture COMPLETE
-> **Status:** Smart Context Routing, PAMP v2.0, User Settings
-> **Last Updated:** January 29, 2026
+> **Phase:** 19 — Knowledge Graph Enhancement COMPLETE
+> **Status:** Unified extraction, cascade delete, graph visualization
+> **Last Updated:** January 30, 2026
 
 ---
 
@@ -16,10 +16,10 @@
 | **Tagline** | Your mirror in code |
 | **Category** | Personal AI Memory |
 | **Vision** | Your data. Your ownership. Portable anywhere. |
-| **Version** | 9.14.0 |
+| **Version** | 9.15.0 |
 | **Production URL** | https://digital-twin-ecru.vercel.app |
 | **Working Directory** | `/Users/airoxthebox/Projects/digital-twin` |
-| **Beta Status** | Production (Phase 19 Complete - Smart Routing) |
+| **Beta Status** | Production (Phase 19 Complete - Knowledge Graph) |
 
 ---
 
@@ -87,48 +87,143 @@
 
 # STRATEGIC DIRECTION
 
-> **Core Thesis:** Inscript is building portable AI memory.
-> Your memory. Your data. Exportable anywhere. Owned by you.
+> **Core Thesis:** Inscript is a Personal Knowledge Graph.
+> Notes are input. The graph is the product. Your identity, portable anywhere.
 
-## The Vision (Refined)
+## The Architecture Insight
+
+**Inscript is NOT a note-taking app.** It's a system that transforms unstructured notes into a structured knowledge graph representing YOU.
+
+```
+User Input → Entity Extraction → Knowledge Graph → Context for AI
+   ↓              ↓                    ↓                ↓
+  Notes      "Marcus works      Nodes + Edges      MIRROR knows
+             at Anthropic"      + Properties       your world
+```
+
+**Traditional RAG:** Chunks documents → embeds → vector search → retrieves similar text.
+
+**Inscript's Model:** Extracts knowledge → builds graph → traverses relationships → loads structured context.
+
+The difference: RAG finds *similar text*. Inscript understands *your world*.
+
+## Knowledge Graph Architecture
+
+| Component | What It Is | Example |
+|-----------|-----------|---------|
+| **Nodes** | Entities (people, projects, topics) | Marcus, Anthropic, AI Strategy |
+| **Edges** | Relationships between entities | Marcus → works_at → Anthropic |
+| **Properties** | Attributes on nodes | importance: 0.9, sentiment: +0.7 |
+| **Facts** | SPO triples (Subject-Predicate-Object) | User → trusts_opinion_of → Marcus |
+| **Behaviors** | User's relationship TO entities | seeks_advice_from, admires, avoids |
+
+**The Behavioral Layer** is what makes this a *Personal* Knowledge Graph. It's not just "Marcus works at Anthropic" — it's "I trust Marcus's opinion on AI strategy."
+
+## What We're Building Toward
+
+| Horizon | Capability | Value |
+|---------|-----------|-------|
+| **Now** | Graph-based retrieval | Better context than vector search |
+| **H1** | Graph inference | "Who else might have insight on this?" |
+| **H2** | Temporal reasoning | "How has my view of X evolved?" |
+| **H3** | Multi-user graphs | Shared team knowledge graphs |
+| **H4** | Protocol standard | Any AI can read your graph (PAMP v2.0) |
+
+## The Vision
 
 **What Inscript provides:**
-1. **You own it** — Your memories, encrypted with your keys
-2. **You can leave** — Export everything, take it anywhere
+1. **You own it** — Your graph, encrypted with your keys
+2. **You can leave** — Export your complete knowledge graph, take it anywhere
 3. **We can't see it** — True E2E encryption means we cannot read your data
-4. **Any AI can use it** — Export works with ChatGPT, Claude, any AI
+4. **Any AI can use it** — PAMP v2.0 export works with ChatGPT, Claude, any AI
 
 **Why this matters:**
 - Today: AI apps lock in your data. You lose everything if you leave.
-- With Inscript: Your memory is portable. Export it. Take it anywhere. We earn your loyalty through experience, not lock-in.
+- With Inscript: Your knowledge graph is portable. Export it. Take it anywhere.
 
-**Inscript's moat:** Being the best place to create and curate personal AI memory — not the only place you can use it.
+**Inscript's moat:** Being the best place to BUILD your knowledge graph — not the only place you can USE it.
 
 ## Data Architecture (5 Layers)
 
 | Layer | Name | What It Stores | Inscript Tables |
 |-------|------|----------------|-----------------|
 | **1** | Core Identity | Profile, communication style, values | `onboarding_data`, `user_profiles`, `user_key_people` |
-| **2** | Semantic Memory | Entities, facts, relationships | `user_entities`, `entity_facts`, `entity_relationships` |
+| **2** | Knowledge Graph | Entities, facts, relationships | `user_entities`, `entity_facts`, `entity_relationships` |
 | **3** | Episodic Memory | Notes, conversations, events | `notes`, `mirror_conversations`, `mirror_messages`, `meetings` |
-| **4** | Procedural Memory | Patterns, preferences, habits | `user_patterns`, `category_summaries` |
-| **5** | Embeddings | Vector representations for search | `note_embeddings`, entity embeddings |
+| **4** | Procedural Memory | Patterns, behaviors, habits | `user_patterns`, `category_summaries` |
+| **5** | Graph Indexes | Relationship traversal, co-occurrence | `entity_mentions`, `note_entities`, `entity_links` |
+
+> **Note:** Vector embeddings are deprecated (v9.14.0). Graph traversal provides better context than vector similarity for personal memory.
 
 ## Strategic Phases
 
 | Phase | Focus | Status |
 |-------|-------|--------|
 | **Phase 1** | Consumer Love | ✅ Complete — App people can't live without |
-| **Phase 2** | Portable Export | 🔄 Current — Full data export with structured facts |
-| **Phase 3** | Platform APIs | Next — Let developers build on Inscript |
-| **Phase 4** | Protocol | Future — Open standard for portable AI memory |
+| **Phase 2** | Portable Export | ✅ Complete — Full data export with structured facts |
+| **Phase 3** | Zero-Knowledge | ✅ Complete — E2E encryption, BYOK, PAMP v2.0 |
+| **Phase 4** | Platform APIs | Next — Let developers build on Inscript |
+| **Phase 5** | Protocol Standard | Future — PAMP becomes the open standard |
 
 ## Guiding Principles
 
-1. **User ownership is absolute** — Users can export everything, anytime
-2. **Privacy by architecture** — We cannot access user data, not just "won't"
-3. **Earn loyalty through experience** — Not through lock-in
-4. **Consumer-first** — The app must be magical before the protocol matters
+1. **Knowledge graph first** — Notes are input, the graph is the product
+2. **User ownership is absolute** — Users can export everything, anytime
+3. **Privacy by architecture** — We cannot access user data, not just "won't"
+4. **Earn loyalty through experience** — Not through lock-in
+5. **Graph over vectors** — Relationships beat similarity for personal memory
+
+---
+
+# KNOWLEDGE EXTRACTION PIPELINE (v9.15.0)
+
+## Unified Input Router
+
+ALL user inputs flow through a single extraction pipeline:
+
+```
+User Input → Input Router → AI Extraction → Knowledge Store → Graph
+    ↓                              ↓              ↓
+notes, profile,            Claude Haiku    Deduplication
+key_people, MIRROR,        extracts:       + Merge
+settings, onboarding       entities, facts,
+                           behaviors, topics
+```
+
+**Key file:** `/lib/extraction/input-router.js`
+
+| Input Type | What Gets Extracted |
+|------------|---------------------|
+| `note` | Entities, facts, behaviors, topics from note content |
+| `meeting` | Same as note, with meeting context |
+| `profile` | AI-extracts from free text fields (depth_answer, life_context) |
+| `key_person` | Converts relationship to behavioral predicates |
+| `mirror` | Extracts from user messages in conversation |
+| `settings` | Logged only (settings stored in user_settings table) |
+
+## Cascade Soft-Delete
+
+When a note is deleted, associated knowledge is automatically marked inactive:
+
+```
+Note deleted → Trigger fires → entity_facts.status = 'inactive'
+                            → user_behaviors.status = 'inactive'
+```
+
+**Key file:** `/supabase/migrations/20260130_knowledge_cascade_delete.sql`
+
+MIRROR only loads `status='active'` data, so deleted content doesn't affect UX.
+
+## Extraction Files
+
+| File | Purpose |
+|------|---------|
+| `/lib/extraction/input-router.js` | Routes all inputs to extraction |
+| `/lib/extraction/extractor.js` | AI extraction with Claude Haiku |
+| `/lib/extraction/knowledge-store.js` | Stores with deduplication |
+| `/lib/extraction/profile-converter.js` | Profile → SPO triples |
+| `/api/extract-knowledge.js` | Unified POST endpoint |
+| `/js/knowledge-extraction.js` | Client-side event hooks |
 
 ---
 
