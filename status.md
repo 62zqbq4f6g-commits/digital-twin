@@ -1,11 +1,11 @@
 # Inscript Status Report
 
-## Last Audit: January 29, 2026 (Post-RAG Architecture Complete)
+## Last Audit: January 30, 2026 (Knowledge Graph Enhancement Complete)
 
 **Audited by:** Claude Code (T4 Integration)
 **Production URL:** https://digital-twin-ecru.vercel.app
 **Build Status:** ✅ Production Ready
-**Version:** 9.14.0
+**Version:** 9.15.0
 
 ---
 
@@ -113,7 +113,58 @@ All three sprints shipped. Portable Memory Export fully functional.
 
 ---
 
-## Latest Session: January 29, 2026 (Post-RAG Complete)
+## Latest Session: January 30, 2026 (Knowledge Graph Enhancement)
+
+### v9.15.0 — Knowledge Graph Enhancement
+
+**Complete build (Phases 1-10):**
+
+| Phase | Feature | Status |
+|-------|---------|--------|
+| 1 | Knowledge graph schema expansion | ✅ |
+| 2 | Entity type configuration | ✅ |
+| 3 | AI extraction engine (Claude Haiku) | ✅ |
+| 4 | Knowledge storage with deduplication | ✅ |
+| 5 | Auto-extract from MIRROR conversations | ✅ |
+| 6 | Structured Profile API | ✅ |
+| 7 | Profile caching (5 min TTL) | ✅ |
+| 8 | Graph Data API for visualization | ✅ |
+| 9 | Knowledge graph visualization UI | ✅ |
+| 10 | "Why I Know This" transparency | ✅ |
+
+**Additional fixes:**
+- Unified extraction from ALL user inputs (notes, profile, key_people, settings, MIRROR)
+- Cascade soft-delete: deleted notes → inactive knowledge
+- Data hygiene: only `status='active'` data affects UX
+- Proactive behaviors: MIRROR loads top 10 behaviors regardless of entity mentions
+
+**Key files created:**
+```
+/lib/extraction/input-router.js      — Unified input routing
+/lib/extraction/extractor.js         — AI extraction with Claude Haiku
+/lib/extraction/knowledge-store.js   — Deduplication + storage
+/lib/extraction/profile-converter.js — Profile → SPO triples
+/api/extract-knowledge.js            — Unified extraction endpoint
+/js/knowledge-extraction.js          — Client-side event hooks
+/js/knowledge-graph.js               — Visualization component
+/api/graph-data.js                   — Graph API endpoint
+```
+
+**Migrations applied:**
+- `20260130_knowledge_cascade_delete.sql` — status columns + cascade trigger (partial)
+- `20260130_knowledge_schema_fixes.sql` — Fixed cascade trigger + user_topics + backfill
+
+**Schema fixes (Jan 30, 2026):**
+| Fix | Description |
+|-----|-------------|
+| `entity_facts.source_type` | Added column for MIRROR cascade support |
+| `user_topics` table | New table with RLS for topic tracking |
+| `cascade_note_soft_delete()` | Fixed to use `source_note_id` (not `source_id`) |
+| Backfill | Orphaned knowledge from deleted notes marked inactive |
+
+---
+
+## Previous Session: January 29, 2026 (Post-RAG Complete)
 
 ### v9.14.0 — Smart Context Routing
 
@@ -395,6 +446,8 @@ None — v9.8.1 stable in production.
 
 | Version | Date | Changes |
 |---------|------|---------|
+| **9.15.0** | Jan 30, 2026 | Knowledge Graph Enhancement (Phases 1-10). Unified extraction, cascade soft-delete, graph visualization, "Why I Know This". |
+| **9.14.0** | Jan 29, 2026 | Post-RAG Complete. Smart Context Routing, PAMP v2.0, User Settings. |
 | **9.8.1** | Jan 28, 2026 | Bug fixes (Mirror auth, Meeting tables/save/navigation, Preferences, Patterns). Data Capture module. Pricing update ($10/$5). |
 | **9.8.0** | Jan 28, 2026 | Two-tier model (Managed + BYOK), Client-side AES-256-GCM encryption, Context Engineering (RAG 2.0), Task-aware context loading, Encrypted database layer. |
 | 9.6.0 | Jan 27, 2026 | Sprint 3 complete. MIRROR facts integration, Privacy audit verified. |
@@ -406,6 +459,6 @@ None — v9.8.1 stable in production.
 
 ---
 
-*Status Report Generated: January 28, 2026*
-*Version: 9.8.1 — Inscript*
+*Status Report Generated: January 30, 2026*
+*Version: 9.15.0 — Inscript*
 *Production: https://digital-twin-ecru.vercel.app*
