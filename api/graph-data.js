@@ -56,8 +56,8 @@ export default async function handler(req, res) {
         entity_facts (predicate, object_text)
       `)
       .eq('user_id', userId)
-      .eq('status', 'active')
-      .order('importance_score', { ascending: false, nullsFirst: false })
+      .or('status.eq.active,status.is.null')
+      .order('mention_count', { ascending: false, nullsFirst: false })
       .limit(nodeLimit);
 
     // Apply type filter if specified
