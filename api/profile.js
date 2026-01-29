@@ -54,14 +54,10 @@ export default async function handler(req, res) {
       onboardingResult,
       statsResult
     ] = await Promise.all([
-      // Top entities with facts
+      // Top entities (facts loaded separately if needed)
       supabase
         .from('user_entities')
-        .select(`
-          id, name, entity_type, subtype, summary,
-          importance, privacy_level,
-          entity_facts (predicate, object_text, confidence)
-        `)
+        .select('id, name, entity_type, subtype, summary, importance, privacy_level')
         .eq('user_id', userId)
         .order('importance', { ascending: false, nullsFirst: false })
         .limit(25),
@@ -121,12 +117,7 @@ export default async function handler(req, res) {
       subtype: e.subtype,
       summary: e.summary,
       importance: e.importance || 0,
-      privacyLevel: e.privacy_level,
-      facts: (e.entity_facts || []).map(f => ({
-        predicate: f.predicate,
-        value: f.object_text,
-        confidence: f.confidence
-      }))
+      privacyLevel: e.privacy_level
     }));
 
     // Process topics

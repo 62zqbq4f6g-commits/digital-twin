@@ -50,11 +50,7 @@ export default async function handler(req, res) {
     // Build entity query
     let entityQuery = supabase
       .from('user_entities')
-      .select(`
-        id, name, entity_type, subtype,
-        importance, privacy_level,
-        entity_facts (predicate, object_text)
-      `)
+      .select('id, name, entity_type, subtype, importance, privacy_level')
       .eq('user_id', userId)
       .order('importance', { ascending: false, nullsFirst: false })
       .limit(nodeLimit);
@@ -104,11 +100,7 @@ export default async function handler(req, res) {
         subtype: e.subtype,
         size: Math.round(size),
         color: getColorForType(e.entity_type),
-        importance: e.importance || 0,
-        facts: (e.entity_facts || []).slice(0, 5).map(f => ({
-          predicate: f.predicate,
-          value: f.object_text
-        }))
+        importance: e.importance || 0
       };
     });
 
