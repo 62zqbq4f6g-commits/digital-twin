@@ -1,6 +1,6 @@
 # CLAUDE.md — Inscript Developer Guide
 
-## Version 9.15.2 | January 30, 2026
+## Version 9.15.4 | January 30, 2026
 
 > **Phase:** 19 — Knowledge Graph Enhancement + Security Hardening COMPLETE
 > **Status:** Unified extraction, cascade delete, graph visualization, full API auth + CORS
@@ -986,6 +986,8 @@ All data stored in `user_settings` table for MIRROR to learn from.
 
 | Version | Phase | Key Changes |
 |---------|-------|-------------|
+| **9.15.4** | 19 | **Bi-Temporal Edge Invalidation**: Facts now track `valid_from`/`valid_to` (when true) + `invalidated_at` (when we learned). Auto contradiction detection for single-value predicates. Version history with `previous_version_id`. Point-in-time queries via `/api/temporal-facts`. New `lib/knowledge/temporal-facts.js` utilities. |
+| **9.15.3** | 19 | **Knowledge Graph Bug Fixes**: (1) Cascade soft-delete now works — entities track source_note_id for proper cleanup. (2) user_topics schema fixed — added normalized_name column for extraction to work. (3) All extraction flows now pass sourceId for cascade tracking. |
 | **9.15.2** | 19 | **Edge Runtime Security**: CORS wildcard → origin allowlist on 10 Edge endpoints. Token auth on all Edge APIs. New utilities: /api/lib/cors-edge.js, /api/lib/auth-edge.js. Total 26 routes now secured. |
 | **9.15.1** | 19 | **Security Hardening**: Comprehensive API auth audit — 16 routes secured with Bearer token + Supabase auth.getUser(). IDOR fixes (use verified userId). SQL injection prevention in knowledge-graph.js filters. /api/lib/auth.js shared utility created. |
 | **9.15.0** | 19 | **Knowledge Graph Enhancement Complete**: Unified extraction hub, entity facts with source tracking, cascade soft-delete, user_topics table, graph visualization, schema fixes. |

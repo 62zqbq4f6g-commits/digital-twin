@@ -201,8 +201,12 @@ const KnowledgeGraph = {
   /**
    * Extract entities from any content
    * Uses pattern matching for names and companies
+   * @param {string} userId - User ID
+   * @param {string} content - Content to extract from
+   * @param {string} sourceType - Source type (note, meeting, etc.)
+   * @param {string} sourceNoteId - Source note ID for cascade delete tracking
    */
-  async extractEntities(userId, content, sourceType) {
+  async extractEntities(userId, content, sourceType, sourceNoteId = null) {
     if (!content) return [];
 
     const entities = [];
@@ -222,8 +226,8 @@ const KnowledgeGraph = {
       let entity = await this.findEntityByName(userId, name);
 
       if (!entity) {
-        // Create new entity
-        entity = await this.createEntity(userId, name, 'person');
+        // Create new entity with source tracking
+        entity = await this.createEntity(userId, name, 'person', sourceType, sourceNoteId);
       }
 
       if (entity) {
@@ -242,7 +246,7 @@ const KnowledgeGraph = {
         seenNames.add(companyName.toLowerCase());
         let entity = await this.findEntityByName(userId, companyName);
         if (!entity) {
-          entity = await this.createEntity(userId, companyName, 'company');
+          entity = await this.createEntity(userId, companyName, 'company', sourceType, sourceNoteId);
         }
         if (entity) {
           entities.push(entity);
@@ -272,7 +276,7 @@ const KnowledgeGraph = {
     }
   },
 
-  async createEntity(userId, name, type) {
+  async createEntity(userId, name, type, sourceType = 'note', sourceNoteId = null) {
     const supabase = this.getSupabase();
     if (!supabase) return null;
 
@@ -284,7 +288,9 @@ const KnowledgeGraph = {
           name: name,
           entity_type: type,
           mention_count: 1,
-          first_mentioned: new Date().toISOString()
+          first_mentioned: new Date().toISOString(),
+          source_type: sourceType,
+          source_note_id: sourceNoteId  // Track source for cascade soft-delete
         })
         .select()
         .single();
@@ -458,8 +464,12 @@ const KnowledgeGraph = {
   /**
    * Use LLM for enhanced extraction with intent-aware analysis
    * This extracts behaviors, relationship qualities, not just entities and facts
+   * @param {string} userId - User ID
+   * @param {string} content - Content to extract from
+   * @param {string} sourceType - Source type (note, meeting, etc.)
+   * @param {string} sourceNoteId - Source note ID for cascade delete tracking
    */
-  async enhancedExtraction(userId, content, sourceType) {
+  async enhancedExtraction(userId, content, sourceType, sourceNoteId = null) {
     if (!content || content.length < 10) {
       return { entities: [], facts: [], behaviors: [], relationship_qualities: [] };
     }
@@ -472,7 +482,7 @@ const KnowledgeGraph = {
       const token = typeof Sync !== 'undefined' ? await Sync.getToken() : null;
       if (!token) {
         console.warn('[KnowledgeGraph] No auth token for LLM extraction');
-        return this.fallbackExtraction(userId, content, sourceType);
+        return this.fallbackExtraction(userId, content, sourceType, sourceNoteId);
       }
 
       // Call enhanced extract-entities API
@@ -490,7 +500,7 @@ const KnowledgeGraph = {
 
       if (!response.ok) {
         console.warn('[KnowledgeGraph] Extract API failed:', response.status);
-        return this.fallbackExtraction(userId, content, sourceType);
+        return this.fallbackExtraction(userId, content, sourceType, sourceNoteId);
       }
 
       const result = await response.json();
@@ -501,14 +511,14 @@ const KnowledgeGraph = {
         relationship_qualities: result.relationship_qualities?.length || 0
       });
 
-      // Process extracted entities - save to database
+      // Process extracted entities - save to database with source tracking
       const savedEntities = [];
       const entityMap = {}; // For behavior linking
 
       for (const entity of (result.entities || [])) {
         let savedEntity = await this.findEntityByName(userId, entity.name);
         if (!savedEntity) {
-          savedEntity = await this.createEntity(userId, entity.name, entity.type || 'person');
+          savedEntity = await this.createEntity(userId, entity.name, entity.type || 'person', sourceType, sourceNoteId);
         }
         if (savedEntity) {
           await this.trackMention(userId, savedEntity.id, sourceType, content);
@@ -540,15 +550,19 @@ const KnowledgeGraph = {
       };
     } catch (error) {
       console.error('[KnowledgeGraph] Enhanced extraction error:', error);
-      return this.fallbackExtraction(userId, content, sourceType);
+      return this.fallbackExtraction(userId, content, sourceType, sourceNoteId);
     }
   },
 
   /**
    * Fallback to pattern-based extraction if LLM fails
+   * @param {string} userId - User ID
+   * @param {string} content - Content to extract from
+   * @param {string} sourceType - Source type (note, meeting, etc.)
+   * @param {string} sourceNoteId - Source note ID for cascade delete tracking
    */
-  async fallbackExtraction(userId, content, sourceType) {
-    const entities = await this.extractEntities(userId, content, sourceType);
+  async fallbackExtraction(userId, content, sourceType, sourceNoteId = null) {
+    const entities = await this.extractEntities(userId, content, sourceType, sourceNoteId);
     const facts = await this.extractFacts(userId, content, entities);
     return { entities, facts, behaviors: [], relationship_qualities: [] };
   },
