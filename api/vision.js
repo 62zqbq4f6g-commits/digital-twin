@@ -43,6 +43,12 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  // Auth check - require Bearer token to prevent API credit abuse
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Authorization required' });
+  }
+
   try {
     const { image, context } = req.body;
 

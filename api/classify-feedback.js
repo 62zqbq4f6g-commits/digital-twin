@@ -12,6 +12,12 @@ module.exports = async function handler(req, res) {
   if (handlePreflight(req, res)) return;
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
+  // Auth check - require Bearer token to prevent API credit abuse
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Authorization required' });
+  }
+
   const { input, output, rating, comment } = req.body;
 
   if (!output || !rating) {
