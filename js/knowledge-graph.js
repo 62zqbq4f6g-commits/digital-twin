@@ -662,14 +662,32 @@ const KnowledgeGraph = {
     if (!supabase) return;
 
     try {
-      // Check if link exists (either direction)
-      const { data: existing } = await supabase
+      // Check if link exists (either direction) - use separate queries to avoid filter injection
+      // First check A→B direction
+      let existing = null;
+      const { data: linkAB } = await supabase
         .from('entity_links')
         .select('id, strength')
         .eq('user_id', userId)
-        .or(`and(entity_a.eq.${entityId1},entity_b.eq.${entityId2}),and(entity_a.eq.${entityId2},entity_b.eq.${entityId1})`)
+        .eq('entity_a', entityId1)
+        .eq('entity_b', entityId2)
         .limit(1)
         .maybeSingle();
+
+      if (linkAB) {
+        existing = linkAB;
+      } else {
+        // Check B→A direction
+        const { data: linkBA } = await supabase
+          .from('entity_links')
+          .select('id, strength')
+          .eq('user_id', userId)
+          .eq('entity_a', entityId2)
+          .eq('entity_b', entityId1)
+          .limit(1)
+          .maybeSingle();
+        existing = linkBA;
+      }
 
       if (existing) {
         // Strengthen existing link
@@ -991,9 +1009,14 @@ const KnowledgeGraph = {
       const namePattern = /\b([A-Z][a-z]+)\b/g;
       const names = query.match(namePattern) || [];
 
+      // Sanitize names: only allow alphanumeric + common chars, max length
+      const sanitizedNames = names
+        .map(n => n.replace(/[^a-zA-Z0-9\s\-']/g, '').slice(0, 50))
+        .filter(n => n.length >= 2);
+
       let relevantEntities = [];
-      if (names.length > 0) {
-        const orConditions = names.map(n => `name.ilike.%${n}%`).join(',');
+      if (sanitizedNames.length > 0) {
+        const orConditions = sanitizedNames.map(n => `name.ilike.%${n}%`).join(',');
         const { data } = await supabase
           .from('user_entities')
           .select('*, entity_facts(*)')
@@ -1004,10 +1027,16 @@ const KnowledgeGraph = {
 
       // Get notes matching query keywords
       const keywords = query.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+
+      // Sanitize keywords: only allow alphanumeric, max length
+      const sanitizedKeywords = keywords
+        .map(k => k.replace(/[^a-zA-Z0-9]/g, '').slice(0, 50))
+        .filter(k => k.length >= 3);
+
       let relevantNotes = [];
 
-      if (keywords.length > 0) {
-        const orConditions = keywords.map(k => `content.ilike.%${k}%`).join(',');
+      if (sanitizedKeywords.length > 0) {
+        const orConditions = sanitizedKeywords.map(k => `content.ilike.%${k}%`).join(',');
         const { data } = await supabase
           .from('notes')
           .select('id, content, created_at')
