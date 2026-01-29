@@ -11,6 +11,8 @@
 import { createClient } from '@supabase/supabase-js';
 import Anthropic from '@anthropic-ai/sdk';
 import { encryptForStorage, isValidKey } from './lib/encryption-edge.js';
+import { getCorsHeaders, handlePreflightEdge } from './lib/cors-edge.js';
+import { requireAuthEdge } from './lib/auth-edge.js';
 
 export const config = { runtime: 'edge' };
 
@@ -21,17 +23,15 @@ export const config = { runtime: 'edge' };
 export default async function handler(req, ctx) {
   const startTime = Date.now();
 
-  // CORS headers
+  // CORS headers (restricted to allowed origins)
   const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    ...getCorsHeaders(req),
     'Content-Type': 'application/json'
   };
 
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 200, headers: corsHeaders });
-  }
+  // Handle preflight
+  const preflightResponse = handlePreflightEdge(req);
+  if (preflightResponse) return preflightResponse;
 
   if (req.method !== 'POST') {
     return new Response(
@@ -40,9 +40,15 @@ export default async function handler(req, ctx) {
     );
   }
 
+  // Auth check - verify token and get userId
+  const { user, errorResponse } = await requireAuthEdge(req, corsHeaders);
+  if (errorResponse) return errorResponse;
+
+  const userId = user.id;
+
   try {
     const body = await req.json();
-    const { input, userId, noteId, context = {} } = body;
+    const { input, noteId, context = {} } = body;
     const content = input?.content || '';
 
     // Get encryption key from body or header (client sends via X-Encryption-Key header)

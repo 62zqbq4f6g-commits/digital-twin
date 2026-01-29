@@ -11,6 +11,8 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@supabase/supabase-js';
+import { getCorsHeaders, handlePreflightEdge } from './lib/cors-edge.js';
+import { requireAuthEdge } from './lib/auth-edge.js';
 
 export const config = { runtime: 'edge' };
 
@@ -33,16 +35,15 @@ Q: "When is the product launch?"
 A: "Based on your Product Review meeting on Jan 22, the launch was delayed by 2 weeks and is now targeting early February."`;
 
 export default async function handler(req) {
+  // CORS headers (restricted to allowed origins)
   const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    ...getCorsHeaders(req),
     'Content-Type': 'application/json',
   };
 
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 200, headers: corsHeaders });
-  }
+  // Handle preflight
+  const preflightResponse = handlePreflightEdge(req);
+  if (preflightResponse) return preflightResponse;
 
   if (req.method !== 'GET') {
     return new Response(
@@ -51,10 +52,15 @@ export default async function handler(req) {
     );
   }
 
+  // Auth check - verify token and get userId
+  const { user, errorResponse } = await requireAuthEdge(req, corsHeaders);
+  if (errorResponse) return errorResponse;
+
+  const userId = user.id;
+
   const startTime = Date.now();
   const { searchParams } = new URL(req.url);
   const query = searchParams.get('q');
-  const userId = searchParams.get('userId');
 
   // Validation
   if (!query || query.trim().length < 3) {
@@ -63,11 +69,6 @@ export default async function handler(req) {
       { status: 400, headers: corsHeaders }
     );
   }
-
-  if (!userId) {
-    return new Response(
-      JSON.stringify({ error: { code: 'UNAUTHORIZED', message: 'userId required' } }),
-      { status: 401, headers: corsHeaders }
     );
   }
 

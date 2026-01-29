@@ -24,6 +24,8 @@ import {
   MEETING_ENHANCE_VERSION
 } from '../prompts/meeting-enhance.js';
 import { createClient } from '@supabase/supabase-js';
+import { getCorsHeaders, handlePreflightEdge } from './lib/cors-edge.js';
+import { requireAuthEdge } from './lib/auth-edge.js';
 
 export const config = { runtime: 'edge' };
 
@@ -32,28 +34,29 @@ export const config = { runtime: 'edge' };
 // ============================================
 
 export default async function handler(req, ctx) {
-  // CORS headers for preflight
-  if (req.method === 'OPTIONS') {
-    return new Response(null, {
-      status: 200,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Encryption-Key',
-      },
-    });
-  }
+  // CORS headers (restricted to allowed origins)
+  const corsHeaders = getCorsHeaders(req);
+
+  // Handle preflight
+  const preflightResponse = handlePreflightEdge(req);
+  if (preflightResponse) return preflightResponse;
 
   if (req.method !== 'POST') {
     return new Response(
       JSON.stringify({ success: false, error: { code: 'METHOD_NOT_ALLOWED', message: 'Method not allowed' } }),
-      { status: 405, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
+      { status: 405, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
     );
   }
 
+  // Auth check - verify token and get userId
+  const { user, errorResponse } = await requireAuthEdge(req, corsHeaders);
+  if (errorResponse) return errorResponse;
+
+  const userId = user.id;
+
   try {
     const body = await req.json();
-    const { rawInput, title, attendees, userId } = body;
+    const { rawInput, title, attendees } = body;
 
     // ============================================
     // VALIDATION
@@ -65,17 +68,7 @@ export default async function handler(req, ctx) {
           success: false,
           error: { code: 'EMPTY_INPUT', message: 'Input cannot be empty' },
         }),
-        { status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
-      );
-    }
-
-    if (!userId) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: { code: 'UNAUTHORIZED', message: 'Authentication required' },
-        }),
-        { status: 401, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
+        { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
       );
     }
 

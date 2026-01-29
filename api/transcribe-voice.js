@@ -10,6 +10,8 @@
  */
 
 import OpenAI from 'openai';
+import { getCorsHeaders, handlePreflightEdge } from './lib/cors-edge.js';
+import { requireAuthEdge } from './lib/auth-edge.js';
 
 export const config = { runtime: 'edge' };
 
@@ -48,16 +50,12 @@ const TYPE_TO_EXT = {
 };
 
 export default async function handler(req) {
-  // CORS headers
-  const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-  };
+  // CORS headers (restricted to allowed origins)
+  const corsHeaders = getCorsHeaders(req);
 
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 200, headers: corsHeaders });
-  }
+  // Handle preflight
+  const preflightResponse = handlePreflightEdge(req);
+  if (preflightResponse) return preflightResponse;
 
   if (req.method !== 'POST') {
     return new Response(
@@ -68,6 +66,10 @@ export default async function handler(req) {
       { status: 405, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
     );
   }
+
+  // Auth check - prevent API credit abuse
+  const { user, errorResponse } = await requireAuthEdge(req, corsHeaders);
+  if (errorResponse) return errorResponse;
 
   const startTime = Date.now();
 

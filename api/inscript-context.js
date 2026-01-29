@@ -12,6 +12,8 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
+import { getCorsHeaders, handlePreflightEdge } from './lib/cors-edge.js';
+import { requireAuthEdge } from './lib/auth-edge.js';
 
 export const config = { runtime: 'edge' };
 
@@ -20,16 +22,12 @@ export const config = { runtime: 'edge' };
 // ============================================
 
 export default async function handler(req) {
-  // CORS headers
-  const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-  };
+  // CORS headers (restricted to allowed origins)
+  const corsHeaders = getCorsHeaders(req);
 
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 200, headers: corsHeaders });
-  }
+  // Handle preflight
+  const preflightResponse = handlePreflightEdge(req);
+  if (preflightResponse) return preflightResponse;
 
   if (req.method !== 'GET') {
     return new Response(
@@ -41,6 +39,12 @@ export default async function handler(req) {
     );
   }
 
+  // Auth check - verify token and get userId
+  const { user, errorResponse } = await requireAuthEdge(req, corsHeaders);
+  if (errorResponse) return errorResponse;
+
+  const userId = user.id;
+
   const startTime = Date.now();
 
   try {
@@ -48,16 +52,6 @@ export default async function handler(req) {
     const attendeesParam = searchParams.get('attendees');
     const attendees = attendeesParam ? attendeesParam.split(',').map(s => s.trim()).filter(Boolean) : [];
     const content = searchParams.get('content') || '';
-    const userId = searchParams.get('userId');
-
-    // Validation
-    if (!userId) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: { code: 'UNAUTHORIZED', message: 'Authentication required' },
-        }),
-        { status: 401, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
       );
     }
 

@@ -25,6 +25,12 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  // Auth check - prevent API credit abuse
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Authorization required' });
+  }
+
   // If embeddings are completely disabled, return gracefully
   if (EMBEDDINGS_DISABLED) {
     console.warn('[Embed API] Embeddings are disabled. Returning empty embedding.');

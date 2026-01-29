@@ -57,7 +57,26 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { noteContent, noteAnalysis, chatHistory, userMessage, mode, userId } = req.body;
+  // Auth check - verify token and get userId
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Authorization required' });
+  }
+
+  let userId;
+  try {
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+    userId = user.id;
+  } catch (authErr) {
+    console.error('[Chat] Auth error:', authErr.message);
+    return res.status(401).json({ error: 'Authentication failed' });
+  }
+
+  const { noteContent, noteAnalysis, chatHistory, userMessage, mode } = req.body;
 
   if (!noteContent || !userMessage) {
     return res.status(400).json({ error: 'Missing required fields' });
@@ -68,8 +87,8 @@ module.exports = async function handler(req, res) {
       apiKey: process.env.ANTHROPIC_API_KEY
     });
 
-    // Get memory context for personalization
-    const memoryContext = userId ? await getMemoryContextForChat(userId) : '';
+    // Get memory context for personalization using verified userId
+    const memoryContext = await getMemoryContextForChat(userId);
     if (memoryContext) {
       console.log('[Chat] Retrieved memory context for user:', userId);
     }

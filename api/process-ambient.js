@@ -26,19 +26,18 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@supabase/supabase-js';
 import { MEETING_ENHANCE_SYSTEM_PROMPT, buildMeetingUserMessage, MEETING_ENHANCE_VERSION } from '../prompts/meeting-enhance.js';
+import { getCorsHeaders, handlePreflightEdge } from './lib/cors-edge.js';
+import { requireAuthEdge } from './lib/auth-edge.js';
 
 export const config = { runtime: 'edge' };
 
 export default async function handler(req, ctx) {
-  const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-  };
+  // CORS headers (restricted to allowed origins)
+  const corsHeaders = getCorsHeaders(req);
 
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 200, headers: corsHeaders });
-  }
+  // Handle preflight
+  const preflightResponse = handlePreflightEdge(req);
+  if (preflightResponse) return preflightResponse;
 
   if (req.method !== 'POST') {
     return new Response(
@@ -50,23 +49,19 @@ export default async function handler(req, ctx) {
     );
   }
 
+  // Auth check - verify token and get userId
+  const { user, errorResponse } = await requireAuthEdge(req, corsHeaders);
+  if (errorResponse) return errorResponse;
+
+  const userId = user.id;
+
   try {
     const body = await req.json();
-    const { sessionId, userId, userNotes, meetingTitle, attendees } = body;
+    const { sessionId, userNotes, meetingTitle, attendees } = body;
 
     // ============================================
     // VALIDATION
     // ============================================
-
-    if (!userId) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: { code: 'UNAUTHORIZED', message: 'Authentication required' },
-        }),
-        { status: 401, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
-      );
-    }
 
     if (!sessionId) {
       return new Response(
