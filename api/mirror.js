@@ -12,6 +12,10 @@ const Anthropic = require('@anthropic-ai/sdk');
 const { getUserFullContext, buildContextBlock, formatTone } = require('./user-context.js');
 const { setCorsHeaders, handlePreflight } = require('./lib/cors.js');
 
+// P0: Auto-extraction from MIRROR conversations
+// Extracts entities, facts, and behaviors from conversation messages
+const { extractFromMirrorExchange } = require('../lib/mirror/auto-extract.js');
+
 // Research and Knowledge modules
 const { detectResearchMode, conductResearch, buildResearchPrompt, formatResearchForContextUI } = require('../lib/mirror/research-mode.js');
 const { detectKnowledgeQuery, getKnowledgeAbout, buildKnowledgePrompt, formatKnowledgeForContextUI } = require('../lib/mirror/knowledge-about.js');
@@ -484,6 +488,16 @@ async function handleMessage(req, res, user_id) {
     .from('mirror_conversations')
     .update({ last_message_at: new Date().toISOString() })
     .eq('id', conversation_id);
+
+  // P0: AUTO-EXTRACTION - Fire and forget, don't block response
+  // Extract entities, facts, and behaviors from this exchange
+  try {
+    extractFromMirrorExchange(user_id, message, response.content, conversation_id, supabase)
+      .catch(err => console.error('[mirror] Auto-extraction failed:', err.message));
+  } catch (err) {
+    // Don't let extraction errors affect the response
+    console.error('[mirror] Auto-extraction setup failed:', err.message);
+  }
 
   // Determine conversation mode for UI indicator
   let conversationMode = null;
