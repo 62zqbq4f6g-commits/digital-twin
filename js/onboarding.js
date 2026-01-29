@@ -1049,7 +1049,7 @@ window.Onboarding = {
       // Seed entities from people
       await this.seedEntities(userId);
 
-      // Ingest onboarding data into Knowledge Graph
+      // Ingest onboarding data into Knowledge Graph (legacy)
       if (typeof window !== 'undefined' && window.ingestInput) {
         window.ingestInput(userId, {
           type: 'onboarding',
@@ -1066,6 +1066,27 @@ window.Onboarding = {
             }
           }
         }).catch(err => console.warn('[Onboarding] Knowledge graph ingestion error:', err));
+      }
+
+      // Dispatch onboarding-complete event for unified knowledge extraction
+      window.dispatchEvent(new CustomEvent('onboarding-complete', {
+        detail: {
+          name: this.data.name,
+          life_seasons: this.data.life_seasons,
+          mental_focus: this.data.mental_focus,
+          depth_question: this.data.depth_question,
+          depth_answer: this.data.depth_answer,
+          value_priorities: this.data.value_priorities,
+          seeded_people: this.data.seeded_people.filter(p => p && p.name)
+        }
+      }));
+
+      // Also dispatch key-person events for seeded people
+      const validPeople = this.data.seeded_people.filter(p => p && p.name && p.relationship);
+      for (const person of validPeople) {
+        window.dispatchEvent(new CustomEvent('key-person-added', {
+          detail: { name: person.name, relationship: person.relationship }
+        }));
       }
 
       // Close onboarding

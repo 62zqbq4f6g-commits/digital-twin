@@ -543,6 +543,18 @@ const MeetingCapture = {
             Sync.pushPendingChanges().catch(err => console.warn('[MeetingCapture] Sync error:', err));
           }
 
+          // Dispatch note-saved event for knowledge extraction
+          window.dispatchEvent(new CustomEvent('note-saved', {
+            detail: {
+              noteId: note.id,
+              content: content,
+              rawText: data.content,
+              title: metadata?.title || data.title || 'Meeting Notes',
+              noteType: 'meeting',
+              inputType: 'meeting'
+            }
+          }));
+
           // Call completion callback
           if (this.onEnhanceComplete) {
             this.onEnhanceComplete({ ...data, noteId, enhancedContent: content, metadata, saved: true });

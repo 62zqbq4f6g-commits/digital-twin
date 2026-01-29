@@ -130,13 +130,17 @@ const App = {
       // Update recent notes on capture screen
       this.updateRecentNotes();
 
-      // A4: Dispatch note-saved event for TWIN tab data refresh
-      // Include raw text for MIRROR context (before encryption)
+      // A4: Dispatch note-saved event for TWIN tab data refresh + knowledge extraction
+      // Include raw text for immediate MIRROR context (before encryption)
+      const inputType = extracted?.inputType || refined?.inputType || 'text';
       window.dispatchEvent(new CustomEvent('note-saved', {
         detail: {
           noteId: savedNote.id,
+          content: text,
           rawText: text,  // Pass raw text for immediate MIRROR context
-          title: refined.title || extracted.title || 'Note'
+          title: refined.title || extracted.title || 'Note',
+          noteType: extracted?.noteType || 'note',
+          inputType: inputType
         }
       }));
 

@@ -475,6 +475,11 @@ window.UIProfile = {
       this.refreshProfileDisplay();
       UI.showToast?.('Saved');
       console.log('[UIProfile] Life seasons saved:', this._selectedRoles);
+
+      // Dispatch profile-updated event for knowledge extraction
+      window.dispatchEvent(new CustomEvent('profile-updated', {
+        detail: { life_seasons: this._selectedRoles }
+      }));
     } catch (err) {
       console.error('[UIProfile] Failed to save life seasons:', err);
       UI.showToast?.('Failed to save. Please try again.');
@@ -585,6 +590,11 @@ window.UIProfile = {
       this.refreshProfileDisplay();
       UI.showToast?.('Saved');
       console.log('[UIProfile] Mental focus saved:', this._selectedGoals);
+
+      // Dispatch profile-updated event for knowledge extraction
+      window.dispatchEvent(new CustomEvent('profile-updated', {
+        detail: { mental_focus: this._selectedGoals }
+      }));
     } catch (err) {
       console.error('[UIProfile] Failed to save goals:', err);
       UI.showToast?.('Failed to save. Please try again.');
@@ -641,6 +651,11 @@ window.UIProfile = {
       this.closeModal();
       this.refreshProfileDisplay();
       console.log('[UIProfile] Tone saved:', this._selectedTone);
+
+      // Dispatch profile-updated event for knowledge extraction
+      window.dispatchEvent(new CustomEvent('profile-updated', {
+        detail: { tone: this._selectedTone }
+      }));
     } catch (err) {
       console.error('[UIProfile] Failed to save tone:', err);
     } finally {
@@ -695,6 +710,11 @@ window.UIProfile = {
       this.closeModal();
       this.refreshProfileDisplay();
       console.log('[UIProfile] Context saved');
+
+      // Dispatch profile-updated event for knowledge extraction
+      window.dispatchEvent(new CustomEvent('profile-updated', {
+        detail: { life_context: value || null }
+      }));
     } catch (err) {
       console.error('[UIProfile] Failed to save context:', err);
     }
@@ -802,6 +822,11 @@ window.UIProfile = {
       this.showPeopleModal();
       this.refreshProfileDisplay();
       console.log('[UIProfile] Person added:', name, PIN?.encryptionKey ? '[encrypted]' : '');
+
+      // Dispatch key-person-added event for knowledge extraction
+      window.dispatchEvent(new CustomEvent('key-person-added', {
+        detail: { name, relationship }
+      }));
     } catch (err) {
       console.error('[UIProfile] Failed to add person:', err);
     }
