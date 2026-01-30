@@ -2,8 +2,8 @@
 
 ## Version 9.15.4 | January 30, 2026
 
-> **Phase:** 19 — Knowledge Graph Enhancement + Security Hardening COMPLETE
-> **Status:** Unified extraction, cascade delete, graph visualization, full API auth + CORS
+> **Phase:** 20 — Export Enrichment (Cognitive Memory)
+> **Status:** Phase 19 complete. Planning export enrichment for external AI agents.
 > **Last Updated:** January 30, 2026
 
 ---
@@ -19,7 +19,7 @@
 | **Version** | 9.15.4 |
 | **Production URL** | https://digital-twin-ecru.vercel.app |
 | **Working Directory** | `/Users/airoxthebox/Projects/digital-twin` |
-| **Beta Status** | Production (Phase 19 Complete - Knowledge Graph) |
+| **Beta Status** | Production (Phase 20 — Export Enrichment) |
 
 ---
 
@@ -217,8 +217,9 @@ The difference: RAG finds *similar text*. Inscript understands *your world*.
 | **Phase 1** | Consumer Love | ✅ Complete — App people can't live without |
 | **Phase 2** | Portable Export | ✅ Complete — Full data export with structured facts |
 | **Phase 3** | Zero-Knowledge | ✅ Complete — E2E encryption, BYOK, PAMP v2.0 |
-| **Phase 4** | Platform APIs | Next — Let developers build on Inscript |
-| **Phase 5** | Protocol Standard | Future — PAMP becomes the open standard |
+| **Phase 4** | Export Enrichment | 🔄 Current — Cognitive memory signals for external AI agents |
+| **Phase 5** | Platform APIs | Next — Let developers build on Inscript |
+| **Phase 6** | Protocol Standard | Future — PAMP becomes the open standard |
 
 ## Guiding Principles
 
@@ -861,6 +862,117 @@ DISABLE_EMBEDDINGS=true
 2. Vector search is automatically skipped
 3. Embeddings still work for backward compatibility
 4. Future: Remove `note_embeddings` table
+
+---
+
+# PHASE 20: EXPORT ENRICHMENT — COGNITIVE MEMORY (Planned)
+
+## Strategic Framing
+
+> **Inscript is a portable AI memory system.** Users capture memory in Inscript and export it to ANY AI agent — ChatGPT, Claude, local LLMs, physical robots. Export quality is the moat.
+
+**Two value propositions:**
+1. **Internal:** MIRROR for personal reflection + self-understanding
+2. **External:** Export to any AI agent with rich, actionable memory data
+
+## What Export Needs (Beyond Raw Data)
+
+External AI agents need signals that raw facts don't provide:
+
+| Signal | Why Agents Need It | Current | Planned |
+|--------|-------------------|---------|---------|
+| **Retrieval frequency** | Know what user accesses most | ❌ | `retrieval_count` + `last_retrieved_at` |
+| **Consolidation tier** | Distinguish raw observation vs confirmed knowledge | ❌ | `is_consolidated` flag |
+| **Emotional salience** | Know what matters emotionally to user | Partial (`sentiment_average`) | `emotional_weight` (valence × arousal) |
+| **Belief history** | Show how thinking evolved | ✅ (bi-temporal) | `previous_values` in export |
+
+## Planned Schema Changes
+
+### Migration: Export Enrichment Columns
+
+```sql
+-- entity_facts enrichment
+ALTER TABLE entity_facts
+  ADD COLUMN IF NOT EXISTS retrieval_count INT DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS last_retrieved_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS is_consolidated BOOLEAN DEFAULT FALSE,
+  ADD COLUMN IF NOT EXISTS emotional_weight FLOAT DEFAULT 1.0;
+
+-- user_entities emotional dimensions
+ALTER TABLE user_entities
+  ADD COLUMN IF NOT EXISTS valence FLOAT,   -- -1 (unpleasant) to 1 (pleasant)
+  ADD COLUMN IF NOT EXISTS arousal FLOAT;   -- 0 (calm) to 1 (intense)
+```
+
+## Planned RPC Functions
+
+### Evolution Queries
+
+```sql
+-- get_belief_evolution(user_id, entity_id, predicate)
+-- Returns: version history showing how a belief changed over time
+-- Uses: bi-temporal data (valid_from, valid_to, version, previous_version_id)
+```
+
+### Weighted Retrieval
+
+```sql
+-- get_weighted_facts(user_id, entity_id, limit)
+-- Returns: facts ranked by confidence × log(retrieval_count) × recency
+-- Side effect: increments retrieval_count on returned facts
+```
+
+### Emotional Context
+
+```sql
+-- get_entities_by_mood(user_id, target_sentiment, tolerance)
+-- Returns: entities matching emotional state
+-- Enables: "When was I last excited about something?"
+```
+
+## PAMP v2.0 Export Enhancement
+
+```json
+{
+  "facts": [{
+    "predicate": "works_at",
+    "object": "Anthropic",
+    "confidence": 0.95,
+    "consolidation": "semantic",
+    "retrieval_score": 0.87,
+    "emotional_weight": 1.8,
+    "valid_from": "2025-06-01",
+    "version": 2,
+    "previous_values": ["Google"]
+  }]
+}
+```
+
+## Differentiation from Mem0
+
+| Dimension | Mem0 | Inscript |
+|-----------|------|----------|
+| **Purpose** | Memory for their agents | Memory you own, portable to ANY agent |
+| **Emotional context** | None | Valence/arousal weighting |
+| **Belief history** | Stores current state | Tracks evolution over time |
+| **Export quality** | Basic | Rich signals (consolidation, retrieval score, emotional weight) |
+| **Data ownership** | Platform-locked | E2E encrypted, user-owned, exportable |
+
+## Implementation Phases
+
+| Phase | Feature | Dependencies |
+|-------|---------|--------------|
+| 1 | Schema migration (new columns) | None |
+| 2 | Track retrieval in context loader | Phase 1 |
+| 3 | Emotional tagging during extraction | Phase 1 |
+| 4 | Evolution queries RPC | Bi-temporal (already deployed) |
+| 5 | PAMP v2.0 export update | Phases 1-4 |
+
+## Key Principles
+
+- **Never delete user data** — Use decay for retrieval ranking, not deletion
+- **Export everything** — Let the consuming agent decide relevance
+- **Enrich, don't complicate** — New fields are additive, not breaking
 
 ---
 
